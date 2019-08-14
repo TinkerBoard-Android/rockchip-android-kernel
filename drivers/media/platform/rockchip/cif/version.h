@@ -17,6 +17,8 @@
  *2. Compatible with cif only have single dma mode in driver
  *3. Support cif works with mipi channel for rk3288
  *4. Support switching between oneframe and pingpong for cif
+ *5. Support sampling raw data for cif
+ *6. fix the bug that dummpy buffer size is error
  */
 
 #define RKCIF_DRIVER_VERSION KERNEL_VERSION(0, 1, 0x2)
