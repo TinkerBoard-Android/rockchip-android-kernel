@@ -89,7 +89,7 @@ static unsigned int chn = 4;
 module_param_named(jaguar1_chn, chn, uint, S_IRUGO);
 static unsigned int init = 0;
 module_param_named(jaguar1_init, init, uint, S_IRUGO);
-static unsigned int fmt = 2;  //0:960H;1:720P 2:1080P 3:960P 4:SH720
+static unsigned int fmt = 1;  //0:960H;1:720P 2:1080P 3:960P 4:SH720
 module_param_named(jaguar1_fmt, fmt, uint, S_IRUGO);
 static unsigned int ntpal = 0;
 module_param_named(jaguar1_ntpal, ntpal, uint, S_IRUGO);
