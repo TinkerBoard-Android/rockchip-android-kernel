@@ -1359,6 +1359,7 @@ static int rkcif_start_streaming(struct vb2_queue *queue, unsigned int count)
 	if (ret < 0)
 		goto destroy_buf;
 
+	mutex_lock(&dev->stream_lock);
 	ret = rkcif_create_dummy_buf(stream);
 	if (ret < 0) {
 		v4l2_err(v4l2_dev, "Failed to create dummy_buf, %d\n", ret);
@@ -1373,6 +1374,7 @@ static int rkcif_start_streaming(struct vb2_queue *queue, unsigned int count)
 		goto  destroy_buf;
 	}
 
+	mutex_unlock(&dev->stream_lock);
 	ret = dev->pipe.open(&dev->pipe, &node->vdev.entity, true);
 	if (ret < 0) {
 		v4l2_err(v4l2_dev, "open cif pipeline failed %d\n",
