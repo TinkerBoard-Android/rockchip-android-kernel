@@ -172,6 +172,7 @@ struct dma_trx_obj {
 	struct completion		done;
 	unsigned long			irq_num;
 	struct dentry			*pcie_root;
+	struct pcie_misc_dev		*pcie_dev;
 };
 
 #ifdef CONFIG_PCIE_DW_ROCKCHIP
@@ -192,9 +193,14 @@ static inline void rk_pcie_start_dma_3399(struct dma_trx_obj *obj)
 
 #ifdef CONFIG_ROCKCHIP_PCIE_DMA_OBJ
 struct dma_trx_obj *rk_pcie_dma_obj_probe(struct device *dev);
+void rk_pcie_dma_obj_remove(struct dma_trx_obj *obj);
 #else
 static inline struct dma_trx_obj *rk_pcie_dma_obj_probe(struct device *dev)
 {
 	return NULL;
+}
+
+static inline void rk_pcie_dma_obj_remove(struct dma_trx_obj *obj)
+{
 }
 #endif
