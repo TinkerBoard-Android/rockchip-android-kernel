@@ -774,7 +774,7 @@ static void tcpm_init(struct fusb30x_chip *chip)
 	val = ~MASKB_M_GCRCSEND;
 	regmap_write(chip->regmap, FUSB_REG_MASKB, val);
 
-	tcpm_select_rp_value(chip, TYPEC_RP_1A5);
+	tcpm_select_rp_value(chip, TYPEC_RP_USB);
 	/* Interrupts Enable */
 	regmap_update_bits(chip->regmap, FUSB_REG_CONTROL0, CONTROL0_INT_MASK,
 			   ~CONTROL0_INT_MASK);
@@ -1704,6 +1704,7 @@ static void fusb_state_attach_wait_source(struct fusb30x_chip *chip, u32 evt)
 
 static void fusb_state_attached_source(struct fusb30x_chip *chip, u32 evt)
 {
+	tcpm_select_rp_value(chip, TYPEC_RP_1A5);
 	platform_set_vbus_lvl_enable(chip, 1, 0);
 	tcpm_set_polarity(chip, (chip->cc_state & CC_STATE_TOGSS_CC1) ?
 				TYPEC_POLARITY_CC1 : TYPEC_POLARITY_CC2);
@@ -2029,6 +2030,7 @@ static void fusb_state_src_transition_default(struct fusb30x_chip *chip,
 	case 0:
 		chip->notify.is_pd_connected = false;
 		platform_set_vbus_lvl_enable(chip, 0, 0);
+		tcpm_select_rp_value(chip, TYPEC_RP_USB);
 		if (chip->notify.data_role)
 			regmap_update_bits(chip->regmap,
 					   FUSB_REG_SWITCHES1,
@@ -2047,6 +2049,7 @@ static void fusb_state_src_transition_default(struct fusb30x_chip *chip,
 		break;
 	default:
 		if (evt & EVENT_TIMER_STATE) {
+			tcpm_select_rp_value(chip, TYPEC_RP_1A5);
 			platform_set_vbus_lvl_enable(chip, 1, 0);
 			chip->timer_mux = T_NO_RESPONSE;
 			fusb_timer_start(&chip->timer_mux_machine,
