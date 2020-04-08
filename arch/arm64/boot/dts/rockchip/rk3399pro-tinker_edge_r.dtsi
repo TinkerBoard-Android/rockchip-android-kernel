@@ -54,6 +54,12 @@
 		};
 	};
 
+	ADC5-BOARD-ID {
+		compatible = "ADC5-BOARD-ID";
+		io-channels = <&saradc 5>;
+		io-channel-names = "adc5";
+	};
+
 	backlight: backlight {
 		compatible = "pwm-backlight";
 		pwms = <&pwm0 0 25000 0>;
