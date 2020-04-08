@@ -273,7 +273,7 @@
 };
 
 &dmc {
-	status = "okay";
+	status = "disabled";
 	center-supply = <&vdd_center>;
 };
 
@@ -282,7 +282,7 @@
 };
 
 &edp {
-	status = "okay";
+	status = "disabled";
 	force-hpd;
 
 	ports {
