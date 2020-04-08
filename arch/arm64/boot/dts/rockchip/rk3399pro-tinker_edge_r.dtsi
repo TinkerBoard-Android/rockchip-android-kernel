@@ -638,17 +638,17 @@
 		};
 	};
 
-	vdd_cpu_b: tcs452x@1c {
-		compatible = "tcs,tcs452x";
-		reg = <0x1c>;
+	vdd_cpu_b: fan53555@60 {
+		compatible = "fcs,fan53555";
+		reg = <0x60>;
 		vin-supply = <&vcc5v0_sys>;
 		regulator-compatible = "fan53555-reg";
 		pinctrl-0 = <&vsel1_gpio>;
 		vsel-gpios = <&gpio1 RK_PC1 GPIO_ACTIVE_HIGH>;
 		regulator-name = "vdd_cpu_b";
-		regulator-min-microvolt = <712500>;
-		regulator-max-microvolt = <1500000>;
-		regulator-ramp-delay = <2300>;
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <1250000>;
+		regulator-ramp-delay = <1000>;
 		fcs,suspend-voltage-selector = <1>;
 		regulator-always-on;
 		regulator-boot-on;
@@ -658,17 +658,17 @@
 		};
 	};
 
-	vdd_gpu: tcs452x@10 {
-		compatible = "tcs,tcs452x";
-		reg = <0x10>;
+	vdd_gpu: fan53555@60 {
+		compatible = "fcs,fan53555";
+		reg = <0x60>;
 		vin-supply = <&vcc5v0_sys>;
 		regulator-compatible = "fan53555-reg";
 		pinctrl-0 = <&vsel2_gpio>;
 		vsel-gpios = <&gpio1 RK_PB6 GPIO_ACTIVE_HIGH>;
 		regulator-name = "vdd_gpu";
-		regulator-min-microvolt = <735000>;
-		regulator-max-microvolt = <1400000>;
-		regulator-ramp-delay = <2300>;
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-ramp-delay = <1000>;
 		fcs,suspend-voltage-selector = <1>;
 		regulator-always-on;
 		regulator-boot-on;
