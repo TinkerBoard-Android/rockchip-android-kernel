@@ -329,6 +329,11 @@
 	mali-supply = <&vdd_gpu>;
 };
 
+&route_hdmi {
+	status = "okay";
+	connect = <&vopb_out_hdmi>;
+};
+
 &hdmi {
 	status = "okay";
 	#sound-dai-cells = <0>;
@@ -345,6 +350,10 @@
 };
 
 &hdmi_in_vopb {
+	status = "okay";
+};
+
+&hdmi_in_vopl {
 	status = "disabled";
 };
 
@@ -834,7 +843,7 @@
 };
 
 &route_edp {
-	status = "okay";
+	status = "disabled";
 };
 
 &saradc {
@@ -943,12 +952,12 @@
 
 &vopb {
 	assigned-clocks = <&cru DCLK_VOP0_DIV>;
-	assigned-clock-parents = <&cru PLL_CPLL>;
+	assigned-clock-parents = <&cru PLL_VPLL>;
 };
 
 &vopl {
 	assigned-clocks = <&cru DCLK_VOP1_DIV>;
-	assigned-clock-parents = <&cru PLL_VPLL>;
+	assigned-clock-parents = <&cru PLL_CPLL>;
 };
 
 &pinctrl {
