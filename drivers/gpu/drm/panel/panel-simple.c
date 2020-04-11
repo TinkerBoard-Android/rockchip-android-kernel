@@ -123,6 +123,8 @@ struct panel_simple {
 	struct panel_cmds *on_cmds;
 	struct panel_cmds *off_cmds;
 	struct device_node *np_crtc;
+
+	int dsi_id;
 };
 
 enum rockchip_cmd_type {
@@ -136,6 +138,17 @@ enum MCU_IOCTL {
 	MCU_WRDATA,
 	MCU_SETBYPASS,
 };
+
+#if defined(CONFIG_TINKER_MCU)
+extern struct backlight_device * tinker_mcu_get_backlightdev(int dsi_id);
+extern int tinker_mcu_set_bright(int bright, int dsi_id);
+extern void tinker_mcu_screen_power_up(int dsi_id);
+extern int tinker_mcu_is_connected(int dsi_id);
+extern struct backlight_device * tinker_mcu_ili9881c_get_backlightdev(int dsi_id);
+extern int tinker_mcu_ili9881c_set_bright(int bright, int dsi_id);
+extern void tinker_mcu_ili9881c_screen_power_up(int dsi_id);
+extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
+#endif
 
 static void panel_simple_sleep(unsigned int msec)
 {
@@ -378,6 +391,15 @@ static int panel_simple_get_cmds(struct panel_simple *panel)
 	int len;
 	int err;
 
+#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_is_connected(panel->dsi_id))
+		data = of_get_property(panel->dev->of_node, "rpi-init-sequence",
+			       &len);
+	else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id))
+		data = of_get_property(panel->dev->of_node, "powertip-init-sequence",
+			       &len);
+	else
+#endif
 	data = of_get_property(panel->dev->of_node, "panel-init-sequence",
 			       &len);
 	if (data) {
@@ -395,6 +417,15 @@ static int panel_simple_get_cmds(struct panel_simple *panel)
 		}
 	}
 
+#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_is_connected(panel->dsi_id))
+		data = of_get_property(panel->dev->of_node, "rpi-exit-sequence",
+			       &len);
+	else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id))
+		data = of_get_property(panel->dev->of_node, "powertip-exit-sequence",
+			       &len);
+	else
+#endif
 	data = of_get_property(panel->dev->of_node, "panel-exit-sequence",
 			       &len);
 	if (data) {
@@ -572,6 +603,7 @@ static int panel_simple_disable(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int err = 0;
 
+	printk("panel_simple_disable p->enabled=%d\n", p->enabled);
 	if (!p->enabled)
 		return 0;
 
@@ -595,6 +627,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int err = 0;
 
+	printk("panel_simple_unprepare p->prepared=%d\n", p->prepared);
 	if (!p->prepared)
 		return 0;
 
@@ -628,8 +661,16 @@ static int panel_simple_prepare(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int err;
 
+	printk("panel_simple_prepare p->prepared=%d\n", p->prepared);
 	if (p->prepared)
 		return 0;
+
+#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_ili9881c_is_connected(p->dsi_id)) {
+		printk("tinker_mcu_ili9881c_screen_power_up\n");
+		tinker_mcu_ili9881c_screen_power_up(p->dsi_id);
+	}
+#endif
 
 	err = panel_simple_regulator_enable(panel);
 	if (err < 0) {
@@ -656,7 +697,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		panel_simple_sleep(p->desc->delay.init);
 
 	if (p->on_cmds) {
-		if (p->dsi)
+		if ((p->dsi) && !tinker_mcu_is_connected(p->dsi_id))
 			err = panel_simple_dsi_send_cmds(p, p->on_cmds);
 		else if (p->cmd_type == CMD_TYPE_SPI)
 			err = panel_simple_spi_send_cmds(p, p->on_cmds);
@@ -674,6 +715,7 @@ static int panel_simple_enable(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int err = 0;
 
+	printk("panel_simple_enable p->enabled=%d\n", p->enabled);
 	if (p->enabled)
 		return 0;
 
@@ -682,9 +724,26 @@ static int panel_simple_enable(struct drm_panel *panel)
 		if (err)
 			dev_err(p->dev, "failed to send mcu on cmds\n");
 	}
+
+#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_is_connected(p->dsi_id)) {
+		printk("tinker_mcu_screen_power_up\n");
+		tinker_mcu_screen_power_up(p->dsi_id);
+		panel_simple_sleep(100);
+	}
+
+	if (p->on_cmds) {
+		if ((p->dsi) && tinker_mcu_is_connected(p->dsi_id))
+			err = panel_simple_dsi_send_cmds(p, p->on_cmds);
+		if (err)
+			dev_err(p->dev, "panel_simple_enable:failed to send on cmds\n");
+	}
+#endif
+
 	if (p->desc && p->desc->delay.enable)
 		panel_simple_sleep(p->desc->delay.enable);
 
+	printk("panel_simple_enable backlight_enable\n");
 	backlight_enable(p->backlight);
 
 	p->enabled = true;
@@ -801,6 +860,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	u32 val;
 	int err;
 
+	printk("panel_simple_probe+\n");
 	panel = devm_kzalloc(dev, sizeof(*panel), GFP_KERNEL);
 	if (!panel)
 		return -ENOMEM;
@@ -835,7 +895,9 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	panel->prepared = false;
 	panel->desc = of_desc;
 	panel->dev = dev;
+	panel->dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
 
+	printk("panel_simple_probe panel->dsi_id =%d\n", panel->dsi_id );
 	err = panel_simple_get_cmds(panel);
 	if (err) {
 		dev_err(dev, "failed to get init cmd: %d\n", err);
@@ -921,6 +983,31 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		if (!panel->backlight)
 			return -EPROBE_DEFER;
 	}
+#if defined(CONFIG_TINKER_MCU)
+	else {
+		if (tinker_mcu_is_connected(panel->dsi_id)) {
+			panel->backlight =  tinker_mcu_get_backlightdev(panel->dsi_id);
+			if (!panel->backlight) {
+				printk("tinker mcu get backlight fail, dsi_id=%d\n", panel->dsi_id);
+				return -ENODEV;
+			}
+
+			panel->backlight->props.brightness = 255;
+			printk("tinker mcu  get backlight device successful\n");
+		} else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id)) {
+			printk("tinker_mcu_ili9881c_screen_power_up\n");
+
+			panel->backlight =  tinker_mcu_ili9881c_get_backlightdev(panel->dsi_id);
+			if (!panel->backlight) {
+				printk("tinker mcu ili9881c  get backlight fail, dsi_id=%d\n", panel->dsi_id);
+				return -ENODEV;
+			}
+
+			panel->backlight->props.brightness = 255;
+			printk("tinker mcu ili9881c get backlight device successful\n");
+		}
+	}
+#endif
 
 	ddc = of_parse_phandle(dev->of_node, "ddc-i2c-bus", 0);
 	if (ddc) {
@@ -943,6 +1030,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 
 	dev_set_drvdata(dev, panel);
 
+printk("panel_simple_probe-\n");
 	return 0;
 
 free_ddc:
@@ -2379,6 +2467,66 @@ static const struct panel_desc_dsi panasonic_vvx10f004b00 = {
 	.lanes = 4,
 };
 
+static const struct drm_display_mode tc358762_mode = {
+	.clock = 26101800 / 1000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 1,
+	.hsync_end = 800 + 1 + 2,
+	.htotal = 800 + 1 + 2 + 52,
+	.vdisplay = 480,
+	.vsync_start = 480 + 7,
+	.vsync_end = 480 + 7 + 2,
+	.vtotal = 480 + 7 + 2 + 21,
+	.vrefresh = 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi tc358762_dec= {
+	.desc = {
+		.modes = &tc358762_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 217,
+			.height = 136,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		 MIPI_DSI_MODE_VIDEO_BURST,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 1,
+};
+
+static const struct drm_display_mode asus_ili9881c_default_mode_7inch= {
+	.clock		= 66000,
+	.hdisplay	= 720,
+	.hsync_start	= 720 + 8,
+	.hsync_end	= 720 + 8 + 55,
+	.htotal		= 720 + 8 + 55 + 55,
+	.vdisplay	= 1280,
+	.vsync_start	= 1280 + 8,
+	.vsync_end	= 1280 + 8 + 20,
+	.vtotal		= 1280 + 8 + 20 + 20,
+	.vrefresh	= 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi asus_ili9881c_dec= {
+	.desc = {
+		.modes = &asus_ili9881c_default_mode_7inch,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 88,
+			.height = 153,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+			MIPI_DSI_MODE_VIDEO_BURST |
+			MIPI_DSI_MODE_LPM,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 2,
+};
 
 static const struct of_device_id dsi_of_match[] = {
 	{
@@ -2414,12 +2562,21 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	const struct panel_desc *pdesc;
 	int err;
 	u32 val;
+	int dsi_id;
 
 	id = of_match_node(dsi_of_match, dev->of_node);
 	if (!id)
 		return -ENODEV;
 
-	desc = id->data;
+	dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
+#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_is_connected(dsi_id))
+		desc = &tc358762_dec;
+	else if (tinker_mcu_ili9881c_is_connected(dsi_id))
+		desc = &asus_ili9881c_dec;
+	else
+#endif
+		desc = id->data;
 
 	if (desc) {
 		dsi->mode_flags = desc->flags;
