@@ -1725,13 +1725,6 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 	struct dw_mipi_dsi *dsi = dev_get_drvdata(dev);
 	int ret;
 
-	dsi->panel = of_drm_find_panel(dsi->client);
-	if (!dsi->panel) {
-		dsi->bridge = of_drm_find_bridge(dsi->client);
-		if (!dsi->bridge)
-			return -EPROBE_DEFER;
-	}
-
 #if defined(CONFIG_TINKER_MCU)
 	if(!tinker_mcu_is_connected(dsi->id) && !tinker_mcu_ili9881c_is_connected(dsi->id)) {
 		pr_info("dsi-%d panel isn't connected\n", dsi->id);
@@ -1740,6 +1733,13 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 		pr_info("dsi-%d panel is connected\n", dsi->id);
 	}
 #endif
+
+	dsi->panel = of_drm_find_panel(dsi->client);
+	if (!dsi->panel) {
+		dsi->bridge = of_drm_find_bridge(dsi->client);
+		if (!dsi->bridge)
+			return -EPROBE_DEFER;
+	}
 
 	if (dsi->id) {
 		dsi->master = dw_mipi_dsi_find_by_id(dev->driver, 0);
