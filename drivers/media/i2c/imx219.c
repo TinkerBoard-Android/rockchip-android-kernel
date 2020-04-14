@@ -9,6 +9,7 @@
  */
 #include <linux/clk.h>
 #include <linux/delay.h>
+#include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -221,6 +222,11 @@ struct imx219 {
 	struct media_pad pad;
 	struct v4l2_ctrl_handler ctrl_handler;
 	struct clk *clk;
+
+	struct gpio_desc	*power_gpio;
+	struct gpio_desc	*enable_gpio;
+	struct gpio_desc	*clksel_gpio;
+
 	struct v4l2_rect crop_rect;
 	int hflip;
 	int vflip;
@@ -792,6 +798,24 @@ static long imx219_compat_ioctl32(struct v4l2_subdev *sd,
 }
 #endif
 
+static int imx219_enum_frame_sizes(struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_size_enum *fse)
+{
+	if (fse->index >= ARRAY_SIZE(supported_modes))
+		return -EINVAL;
+
+	if (fse->code != MEDIA_BUS_FMT_SBGGR10_1X10)
+		return -EINVAL;
+
+	fse->min_width  = supported_modes[fse->index].width;
+	fse->max_width  = supported_modes[fse->index].width;
+	fse->max_height = supported_modes[fse->index].height;
+	fse->min_height = supported_modes[fse->index].height;
+
+	return 0;
+}
+
 /* Various V4L2 operations tables */
 static struct v4l2_subdev_video_ops imx219_subdev_video_ops = {
 	.s_stream = imx219_s_stream,
@@ -808,6 +832,7 @@ static struct v4l2_subdev_core_ops imx219_subdev_core_ops = {
 
 static const struct v4l2_subdev_pad_ops imx219_subdev_pad_ops = {
 	.enum_mbus_code = imx219_enum_mbus_code,
+	.enum_frame_size = imx219_enum_frame_sizes,
 	.set_fmt = imx219_set_fmt,
 	.get_fmt = imx219_get_fmt,
 };
@@ -1007,12 +1032,24 @@ static int imx219_probe(struct i2c_client *client,
 		return -EINVAL;
 	}
 
-	priv->clk = devm_clk_get(&client->dev, NULL);
+	priv->clk = devm_clk_get(&client->dev, "xvclk");
 	if (IS_ERR(priv->clk)) {
 		dev_info(&client->dev, "Error %ld getting clock\n",
 			 PTR_ERR(priv->clk));
 		return -EPROBE_DEFER;
 	}
+
+	priv->power_gpio = devm_gpiod_get(dev, "power", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv->power_gpio))
+		dev_warn(dev, "Failed to get power_gpios\n");
+
+	priv->enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv->enable_gpio))
+		dev_warn(dev, "Failed to get enable_gpios\n");
+
+	priv->clksel_gpio = devm_gpiod_get(dev, "clksel", GPIOD_OUT_HIGH);
+	if (IS_ERR(priv->clksel_gpio))
+		dev_warn(dev, "Failed to get clksel_gpios\n");
 
 	/* 1920 * 1080 by default */
 	priv->cur_mode = &supported_modes[0];
@@ -1050,7 +1087,7 @@ static int imx219_probe(struct i2c_client *client,
 	ret = v4l2_async_register_subdev_sensor_common(sd);
 	if (ret < 0)
 		return ret;
-
+	dev_info(&client->dev, "%s probe done.\n", sd->name);
 	return ret;
 }
 
