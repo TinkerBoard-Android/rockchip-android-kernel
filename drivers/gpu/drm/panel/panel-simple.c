@@ -592,7 +592,14 @@ static int panel_simple_loader_protect(struct drm_panel *panel, bool on)
 		p->prepared = true;
 		p->enabled = true;
 	} else {
-		/* do nothing */
+		p->prepared = false;
+		p->enabled = false;
+
+		#if defined(CONFIG_TINKER_MCU)
+		if (tinker_mcu_is_connected(p->dsi_id)) {
+			backlight_disable(p->backlight);
+		}
+		#endif
 	}
 
 	return 0;
@@ -729,7 +736,7 @@ static int panel_simple_enable(struct drm_panel *panel)
 	if (tinker_mcu_is_connected(p->dsi_id)) {
 		printk("tinker_mcu_screen_power_up\n");
 		tinker_mcu_screen_power_up(p->dsi_id);
-		panel_simple_sleep(100);
+		panel_simple_sleep(20);
 	}
 
 	if (p->on_cmds) {
@@ -995,8 +1002,6 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 			panel->backlight->props.brightness = 255;
 			printk("tinker mcu  get backlight device successful\n");
 		} else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id)) {
-			printk("tinker_mcu_ili9881c_screen_power_up\n");
-
 			panel->backlight =  tinker_mcu_ili9881c_get_backlightdev(panel->dsi_id);
 			if (!panel->backlight) {
 				printk("tinker mcu ili9881c  get backlight fail, dsi_id=%d\n", panel->dsi_id);
@@ -2498,7 +2503,7 @@ static const struct panel_desc_dsi tc358762_dec= {
 };
 
 static const struct drm_display_mode asus_ili9881c_default_mode_7inch= {
-	.clock		= 66000,
+	.clock		= 66800,
 	.hdisplay	= 720,
 	.hsync_start	= 720 + 8,
 	.hsync_end	= 720 + 8 + 55,

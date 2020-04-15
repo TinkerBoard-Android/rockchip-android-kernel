@@ -474,6 +474,46 @@
 			05 78 01 11
 			05 78 01 29
 		];
+
+		rpi-display-timings {
+			native-mode = <&timing0>;
+
+			timing0: timing0 {
+				clock-frequency = <26101800>;
+				hactive = <800>;
+				vactive = <480>;
+				hfront-porch = <2>;
+				hsync-len = <2>;
+				hback-porch = <52>;
+				vfront-porch = <7>;
+				vsync-len = <2>;
+				vback-porch = <21>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		powertip-display-timings {
+			native-mode = <&timing1>;
+
+			timing1: timing1 {
+				clock-frequency = <66800000>;
+				hactive = <720>;
+				vactive = <1280>;
+				hfront-porch = <8>;
+				hsync-len = <55>;
+				hback-porch = <55>;
+				vfront-porch = <8>;
+				vsync-len = <20>;
+				vback-porch = <20>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
 	};
 };
 
@@ -511,6 +551,11 @@
 &route_hdmi {
 	status = "okay";
 	connect = <&vopb_out_hdmi>;
+};
+
+&route_dsi{
+	status = "disabled";
+	connect = <&vopl_out_dsi>;
 };
 
 &hdmi {

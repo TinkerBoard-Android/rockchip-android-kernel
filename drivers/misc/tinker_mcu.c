@@ -28,7 +28,7 @@
 #define BL_DEBUG 0
 static struct tinker_mcu_data *g_mcu_data[2];
 static int connected[2] = {0, 0};
-static int lcd_bright_level[2] = {0, 0};
+static int lcd_bright_level[2] = {-1,-1};
 static struct backlight_device *bl[2] = {NULL, NULL};
 
 #define MAX_BRIGHENESS 		(255)
@@ -135,6 +135,21 @@ error:
 	return ret;
 }
 
+int tinker_mcu_screen_power_off(int dsi_id)
+{
+	int ret;
+
+	if (!connected[dsi_id])
+		return -ENODEV;
+
+	LOG_INFO("tinker_mcu_screen_power_off  dsi_id=%d\n", dsi_id);
+	ret = send_cmds(g_mcu_data[dsi_id]->client, "8500");
+	msleep(100);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(tinker_mcu_screen_power_off);
+
 int tinker_mcu_screen_power_up(int dsi_id)
 {
 	#define REG_PORTB "82"
@@ -146,6 +161,7 @@ int tinker_mcu_screen_power_up(int dsi_id)
 		return -ENODEV;
 
 	LOG_INFO("\n");
+	tinker_mcu_screen_power_off(dsi_id);
 	ret = send_cmds(g_mcu_data[dsi_id]->client, "8501");
 
 	/* Wait for nPWRDWN to go low to indicate poweron is done. */
@@ -167,21 +183,6 @@ end:
 	return ret;
 }
 EXPORT_SYMBOL_GPL(tinker_mcu_screen_power_up);
-
-int tinker_mcu_screen_power_off(int dsi_id)
-{
-	int ret;
-
-	if (!connected[dsi_id])
-		return -ENODEV;
-
-	LOG_INFO("tinker_mcu_screen_power_off  dsi_id=%d\n", dsi_id);
-	ret = send_cmds(g_mcu_data[dsi_id]->client, "8500");
-	msleep(100);
-
-	return ret;
-}
-EXPORT_SYMBOL_GPL(tinker_mcu_screen_power_off);
 
 int tinker_mcu_set_bright(int bright, int dsi_id)
 {
@@ -356,7 +357,7 @@ static int tinker_mcu_probe(struct i2c_client *client,
 
 	connected[dsi_id] = 1;
 
-	tinker_mcu_screen_power_off(dsi_id);
+	//tinker_mcu_screen_power_off(dsi_id);
 
         memset(&props, 0, sizeof(props));
 	props.type = BACKLIGHT_RAW;

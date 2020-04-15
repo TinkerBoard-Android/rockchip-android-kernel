@@ -732,6 +732,8 @@ static unsigned long dw_mipi_dsi_get_lane_rate(struct dw_mipi_dsi *dsi)
 	else
 		lane_rate = tmp;
 
+	printk("dw_mipi_dsi_get_lane_rate mode->clock=%d lane_rate=%lu\n", mode->clock, lane_rate );
+
 	return lane_rate;
 }
 
@@ -828,6 +830,8 @@ static int dw_mipi_dsi_host_attach(struct mipi_dsi_host *host,
 	dsi->channel = device->channel;
 	dsi->format = device->format;
 	dsi->mode_flags = device->mode_flags;
+
+	printk("dw_mipi_dsi_host_attach mode_flags=%lx lanes=%u\n", dsi->mode_flags, dsi->lanes);
 
 	return 0;
 }

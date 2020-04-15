@@ -28,7 +28,7 @@
 #define BL_DEBUG 0
 static struct tinker_mcu_data *g_mcu_ili9881c_data[2];
 static int connected[2] = {0, 0};
-static int lcd_bright_level[2] = {0, 0};
+static int lcd_bright_level[2] = {-1, -1};
 int lcd_size_flag[2] = {0, 0};
 static struct backlight_device *bl[2] = {NULL, NULL};
 
@@ -237,11 +237,11 @@ static int tinker_mcu_ili9881c_bl_get_brightness(struct backlight_device *bd)
 	if ((lcd_size_flag[dsi_id] ==2) && (brightness > MAX_MCU_ILI9881C_PWM_WORKAROUND))
 		brightness = MAX_MCU_ILI9881C_PWM_WORKAROUND;
 
-	if (bd->props.power != FB_BLANK_UNBLANK)
+	if (bd->props.power== FB_BLANK_POWERDOWN)
 		brightness = 0;
 
-	//if (bd->props.fb_blank != FB_BLANK_UNBLANK)
-	//	brightness = 0;
+	if (bd->props.fb_blank == FB_BLANK_POWERDOWN)
+		brightness = 0;
 
 	if (bd->props.state & BL_CORE_SUSPENDED)
 		brightness = 0;
