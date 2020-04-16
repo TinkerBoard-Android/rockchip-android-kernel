@@ -171,6 +171,7 @@ ifdef CONFIG_MODULES
 endif
 
 LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
+LOGO_PANEL := $(notdir $(wildcard $(srctree)/tinker_720.bmp))
 LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
 RAMDISK_IMG := $(notdir $(wildcard $(objtree)/ramdisk.img))
 make_boot_img := \
@@ -201,13 +202,15 @@ repack_boot_img := \
 		-o zboot.img && \
 	echo '  Image:  zboot.img ($(BOOT_IMG) + Image.lz4 + resource.img) is ready'
 
-%.img: rockchip/%.dtb kernel.img $(LOGO) $(LOGO_KERNEL)
+%.img: rockchip/%.dtb kernel.img $(LOGO) $(LOGO_PANEL) $(LOGO_KERNEL)
 	$(Q) if [ -f $(srctree)/$(LOGO) -a -e $(srctree)/scripts/bmpconvert ]; then $(srctree)/scripts/bmpconvert $(srctree)/$(LOGO); fi
+	$(Q) if [ -f $(srctree)/$(LOGO_PANEL) -a -e $(srctree)/scripts/bmpconvert ]; then $(srctree)/scripts/bmpconvert $(srctree)/$(LOGO_PANEL); fi
 	$(Q) if [ -f $(srctree)/$(LOGO_KERNEL) -a -e $(srctree)/scripts/bmpconvert ]; then $(srctree)/scripts/bmpconvert $(srctree)/$(LOGO_KERNEL); fi
 	$(Q) if [ -f $(srctree)/$(LOGO) -a "$(srctree)" != "$(objtree)" ]; then cp -a $(srctree)/$(LOGO) $(objtree)/; fi
+	$(Q) if [ -f $(srctree)/$(LOGO_PANEL) -a "$(srctree)" != "$(objtree)" ]; then cp -a $(srctree)/$(LOGO_PANEL) $(objtree)/; fi
 	$(Q) if [ -f $(srctree)/$(LOGO_KERNEL) -a "$(srctree)" != "$(objtree)" ]; then cp -a $(srctree)/$(LOGO_KERNEL) $(objtree)/; fi
-	$(Q)scripts/resource_tool $(objtree)/arch/arm64/boot/dts/rockchip/$*.dtb $(LOGO) $(LOGO_KERNEL)
-	@echo '  Image:  resource.img (with $*.dtb $(LOGO) $(LOGO_KERNEL)) is ready'
+	$(Q)scripts/resource_tool $(objtree)/arch/arm64/boot/dts/rockchip/$*.dtb $(LOGO) $(LOGO_PANEL) $(LOGO_KERNEL)
+	@echo '  Image:  resource.img (with $*.dtb $(LOGO) $(LOGO_PANEL) $(LOGO_KERNEL)) is ready'
 	$(Q) if [ -f "$(BOOT_IMG)" -a -x $(srctree)/scripts/repack-bootimg ]; then $(repack_boot_img); elif [ -x $(srctree)/scripts/mkbootimg ]; then $(make_boot_img); fi
 
 CLEAN_DIRS += out

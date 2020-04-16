@@ -554,7 +554,9 @@
 };
 
 &route_dsi{
-	status = "disabled";
+	status = "okay";
+	logo,uboot = "tinker_720.bmp";
+	logo,kernel = "tinker_720.bmp";
 	connect = <&vopl_out_dsi>;
 };
 
