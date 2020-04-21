@@ -840,26 +840,6 @@
 		};
 	};
 
-	vdd_gpu: fan53555@60 {
-		compatible = "fcs,fan53555";
-		reg = <0x60>;
-		vin-supply = <&vcc5v0_sys>;
-		regulator-compatible = "fan53555-reg";
-		pinctrl-0 = <&vsel2_gpio>;
-		vsel-gpios = <&gpio1 RK_PB6 GPIO_ACTIVE_HIGH>;
-		regulator-name = "vdd_gpu";
-		regulator-min-microvolt = <925000>;
-		regulator-max-microvolt = <1225000>;
-		regulator-ramp-delay = <1000>;
-		fcs,suspend-voltage-selector = <1>;
-		regulator-always-on;
-		regulator-boot-on;
-		regulator-initial-state = <3>;
-		regulator-state-mem {
-			regulator-off-in-suspend;
-		};
-	};
-
 	bq25700: bq25700@6b {
 		compatible = "ti,bq25703";
 		reg = <0x6b>;
@@ -956,6 +936,26 @@
 		int-n-gpios = <&gpio1 RK_PA2 GPIO_ACTIVE_HIGH>;
 		vbus-5v-gpios = <&gpio2 RK_PD2 GPIO_ACTIVE_HIGH>;
 		status = "okay";
+	};
+
+	vdd_gpu: fan53555@60 {
+		compatible = "fcs,fan53555";
+		reg = <0x60>;
+		vin-supply = <&vcc5v0_sys>;
+		regulator-compatible = "fan53555-reg";
+		pinctrl-0 = <&vsel2_gpio>;
+		vsel-gpios = <&gpio1 RK_PB6 GPIO_ACTIVE_HIGH>;
+		regulator-name = "vdd_gpu";
+		regulator-min-microvolt = <800000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-ramp-delay = <1000>;
+		fcs,suspend-voltage-selector = <1>;
+		regulator-always-on;
+		regulator-boot-on;
+		regulator-initial-state = <3>;
+		regulator-state-mem {
+			regulator-off-in-suspend;
+		};
 	};
 
 };
