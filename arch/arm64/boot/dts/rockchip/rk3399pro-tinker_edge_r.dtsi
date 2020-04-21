@@ -329,7 +329,9 @@
 };
 
 &fiq_debugger {
-	pinctrl-0 = <&uart2a_xfer>;
+	rockchip,serial-id = <0>;
+	rockchip,baudrate = <115200>;
+	pinctrl-0 = <&uart0_xfer>;
 };
 
 &gmac {
@@ -950,7 +952,7 @@
 &uart0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&uart0_xfer &uart0_cts>;
-	status = "okay";
+	status = "disabled";
 };
 
 &usb_host0_ehci {
