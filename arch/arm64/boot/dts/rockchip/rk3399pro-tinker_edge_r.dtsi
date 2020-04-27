@@ -922,6 +922,44 @@
 
 };
 
+&i2c6 {
+	status = "disabled";
+};
+
+&i2c7 {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "disabled";
+	max-freq = <48000000>; /* spi internal clk, don't modify */
+	spi_dev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;
+		spi-max-frequency = <48000000>;
+		spi-lsb-first;
+	};
+};
+
+&spi5 {
+	status = "disabled";
+	max-freq = <48000000>;   //spi internal clk, don't modify
+	spi_dev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;   //chip select  0:cs0  1:cs1
+		id = <0>;
+		spi-max-frequency = <48000000>;   //spi output clock
+	};
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
 &i2c8 {
 	status = "okay";
 	i2c-scl-rising-time-ns = <345>;
@@ -965,6 +1003,10 @@
 	#sound-dai-cells = <0>;
 };
 
+&spdif {
+	status = "disabled";
+};
+
 &io_domains {
 	status = "okay";
 	bt656-supply = <&vcca_1v8>;
@@ -1003,7 +1045,7 @@
 };
 
 &pwm0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm2 {
@@ -1049,7 +1091,7 @@
 };
 
 &sdio0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &sdmmc {
@@ -1058,17 +1100,6 @@
 	sd-uhs-sdr25;
 	sd-uhs-sdr50;
 	sd-uhs-sdr104;
-};
-
-&spi1 {
-	status = "okay";
-	max-freq = <48000000>; /* spi internal clk, don't modify */
-	spi_dev@0 {
-		compatible = "rockchip,spidev";
-		reg = <0>;
-		spi-max-frequency = <12000000>;
-		spi-lsb-first;
-	};
 };
 
 &tcphy0 {
@@ -1164,7 +1195,7 @@
 
 &pinctrl {
 	pinctrl-names = "default";
-	pinctrl-0 = <&npu_ref_clk>;
+	pinctrl-0 = <&npu_ref_clk &gpio_init>;
 
 	bq2570 {
 		charger_ok_int: charger-ok-int {
@@ -1198,6 +1229,16 @@
 		lcd_rst_gpio: lcd-rst-gpio {
 			rockchip,pins =
 				<3 RK_PA4 0 &pcfg_pull_none>;
+		};
+	};
+
+	gpio_init_config {
+                gpio_init: gpio_init {
+                     rockchip,pins =
+                             <1 9 0 &pcfg_pull_none>,
+                             <1 10 0 &pcfg_pull_none>,
+                             <1 7 0 &pcfg_pull_none>,
+                             <1 8 0 &pcfg_pull_none>;
 		};
 	};
 
