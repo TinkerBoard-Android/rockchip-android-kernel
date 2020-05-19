@@ -649,7 +649,6 @@ static long ov5647_compat_ioctl32(struct v4l2_subdev *sd,
 				  unsigned int cmd, unsigned long arg)
 {
 	void __user *up = compat_ptr(arg);
-	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct rkmodule_inf *inf;
 	long ret;
 
