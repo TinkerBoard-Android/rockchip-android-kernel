@@ -172,7 +172,7 @@ int tinker_mcu_screen_power_up(int dsi_id)
 
 		LOG_INFO("recv_cmds: 0x%X\n", recv_buf[0]);
 		if (recv_buf[0] & 1) {
-			LOG_ERR("mtinker cu power up successful\n");
+			LOG_ERR("tinker mcu power up successful\n");
 			goto end;
 
 		}

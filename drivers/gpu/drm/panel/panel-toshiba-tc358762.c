@@ -497,6 +497,7 @@ static void tc358762_shutdown(struct device *dev)
 	struct tc358762 *panel = dev_get_drvdata(dev);
 
 	tc358762_disable(&panel->base);
+	tinker_mcu_screen_power_off(dsi_id);
 }
 
 struct bridge_desc {
