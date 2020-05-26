@@ -523,6 +523,8 @@ struct fusb30x_chip {
 	u16 rec_head;
 	int msg_id;
 	enum tx_state tx_state;
+	bool rx_pending;
+	bool vdm_pending;
 	int hardrst_count;
 	u32 source_power_supply[7];
 	/* 50mv unit */
