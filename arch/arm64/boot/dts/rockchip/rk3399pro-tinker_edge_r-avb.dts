@@ -57,7 +57,7 @@
 		rockchip,camera-module-lens-name = "default";
 
 		port {
-			ucam_out0: endpoint {
+			ov5647_out: endpoint {
 				remote-endpoint = <&mipi_in_ucam0>;
 				data-lanes = <1 2>;
 			};
@@ -84,7 +84,7 @@
 		rockchip,camera-module-lens-name = "default";
 
 		port {
-			ucam_out1: endpoint {
+			imx219_out: endpoint {
 				remote-endpoint = <&mipi_in_ucam1>;
 				data-lanes = <1 2>;
 			};
@@ -98,6 +98,10 @@
 
 &isp1_mmu {
 	status = "okay";
+};
+
+&isp0 {
+	status = "disabled";
 };
 
 &mipi_dphy_rx0 {
@@ -114,7 +118,7 @@
 
 			mipi_in_ucam0: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&ucam_out0>;
+				remote-endpoint = <&ov5647_out>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -146,53 +150,6 @@
 	};
 };
 
-&mipi_dphy_tx1rx1 {
-	status = "okay";
-
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			reg = <0>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			mipi_in_ucam1: endpoint@1 {
-				reg = <1>;
-				/* Unlinked camera */
-				remote-endpoint = <&ucam_out1>;
-				data-lanes = <1 2>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy_tx1rx1_out: endpoint@0 {
-				reg = <0>;
-				remote-endpoint = <&isp1_mipi_in>;
-			};
-		};
-	};
-};
-
-&rkisp1_1 {
-	status = "okay";
-
-	port {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		isp1_mipi_in: endpoint@0 {
-			reg = <0>;
-			remote-endpoint = <&dphy_tx1rx1_out>;
-		};
-	};
-};
-
 &pinctrl {
 	isp {
 		test_clkout2: cif-test_clkout2 {
@@ -210,7 +167,7 @@
 
 	vm149c: vm149c@0c {
 		compatible = "silicon touch,vm149c";
-		status = "okay";
+		status = "disabled";
 		reg = <0x0c>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
@@ -218,7 +175,7 @@
 
 	ov13850: ov13850@10 {
 		compatible = "ovti,ov13850";
-		status = "okay";
+		status = "disabled";
 		reg = <0x10>;
 		clocks = <&cru SCLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -236,7 +193,7 @@
 
 		port {
 			ucam_out1: endpoint {
-				remote-endpoint = <&mipi_in_ucam1>;
+				remote-endpoint = <0>;
 				data-lanes = <1 2>;
 			};
 		};
@@ -261,7 +218,7 @@
 
 			mipi_in_ucam1: endpoint@1 {
 				reg = <1>;
-				remote-endpoint = <&ucam_out1>;
+				remote-endpoint = <&imx219_out>;
 				data-lanes = <1 2>;
 			};
 		};
