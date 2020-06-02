@@ -142,7 +142,8 @@ enum MCU_IOCTL {
 #if defined(CONFIG_TINKER_MCU)
 extern struct backlight_device * tinker_mcu_get_backlightdev(int dsi_id);
 extern int tinker_mcu_set_bright(int bright, int dsi_id);
-extern void tinker_mcu_screen_power_up(int dsi_id);
+extern int tinker_mcu_screen_power_up(int dsi_id);
+extern int tinker_mcu_screen_power_off(int dsi_id);
 extern int tinker_mcu_is_connected(int dsi_id);
 extern struct backlight_device * tinker_mcu_ili9881c_get_backlightdev(int dsi_id);
 extern int tinker_mcu_ili9881c_set_bright(int bright, int dsi_id);
@@ -625,6 +626,13 @@ static int panel_simple_disable(struct drm_panel *panel)
 		if (err)
 			dev_err(p->dev, "failed to send mcu off cmds\n");
 	}
+
+	#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_is_connected(p->dsi_id)) {
+		printk("tinker_mcu_screen_power_off\n");
+		tinker_mcu_screen_power_off(p->dsi_id);
+	}
+	#endif
 	p->enabled = false;
 
 	return 0;
@@ -722,6 +730,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 static int panel_simple_enable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
+	bool the_first_time_rpi_enable = true;
 	int err = 0;
 
 	printk("panel_simple_enable p->enabled=%d\n", p->enabled);
@@ -736,6 +745,10 @@ static int panel_simple_enable(struct drm_panel *panel)
 
 #if defined(CONFIG_TINKER_MCU)
 	if (tinker_mcu_is_connected(p->dsi_id)) {
+		if (the_first_time_rpi_enable) {
+			the_first_time_rpi_enable = false;
+			backlight_disable(p->backlight);
+		}
 		printk("tinker_mcu_screen_power_up\n");
 		tinker_mcu_screen_power_up(p->dsi_id);
 		panel_simple_sleep(20);

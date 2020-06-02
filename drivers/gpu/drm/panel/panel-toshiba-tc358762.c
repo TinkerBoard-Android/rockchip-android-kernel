@@ -187,7 +187,7 @@ static int tc358762_of_get_native_mode(struct tc358762 *panel)
 
 extern int tinker_mcu_set_bright(int bright, int dsi_id);
 extern struct backlight_device * tinker_mcu_get_backlightdev(int dsi_id);
-extern void tinker_mcu_screen_power_up(int dsi_id);
+extern int tinker_mcu_screen_power_up(int dsi_id);
 extern int tinker_mcu_screen_power_off(int dsi_id);
 //extern void tinker_ft5406_start_polling(int dsi_id);
 
