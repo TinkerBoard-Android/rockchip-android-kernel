@@ -211,7 +211,7 @@ static int tc358762_disable(struct drm_panel *panel)
 	if (p->desc && p->desc->delay.disable)
 		msleep(p->desc->delay.disable);
 
-	//tinker_mcu_screen_power_off(p->dsi_id);
+	tinker_mcu_screen_power_off(p->dsi_id);
 
 	p->enabled = false;
 
@@ -318,7 +318,10 @@ static int tc358762_enable(struct drm_panel *panel)
 	if(trigger_bridge[p->dsi_id]) {
 		pr_info("tinker_mcu_screen_power_up");
 		tinker_mcu_screen_power_up(p->dsi_id);
-		trigger_bridge[p->dsi_id] = 0;
+		/*Some particulare rpi panel need powering on/off during sususpned/resume to avoid
+		 the flicker about 7 seconds */
+		//trigger_bridge[p->dsi_id] = 0;
+
 		//msleep(100);
 		//tinker_ft5406_start_polling(p->dsi_id);
 	}
@@ -497,7 +500,6 @@ static void tc358762_shutdown(struct device *dev)
 	struct tc358762 *panel = dev_get_drvdata(dev);
 
 	tc358762_disable(&panel->base);
-	tinker_mcu_screen_power_off(dsi_id);
 }
 
 struct bridge_desc {
