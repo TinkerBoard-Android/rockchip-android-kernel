@@ -147,9 +147,12 @@ extern int tinker_mcu_screen_power_off(int dsi_id);
 extern int tinker_mcu_is_connected(int dsi_id);
 extern struct backlight_device * tinker_mcu_ili9881c_get_backlightdev(int dsi_id);
 extern int tinker_mcu_ili9881c_set_bright(int bright, int dsi_id);
-extern void tinker_mcu_ili9881c_screen_power_up(int dsi_id);
+extern int tinker_mcu_ili9881c_screen_power_up(int dsi_id);
+extern int tinker_mcu_ili9881c_screen_power_off(int dsi_id);
 extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
 extern void tinker_ft5406_start_polling(int dsi_id);
+
+extern int lcd_size_flag[2];
 #endif
 
 static void panel_simple_sleep(unsigned int msec)
@@ -397,10 +400,14 @@ static int panel_simple_get_cmds(struct panel_simple *panel)
 	if (tinker_mcu_is_connected(panel->dsi_id))
 		data = of_get_property(panel->dev->of_node, "rpi-init-sequence",
 			       &len);
-	else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id))
-		data = of_get_property(panel->dev->of_node, "powertip-init-sequence",
+	else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id)) {
+			if (lcd_size_flag[panel->dsi_id] == 0)
+				data = of_get_property(panel->dev->of_node, "powertip-rev-b-init-sequence",
 			       &len);
-	else
+			else
+				data = of_get_property(panel->dev->of_node, "powertip-rev-a-init-sequence",
+			       &len);
+	} else
 #endif
 	data = of_get_property(panel->dev->of_node, "panel-init-sequence",
 			       &len);
@@ -655,6 +662,13 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 		if (err)
 			dev_err(p->dev, "failed to send off cmds\n");
 	}
+
+	#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_ili9881c_is_connected(p->dsi_id)) {
+		printk("tinker_mcu_ili9881c_screen_power_off\n");
+		tinker_mcu_ili9881c_screen_power_off(p->dsi_id);
+	}
+	#endif
 
 	if (p->reset_gpio)
 		gpiod_direction_output(p->reset_gpio, 1);
@@ -1089,7 +1103,15 @@ static void panel_simple_shutdown(struct device *dev)
 {
 	struct panel_simple *panel = dev_get_drvdata(dev);
 
+	printk("panel_simple_shutdown\n");
 	panel_simple_disable(&panel->base);
+
+	#if defined(CONFIG_TINKER_MCU)
+	if (tinker_mcu_ili9881c_is_connected(panel->dsi_id)) {
+		printk("tinker_mcu_ili9881c_screen_power_off\n");
+		tinker_mcu_ili9881c_screen_power_off(panel->dsi_id);
+	}
+	#endif
 
 	if (panel->prepared) {
 		if (panel->reset_gpio)

@@ -871,6 +871,7 @@ static int ili9881c_unprepare(struct drm_panel *panel)
 	msleep(120);
 	//regulator_disable(ctx->power);
 	//gpiod_direction_output(ctx->reset, 1);
+	tinker_mcu_ili9881c_screen_power_off(ctx->dsi_id);
 
 	return 0;
 }
