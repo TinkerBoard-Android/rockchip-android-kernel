@@ -34,8 +34,8 @@
 &i2c1 {
 	status = "okay";
 
-	ov5647: ov5647@36 {
-		compatible = "ovti,ov5647";
+	cam_sensor1: cam_sensor1@36 {
+		compatible = "asus,cam_sensor";
 		status = "okay";
 		reg = <0x36>;
 		clocks = <&cru SCLK_TESTCLKOUT2>;
@@ -47,10 +47,7 @@
 		clksel-gpios = <&gpio4 RK_PD6 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "camera_default";
 		pinctrl-0 = <&test_clkout2>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "RPi_v13";
-		rockchip,camera-module-lens-name = "default";
+		i2c-index = <0>;
 
 		port {
 			ov5647_out: endpoint {
@@ -64,20 +61,17 @@
 &i2c2 {
 	status = "okay";
 
-	imx219: imx219@10 {
-		compatible = "sony,imx219";
+	cam_sensor2: cam_sensor2@36 {
+		compatible = "asus,cam_sensor";
 		status = "okay";
-		reg = <0x10>;
+		reg = <0x36>;
 		clocks = <&cru SCLK_CIF_OUT>;
 		clock-names = "xvclk";
 
 		/* conflict with csi-ctl-gpios */
 		power-gpios = <&gpio2 RK_PB3 GPIO_ACTIVE_HIGH>;
 		enable-gpios = <&gpio2 RK_PA2 GPIO_ACTIVE_HIGH>;
-		rockchip,camera-module-index = <1>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "RPi_v21";
-		rockchip,camera-module-lens-name = "default";
+		i2c-index = <1>;
 
 		port {
 			imx219_out: endpoint {
