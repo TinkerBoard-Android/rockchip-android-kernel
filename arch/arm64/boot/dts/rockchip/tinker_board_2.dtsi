@@ -1132,24 +1132,17 @@
 };
 
 &pinctrl {
-        pinctrl-names = "default";
-        pinctrl-0 = <&gpio_init &test_clkout2>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&gpio_init>;
 
-        gpio_init_config {
-                gpio_init: gpio_init {
-                        rockchip,pins =
-                                <1 7 0 &pcfg_pull_none>,
-                                <1 8 0 &pcfg_pull_none>,
-                                <1 9 0 &pcfg_pull_none>,
-                                <1 10 0 &pcfg_pull_none>,
-                                <2 19 0 &pcfg_pull_none>;
-                };
-        };
-
-	testclk {
-		test_clkout2: test-clkout2 {
+	gpio_init_config {
+		gpio_init: gpio_init {
 			rockchip,pins =
-				<0 8 RK_FUNC_3 &pcfg_pull_none>;
+				<1 7 0 &pcfg_pull_none>,
+				<1 8 0 &pcfg_pull_none>,
+				<1 9 0 &pcfg_pull_none>,
+				<1 10 0 &pcfg_pull_none>,
+				<2 19 0 &pcfg_pull_none>;
 		};
 	};
 };
