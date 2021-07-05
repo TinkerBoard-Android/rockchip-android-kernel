@@ -221,9 +221,6 @@ extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
 extern int lcd_size_flag[2];
 #endif
 
-
-
-
 #if defined(CONFIG_TOUCHSCREEN_TINKER_FT5406)
 extern void tinker_ft5406_start_polling(int dsi_id);
 #endif
