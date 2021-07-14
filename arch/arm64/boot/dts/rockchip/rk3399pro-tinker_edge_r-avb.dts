@@ -8,7 +8,7 @@
 #include "rk3399pro-tinker_edge_r.dtsi"
 
 / {
-	model = "Rockchip rk3399pro evb v11 avb board";
+	model = "Tinker Edge R";
 	compatible = "rockchip,rk3399pro-evb-v11-avb", "rockchip,rk3399pro";
 
 	chosen: chosen {
