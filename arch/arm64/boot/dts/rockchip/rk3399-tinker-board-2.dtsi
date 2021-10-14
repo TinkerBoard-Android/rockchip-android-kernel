@@ -1160,6 +1160,18 @@
 
 &pinctrl {
         pinctrl-names = "default";
+        pinctrl-0 = <&gpio_init>;
+
+        gpio_init_config {
+                gpio_init: gpio_init {
+                        rockchip,pins =
+                                <1 7 0 &pcfg_pull_none>,
+                                <1 8 0 &pcfg_pull_none>,
+                                <1 9 0 &pcfg_pull_none>,
+                                <1 10 0 &pcfg_pull_none>,
+                                <2 19 0 &pcfg_pull_none>;
+                };
+        };
 
 	mipi_to_lvds {
 		/*pinctrl_lvds_hdmi_sel: lvds_hdmi_sel {
