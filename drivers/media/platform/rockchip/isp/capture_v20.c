@@ -116,6 +116,16 @@ static const struct capture_fmt dmatx_fmts[] = {
 		.fmt_type = FMT_YUV,
 		.bpp = { 16 },
 		.mplanes = 1,
+	}, {
+		.fourcc = V4l2_PIX_FMT_EBD8,
+		.fmt_type = FMT_EBD,
+		.bpp = { 8 },
+		.mplanes = 1,
+	}, {
+		.fourcc = V4l2_PIX_FMT_SPD16,
+		.fmt_type = FMT_SPD,
+		.bpp = { 16 },
+		.mplanes = 1,
 	}
 };
 
@@ -555,7 +565,7 @@ static int rkisp_stream_config_dcrop(struct rkisp_stream *stream, bool async)
 	src_h = input_win->height;
 
 	if (dev->isp_ver == ISP_V20 &&
-	    dev->csi_dev.rd_mode == HDR_RDBK_FRAME1 &&
+	    dev->rd_mode == HDR_RDBK_FRAME1 &&
 	    dev->isp_sdev.in_fmt.fmt_type == FMT_BAYER &&
 	    dev->isp_sdev.out_fmt.fmt_type == FMT_YUV)
 		src_h += RKMODULE_EXTEND_LINE;
@@ -566,6 +576,10 @@ static int rkisp_stream_config_dcrop(struct rkisp_stream *stream, bool async)
 		rkisp_disable_dcrop(stream, async);
 		v4l2_dbg(1, rkisp_debug, &dev->v4l2_dev,
 			 "stream %d crop disabled\n", stream->id);
+		if (RKMODULE_EXTEND_LINE != 0) {
+			rkisp_write(dev, stream->config->dual_crop.h_size, src_w, false);
+			rkisp_write(dev, stream->config->dual_crop.v_size, src_h, false);
+		}
 		return 0;
 	}
 
@@ -1661,7 +1675,7 @@ static void rkisp_buf_queue(struct vb2_buffer *vb)
 	memset(ispbuf->buff_addr, 0, sizeof(ispbuf->buff_addr));
 	for (i = 0; i < isp_fmt->mplanes; i++) {
 		vb2_plane_vaddr(vb, i);
-		if (stream->ispdev->hw_dev->is_mmu) {
+		if (stream->ispdev->hw_dev->is_dma_sg_ops) {
 			sgt = vb2_dma_sg_plane_desc(vb, i);
 			ispbuf->buff_addr[i] = sg_dma_address(sgt->sgl);
 		} else {
@@ -1802,10 +1816,6 @@ static void rkisp_stop_streaming(struct vb2_queue *queue)
 	rkisp_destroy_dummy_buf(stream);
 	atomic_dec(&dev->cap_dev.refcnt);
 	stream->start_stream = false;
-	if (stream->id == RKISP_STREAM_SP && stream->out_isp_fmt.fmt_type == FMT_FBCGAIN) {
-		stream->out_isp_fmt.fmt_type = FMT_YUV;
-		stream->out_isp_fmt.fourcc = V4L2_PIX_FMT_NV12;
-	}
 }
 
 static int rkisp_stream_start(struct rkisp_stream *stream)
@@ -2195,6 +2205,9 @@ void rkisp_mi_v20_isr(u32 mis_val, struct rkisp_device *dev)
 			end_tx1 = true;
 		if (i == RKISP_STREAM_DMATX2)
 			end_tx2 = true;
+		/* DMATX3 no csi frame end isr, mi isr instead */
+		if (i == RKISP_STREAM_DMATX3)
+			atomic_inc(&stream->sequence);
 
 		mi_frame_end_int_clear(stream);
 
@@ -2226,7 +2239,7 @@ void rkisp_mi_v20_isr(u32 mis_val, struct rkisp_device *dev)
 				end_tx0 = false;
 				end_tx1 = false;
 				end_tx2 = false;
-				rkisp_trigger_read_back(&dev->csi_dev, false, false, false);
+				rkisp_trigger_read_back(dev, false, false, false);
 			}
 		}
 	}
@@ -2240,6 +2253,10 @@ void rkisp_mipi_v20_isr(unsigned int phy, unsigned int packet,
 {
 	struct v4l2_device *v4l2_dev = &dev->v4l2_dev;
 	struct rkisp_stream *stream;
+	u32 packet_err = PACKET_ERR_F_BNDRY_MATCG | PACKET_ERR_F_SEQ |
+		PACKET_ERR_FRAME_DATA | PACKET_ERR_ECC_1BIT |
+		PACKET_ERR_ECC_2BIT | PACKET_ERR_CHECKSUM;
+	u32 state_err = RAW_WR_SIZE_ERR | RAW_RD_SIZE_ERR;
 	int i;
 
 	v4l2_dbg(3, rkisp_debug, &dev->v4l2_dev,
@@ -2248,7 +2265,7 @@ void rkisp_mipi_v20_isr(unsigned int phy, unsigned int packet,
 	if (phy && (dev->isp_inp & INP_CSI) &&
 	    dev->csi_dev.err_cnt++ < RKISP_CONTI_ERR_MAX)
 		v4l2_warn(v4l2_dev, "MIPI error: phy: 0x%08x\n", phy);
-	if (packet && (dev->isp_inp & INP_CSI) &&
+	if ((packet & packet_err) && (dev->isp_inp & INP_CSI) &&
 	    dev->csi_dev.err_cnt < RKISP_CONTI_ERR_MAX) {
 		if (packet & 0xfff)
 			dev->csi_dev.err_cnt++;
@@ -2257,7 +2274,7 @@ void rkisp_mipi_v20_isr(unsigned int phy, unsigned int packet,
 	if (overflow &&
 	    dev->csi_dev.err_cnt++ < RKISP_CONTI_ERR_MAX)
 		v4l2_warn(v4l2_dev, "MIPI error: overflow: 0x%08x\n", overflow);
-	if (state & 0xeff00)
+	if (state & state_err)
 		v4l2_warn(v4l2_dev, "MIPI error: size: 0x%08x\n", state);
 	if (state & MIPI_DROP_FRM)
 		v4l2_warn(v4l2_dev, "MIPI drop frame\n");

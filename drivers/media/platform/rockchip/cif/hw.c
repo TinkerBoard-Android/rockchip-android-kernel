@@ -764,17 +764,17 @@ err:
 
 static void rkcif_iommu_cleanup(struct rkcif_hw *cif_hw)
 {
-	struct iommu_domain *domain;
+	if (cif_hw->domain)
+		cif_hw->domain->ops->detach_dev(cif_hw->domain, cif_hw->dev);
+}
 
-	dev_err(cif_hw->dev, "%s enter\n", __func__);
+static void rkcif_iommu_enable(struct rkcif_hw *cif_hw)
+{
+	if (!cif_hw->domain)
+		cif_hw->domain = iommu_get_domain_for_dev(cif_hw->dev);
 
-	domain = iommu_get_domain_for_dev(cif_hw->dev);
-	if (domain) {
-#ifdef CONFIG_IOMMU_API
-		domain->ops->detach_dev(domain, cif_hw->dev);
-		domain->ops->attach_dev(domain, cif_hw->dev);
-#endif
-	}
+	if (cif_hw->domain)
+		cif_hw->domain->ops->attach_dev(cif_hw->domain, cif_hw->dev);
 }
 
 static inline bool is_iommu_enable(struct device *dev)
@@ -809,6 +809,9 @@ void rkcif_hw_soft_reset(struct rkcif_hw *cif_hw, bool is_rst_iommu)
 	for (i = 0; i < ARRAY_SIZE(cif_hw->cif_rst); i++)
 		if (cif_hw->cif_rst[i])
 			reset_control_deassert(cif_hw->cif_rst[i]);
+
+	if (cif_hw->iommu_en && is_rst_iommu)
+		rkcif_iommu_enable(cif_hw);
 }
 
 static int rkcif_plat_hw_probe(struct platform_device *pdev)
@@ -1006,7 +1009,6 @@ static struct platform_driver rkcif_hw_plat_drv = {
 	.remove = rkcif_plat_remove,
 };
 
-#ifdef MODULE
 static int __init rk_cif_plat_drv_init(void)
 {
 	int ret;
@@ -1017,10 +1019,14 @@ static int __init rk_cif_plat_drv_init(void)
 	return rkcif_csi2_plat_drv_init();
 }
 
+static void __exit rk_cif_plat_drv_exit(void)
+{
+	platform_driver_unregister(&rkcif_hw_plat_drv);
+	rkcif_csi2_plat_drv_exit();
+}
+
 module_init(rk_cif_plat_drv_init);
-#else
-module_platform_driver(rkcif_hw_plat_drv);
-#endif
+module_exit(rk_cif_plat_drv_exit);
 
 MODULE_AUTHOR("Rockchip Camera/ISP team");
 MODULE_DESCRIPTION("Rockchip CIF platform driver");

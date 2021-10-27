@@ -45,6 +45,12 @@
 #define EBC_GET_OSD_BUFFER	(0x7006)
 #define EBC_SEND_OSD_BUFFER	(0x7007)
 
+//ebc debug ioctl command
+#define EBC_GET_AUTO_OLD_BUFFER (0x7008)
+#define EBC_GET_AUTO_NEW_BUFFER (0x7009)
+#define EBC_GET_AUTO_BG_BUFFER (0x700a)
+#define EBC_GET_AUTO_CUR_BUFFER (0x700b)
+
 /*
  * IMPORTANT: Those values is corresponding to android hardware program,
  * so *FORBID* to changes bellow values, unless you know what you're doing.
@@ -64,11 +70,15 @@ enum panel_refresh_mode {
 	EPD_PART_GLD16		= 10,
 	EPD_PART_GCC16		= 11,
 	EPD_A2			= 12,
-	EPD_DU			= 13,
-	EPD_RESET		= 14,
-	EPD_SUSPEND		= 15,
-	EPD_RESUME		= 16,
-	EPD_POWER_OFF		= 17,
+	EPD_A2_DITHER	        = 13,
+	EPD_DU			= 14,
+	EPD_DU4			= 15,
+	EPD_A2_ENTER		= 16,
+	EPD_RESET		= 17,
+	EPD_SUSPEND		= 18,
+	EPD_RESUME		= 19,
+	EPD_POWER_OFF		= 20,
+	EPD_FORCE_FULL		= 21,
 };
 
 /*

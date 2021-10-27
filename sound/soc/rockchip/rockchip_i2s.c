@@ -251,13 +251,27 @@ static int rockchip_i2s_set_fmt(struct snd_soc_dai *cpu_dai,
 
 	regmap_update_bits(i2s->regmap, I2S_CKR, mask, val);
 
-	mask = I2S_CKR_CKP_MASK;
+	mask = I2S_CKR_CKP_MASK | I2S_CKR_TLP_MASK | I2S_CKR_RLP_MASK;
 	switch (fmt & SND_SOC_DAIFMT_INV_MASK) {
 	case SND_SOC_DAIFMT_NB_NF:
-		val = I2S_CKR_CKP_NEG;
+		val = I2S_CKR_CKP_NORMAL |
+		      I2S_CKR_TLP_NORMAL |
+		      I2S_CKR_RLP_NORMAL;
+		break;
+	case SND_SOC_DAIFMT_NB_IF:
+		val = I2S_CKR_CKP_NORMAL |
+		      I2S_CKR_TLP_INVERTED |
+		      I2S_CKR_RLP_INVERTED;
 		break;
 	case SND_SOC_DAIFMT_IB_NF:
-		val = I2S_CKR_CKP_POS;
+		val = I2S_CKR_CKP_INVERTED |
+		      I2S_CKR_TLP_NORMAL |
+		      I2S_CKR_RLP_NORMAL;
+		break;
+	case SND_SOC_DAIFMT_IB_IF:
+		val = I2S_CKR_CKP_INVERTED |
+		      I2S_CKR_TLP_INVERTED |
+		      I2S_CKR_RLP_INVERTED;
 		break;
 	default:
 		ret = -EINVAL;
@@ -714,18 +728,40 @@ static const struct rk_i2s_pins rk3399_i2s_pins = {
 };
 
 static const struct of_device_id rockchip_i2s_match[] = {
+#ifdef CONFIG_CPU_PX30
 	{ .compatible = "rockchip,px30-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK1808
 	{ .compatible = "rockchip,rk1808-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3036
 	{ .compatible = "rockchip,rk3036-i2s", },
+#endif
 	{ .compatible = "rockchip,rk3066-i2s", },
+#ifdef CONFIG_CPU_RK312X
 	{ .compatible = "rockchip,rk3128-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3188
 	{ .compatible = "rockchip,rk3188-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3288
 	{ .compatible = "rockchip,rk3288-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3308
 	{ .compatible = "rockchip,rk3308-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3328
 	{ .compatible = "rockchip,rk3328-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3368
 	{ .compatible = "rockchip,rk3368-i2s", },
+#endif
+#ifdef CONFIG_CPU_RK3399
 	{ .compatible = "rockchip,rk3399-i2s", .data = &rk3399_i2s_pins },
+#endif
+#ifdef CONFIG_CPU_RV1126
 	{ .compatible = "rockchip,rv1126-i2s", },
+#endif
 	{},
 };
 

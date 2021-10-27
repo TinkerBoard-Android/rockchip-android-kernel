@@ -509,11 +509,25 @@ static void analogix_dp_get_adjust_training_lane(struct analogix_dp_device *dp,
 	}
 }
 
+static bool analogix_dp_tps3_supported(struct analogix_dp_device *dp)
+{
+	bool source_tps3_supported, sink_tps3_supported;
+	u8 dpcd = 0;
+
+	source_tps3_supported =
+		dp->video_info.max_link_rate == DP_LINK_BW_5_4;
+	drm_dp_dpcd_readb(&dp->aux, DP_MAX_LANE_COUNT, &dpcd);
+	sink_tps3_supported = dpcd & DP_TPS3_SUPPORTED;
+
+	return source_tps3_supported && sink_tps3_supported;
+}
+
 static int analogix_dp_process_clock_recovery(struct analogix_dp_device *dp)
 {
 	int lane, lane_count, retval;
 	u8 voltage_swing, pre_emphasis, training_lane;
 	u8 link_status[2], adjust_request[2];
+	u8 training_pattern = TRAINING_PTN2;
 
 	usleep_range(100, 101);
 
@@ -529,12 +543,16 @@ static int analogix_dp_process_clock_recovery(struct analogix_dp_device *dp)
 		return retval;
 
 	if (analogix_dp_clock_recovery_ok(link_status, lane_count) == 0) {
-		/* set training pattern 2 for EQ */
-		analogix_dp_set_training_pattern(dp, TRAINING_PTN2);
+		if (analogix_dp_tps3_supported(dp))
+			training_pattern = TRAINING_PTN3;
+
+		/* set training pattern for EQ */
+		analogix_dp_set_training_pattern(dp, training_pattern);
 
 		retval = drm_dp_dpcd_writeb(&dp->aux, DP_TRAINING_PATTERN_SET,
 					    DP_LINK_SCRAMBLING_DISABLE |
-						DP_TRAINING_PATTERN_2);
+					    (training_pattern == TRAINING_PTN3 ?
+					     DP_TRAINING_PATTERN_3 : DP_TRAINING_PATTERN_2));
 		if (retval < 0)
 			return retval;
 
@@ -984,11 +1002,9 @@ static int analogix_dp_commit(struct analogix_dp_device *dp)
 	struct video_info *video = &dp->video_info;
 	int ret;
 
-	/* Keep the panel disabled while we configure video */
-	if (dp->plat_data->panel) {
-		if (drm_panel_disable(dp->plat_data->panel))
-			DRM_ERROR("failed to disable the panel\n");
-	}
+	if (device_property_read_bool(dp->dev, "panel-self-test"))
+		return drm_dp_dpcd_writeb(&dp->aux, DP_EDP_CONFIGURATION_SET,
+					  DP_PANEL_SELF_TEST_ENABLE);
 
 	ret = analogix_dp_train_link(dp);
 	if (ret) {
@@ -1019,15 +1035,6 @@ static int analogix_dp_commit(struct analogix_dp_device *dp)
 	if (ret) {
 		dev_err(dp->dev, "unable to config video\n");
 		return ret;
-	}
-
-	/* Safe to enable the panel now */
-	if (dp->plat_data->panel) {
-		ret = drm_panel_enable(dp->plat_data->panel);
-		if (ret) {
-			DRM_ERROR("failed to enable the panel\n");
-			return ret;
-		}
 	}
 
 	ret = analogix_dp_detect_sink_psr(dp);
@@ -1278,10 +1285,13 @@ static int analogix_dp_set_bridge(struct analogix_dp_device *dp)
 	}
 
 	ret = analogix_dp_commit(dp);
-	if (ret) {
+	if (ret < 0) {
 		DRM_ERROR("dp commit error, ret = %d\n", ret);
 		goto out_dp_init;
 	}
+
+	if (dp->plat_data->panel)
+		drm_panel_enable(dp->plat_data->panel);
 
 	if (dp->plat_data->power_on_end)
 		dp->plat_data->power_on_end(dp->plat_data);
@@ -1504,9 +1514,12 @@ static int analogix_dp_dt_parse_pdata(struct analogix_dp_device *dp)
 	switch (dp->plat_data->dev_type) {
 	case RK3288_DP:
 	case RK3368_EDP:
-	case RK3399_EDP:
 	case RK3568_EDP:
 		video_info->max_link_rate = 0x0A;
+		video_info->max_lane_count = 0x04;
+		break;
+	case RK3399_EDP:
+		video_info->max_link_rate = 0x14;
 		video_info->max_lane_count = 0x04;
 		break;
 	case EXYNOS_DP:

@@ -970,7 +970,7 @@ static void rkisp_buf_queue(struct vb2_buffer *vb)
 	memset(ispbuf->buff_addr, 0, sizeof(ispbuf->buff_addr));
 	for (i = 0; i < isp_fmt->mplanes; i++) {
 		vb2_plane_vaddr(vb, i);
-		if (stream->ispdev->hw_dev->is_mmu) {
+		if (stream->ispdev->hw_dev->is_dma_sg_ops) {
 			sgt = vb2_dma_sg_plane_desc(vb, i);
 			ispbuf->buff_addr[i] = sg_dma_address(sgt->sgl);
 		} else {
@@ -1443,7 +1443,7 @@ void rkisp_mi_v21_isr(u32 mis_val, struct rkisp_device *dev)
 			     (dev->hdr.op_mode == HDR_RDBK_FRAME2 && end_tx2 && end_tx0))) {
 				end_tx0 = false;
 				end_tx2 = false;
-				rkisp_trigger_read_back(&dev->csi_dev, false, false, false);
+				rkisp_trigger_read_back(dev, false, false, false);
 			}
 		}
 	}
@@ -1472,6 +1472,10 @@ void rkisp_mipi_v21_isr(unsigned int phy, unsigned int packet,
 {
 	struct v4l2_device *v4l2_dev = &dev->v4l2_dev;
 	struct rkisp_stream *stream;
+	u32 packet_err = PACKET_ERR_F_BNDRY_MATCG | PACKET_ERR_F_SEQ |
+		PACKET_ERR_FRAME_DATA | PACKET_ERR_ECC_1BIT |
+		PACKET_ERR_ECC_2BIT | PACKET_ERR_CHECKSUM;
+	u32 state_err = RAW_WR_SIZE_ERR | RAW_RD_SIZE_ERR;
 	int i, id;
 
 	v4l2_dbg(3, rkisp_debug, &dev->v4l2_dev,
@@ -1480,7 +1484,7 @@ void rkisp_mipi_v21_isr(unsigned int phy, unsigned int packet,
 	if (phy && (dev->isp_inp & INP_CSI) &&
 	    dev->csi_dev.err_cnt++ < RKISP_CONTI_ERR_MAX)
 		v4l2_warn(v4l2_dev, "MIPI error: phy: 0x%08x\n", phy);
-	if (packet && (dev->isp_inp & INP_CSI) &&
+	if ((packet & packet_err) && (dev->isp_inp & INP_CSI) &&
 	    dev->csi_dev.err_cnt < RKISP_CONTI_ERR_MAX) {
 		if (packet & 0xfff)
 			dev->csi_dev.err_cnt++;
@@ -1488,7 +1492,7 @@ void rkisp_mipi_v21_isr(unsigned int phy, unsigned int packet,
 	}
 	if (overflow && dev->csi_dev.err_cnt++ < RKISP_CONTI_ERR_MAX)
 		v4l2_warn(v4l2_dev, "MIPI error: overflow: 0x%08x\n", overflow);
-	if (state & 0xeff00)
+	if (state & state_err)
 		v4l2_warn(v4l2_dev, "MIPI error: size: 0x%08x\n", state);
 	if (state & ISP21_MIPI_DROP_FRM)
 		v4l2_warn(v4l2_dev, "MIPI drop frame\n");

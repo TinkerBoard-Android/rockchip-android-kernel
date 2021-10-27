@@ -230,7 +230,13 @@ if [ "${srctree}" != "${objtree}" ]; then
 		cp -a ${LOGO_PANEL_PATH} ${objtree}/;
 	fi
 fi
+
 scripts/resource_tool ${DTB_PATH} ${LOGO} ${LOGO_PANEL} ${LOGO_KERNEL} >/dev/null
+
+if [ "${ARCH}" == "arm64" ]; then
+	./scripts/io-domain.sh ${srctree}/arch/arm64/boot/dts/rockchip/.${DTB}
+fi
+
 echo "  Image:  resource.img (with ${DTB} ${LOGO} ${LOGO_PANEL} ${LOGO_KERNEL}) is ready"
 
 if [ -f "${BOOT_IMG}" ]; then

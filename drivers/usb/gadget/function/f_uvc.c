@@ -486,6 +486,11 @@ uvc_function_set_alt(struct usb_function *f, unsigned interface, unsigned alt)
 			return 0;
 
 		case UVC_STATE_STREAMING:
+			if (!alt) {
+				INFO(cdev, "bulk streaming intf not support alt 0\n");
+				return 0;
+			}
+
 			if (uvc->video.ep &&
 			    uvc->video.ep->enabled) {
 				ret = usb_ep_disable(uvc->video.ep);
@@ -839,7 +844,12 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 		uvc_hs_streaming_ep.wMaxPacketSize =
 			cpu_to_le16(max_packet_size |
 				    ((max_packet_mult - 1) << 11));
-		uvc_hs_streaming_ep.bInterval = opts->streaming_interval;
+
+		/* A high-bandwidth endpoint must specify a bInterval value of 1 */
+		if (max_packet_mult > 1)
+			uvc_hs_streaming_ep.bInterval = 1;
+		else
+			uvc_hs_streaming_ep.bInterval = opts->streaming_interval;
 
 		uvc_ss_streaming_ep.wMaxPacketSize =
 			cpu_to_le16(max_packet_size);
@@ -926,6 +936,9 @@ uvc_function_bind(struct usb_configuration *c, struct usb_function *f)
 		uvc_hs_bulk_streaming_ep.bEndpointAddress = address;
 		uvc_ss_bulk_streaming_ep.bEndpointAddress = address;
 	}
+
+	if (opts->device_name)
+		uvc_en_us_strings[UVC_STRING_CONTROL_IDX].s = opts->device_name;
 
 	us = usb_gstrings_attach(cdev, uvc_function_strings,
 				 ARRAY_SIZE(uvc_en_us_strings));
@@ -1041,6 +1054,13 @@ static void uvc_free_inst(struct usb_function_instance *f)
 	struct f_uvc_opts *opts = fi_to_f_uvc_opts(f);
 
 	mutex_destroy(&opts->lock);
+
+	if (opts->device_name_allocated) {
+		opts->device_name_allocated = false;
+		kfree(opts->device_name);
+		opts->device_name = NULL;
+	}
+
 	kfree(opts);
 }
 

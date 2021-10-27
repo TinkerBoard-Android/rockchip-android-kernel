@@ -12,7 +12,7 @@
  *
  */
 
-#define pr_fmt(fmt) "rga: " fmt
+#define pr_fmt(fmt) "rga2: " fmt
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
@@ -130,6 +130,7 @@ static void rga2_try_set_reg(void);
 static const char *rga2_get_cmd_mode_str(u32 cmd)
 {
 	switch (cmd) {
+	/* RGA1 */
 	case RGA_BLIT_SYNC:
 		return "RGA_BLIT_SYNC";
 	case RGA_BLIT_ASYNC:
@@ -140,6 +141,17 @@ static const char *rga2_get_cmd_mode_str(u32 cmd)
 		return "RGA_GET_RESULT";
 	case RGA_GET_VERSION:
 		return "RGA_GET_VERSION";
+	/* RGA2 */
+	case RGA2_BLIT_SYNC:
+		return "RGA2_BLIT_SYNC";
+	case RGA2_BLIT_ASYNC:
+		return "RGA2_BLIT_ASYNC";
+	case RGA2_FLUSH:
+		return "RGA2_FLUSH";
+	case RGA2_GET_RESULT:
+		return "RGA2_GET_RESULT";
+	case RGA2_GET_VERSION:
+		return "RGA2_GET_VERSION";
 	default:
 		return "UNF";
 	}
@@ -473,6 +485,7 @@ int rga2_scale_check(struct rga2_req *req)
 	INFO("rga2 scale check over.\n");
 	return 0;
 }
+#endif
 
 static void rga2_printf_cmd_buf(u32 *cmd_buf)
 {
@@ -502,8 +515,6 @@ static void rga2_printf_cmd_buf(u32 *cmd_buf)
 	     dst_aw, dst_ah, dst_stride, dst_format);
 }
 
-#endif
-
 static bool is_yuv422p_format(u32 format)
 {
 	bool ret = false;
@@ -531,7 +542,7 @@ static inline u32 rga2_read(u32 r)
 static inline int rga2_init_version(void)
 {
 	struct rga2_drvdata_t *rga = rga2_drvdata;
-	u32 major_version, minor_version;
+	u32 major_version, minor_version, svn_version;
 	u32 reg_version;
 
 	if (!rga) {
@@ -556,13 +567,14 @@ static inline int rga2_init_version(void)
 
 	major_version = (reg_version & RGA2_MAJOR_VERSION_MASK) >> 24;
 	minor_version = (reg_version & RGA2_MINOR_VERSION_MASK) >> 20;
+	svn_version = (reg_version & RGA2_SVN_VERSION_MASK);
 
 	/*
 	 * some old rga ip has no rga version register, so force set to 2.00
 	 */
 	if (!major_version && !minor_version)
 		major_version = 2;
-	sprintf(rga->version, "%d.%02d", major_version, minor_version);
+	snprintf(rga->version, 10, "%x.%01x.%05x", major_version, minor_version, svn_version);
 
 	return 0;
 }
@@ -698,10 +710,11 @@ static int rga2_flush(rga2_session *session, unsigned long arg)
 {
 	int ret = 0;
 	int ret_timeout;
+
+#if RGA2_DEBUGFS
 	ktime_t start = ktime_set(0, 0);
 	ktime_t end = ktime_set(0, 0);
 
-#if RGA2_DEBUGFS
 	if (RGA2_TEST_TIME)
 		start = ktime_get();
 #endif
@@ -871,7 +884,7 @@ static struct rga2_reg * rga2_reg_init(rga2_session *session, struct rga2_req *r
         }
     }
 
-    if(RGA2_gen_reg_info((uint8_t *)reg->cmd_reg, req) == -1) {
+    if (RGA2_gen_reg_info((uint8_t *)reg->cmd_reg, (uint8_t *)reg->csc_reg, req) == -1) {
         printk("gen reg info error\n");
         free_page((unsigned long)reg);
 
@@ -934,6 +947,7 @@ static void rga2_service_session_clear(rga2_session *session)
 /* Caller must hold rga_service.lock */
 static void rga2_try_set_reg(void)
 {
+	int i;
 	struct rga2_reg *reg ;
 
 	if (list_empty(&rga2_service.running))
@@ -958,13 +972,26 @@ static void rga2_try_set_reg(void)
 			/* CMD buff */
 			rga2_write(virt_to_phys(reg->cmd_reg), RGA2_CMD_BASE);
 
+			/* full csc reg */
+			for (i = 0; i < 12; i++) {
+				rga2_write(reg->csc_reg[i], RGA2_CSC_COE_BASE + i * 4);
+			}
+
 #if RGA2_DEBUGFS
 			if (RGA2_TEST_REG) {
 				if (rga2_flag) {
-					int32_t i, *p;
+					int32_t *p;
+
 					p = rga2_service.cmd_buff;
 					INFO("CMD_REG\n");
 					for (i=0; i<8; i++)
+						INFO("%.8x %.8x %.8x %.8x\n",
+						     p[0 + i * 4], p[1 + i * 4],
+						     p[2 + i * 4], p[3 + i * 4]);
+
+					p = reg->csc_reg;
+					INFO("CSC_REG\n");
+					for (i = 0; i < 3; i++)
 						INFO("%.8x %.8x %.8x %.8x\n",
 						     p[0 + i * 4], p[1 + i * 4],
 						     p[2 + i * 4], p[3 + i * 4]);
@@ -989,7 +1016,6 @@ static void rga2_try_set_reg(void)
 #if RGA2_DEBUGFS
 			if (RGA2_TEST_REG) {
 				if (rga2_flag) {
-					uint32_t i;
 					INFO("CMD_READ_BACK_REG\n");
 					for (i=0; i<8; i++)
 						INFO("%.8x %.8x %.8x %.8x\n",
@@ -997,6 +1023,14 @@ static void rga2_try_set_reg(void)
 						     rga2_read(0x100 + i * 16 + 4),
 						     rga2_read(0x100 + i * 16 + 8),
 						     rga2_read(0x100 + i * 16 + 12));
+
+					INFO("CSC_READ_BACK_REG\n");
+					for (i = 0; i < 3; i++)
+						INFO("%.8x %.8x %.8x %.8x\n",
+						     rga2_read(RGA2_CSC_COE_BASE + i * 16 + 0),
+						     rga2_read(RGA2_CSC_COE_BASE + i * 16 + 4),
+						     rga2_read(RGA2_CSC_COE_BASE + i * 16 + 8),
+						     rga2_read(RGA2_CSC_COE_BASE + i * 16 + 12));
 				}
 
 			}
@@ -1132,7 +1166,6 @@ static int rga2_get_img_info(rga_img_info_t *img,
 	u32 vir_w, vir_h;
 	int yrgb_addr = -1;
 	int ret = 0;
-	void *vaddr;
 
 	rga_dev = rga2_drvdata->dev;
 	yrgb_addr = (int)img->yrgb_addr;
@@ -1156,7 +1189,7 @@ static int rga2_get_img_info(rga_img_info_t *img,
 		}
 #if RGA2_DEBUGFS
 	if (RGA2_CHECK_MODE) {
-		vaddr = dma_buf_vmap(dma_buf);
+		void *vaddr = dma_buf_vmap(dma_buf);
 		if (vaddr)
 			rga2_memory_check(vaddr, img->vir_w, img->vir_h,
 					  img->format, img->yrgb_addr);
@@ -1676,6 +1709,8 @@ static long rga_ioctl(struct file *file, uint32_t cmd, unsigned long arg)
 	struct rga2_req req, req_first;
 	struct rga_req req_rga;
 	int ret = 0;
+	int major_version = 0, minor_version = 0;
+	char version[16] = {0};
 	rga2_session *session;
 
 	if (!rga) {
@@ -1828,12 +1863,25 @@ static long rga_ioctl(struct file *file, uint32_t cmd, unsigned long arg)
 			ret = rga2_get_result(session, arg);
 			break;
 		case RGA_GET_VERSION:
-		case RGA2_GET_VERSION:
+			sscanf(rga->version, "%x.%x.%*x", &major_version, &minor_version);
+			snprintf(version, 5, "%x.%02x", major_version, minor_version);
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-			ret = copy_to_user((void *)arg, rga->version, 16);
+			ret = copy_to_user((void *)arg, version, sizeof(rga->version));
 #else
 			ret = copy_to_user((void *)arg, RGA2_VERSION, sizeof(RGA2_VERSION));
 #endif
+			if (ret != 0)
+				ret = -EFAULT;
+			break;
+		case RGA2_GET_VERSION:
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
+			ret = copy_to_user((void *)arg, rga->version, sizeof(rga->version));
+#else
+			ret = copy_to_user((void *)arg, RGA2_VERSION, sizeof(RGA2_VERSION));
+#endif
+			if (ret != 0)
+				ret = -EFAULT;
 			break;
 		default:
 			ERR("unknown ioctl cmd!\n");
@@ -1972,10 +2020,12 @@ static long compat_rga_ioctl(struct file *file, uint32_t cmd, unsigned long arg)
 		case RGA_GET_VERSION:
 		case RGA2_GET_VERSION:
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 0))
-				ret = copy_to_user((void *)arg, rga->version, 16);
+			ret = copy_to_user((void *)arg, rga->version, 16);
 #else
-				ret = copy_to_user((void *)arg, RGA2_VERSION, sizeof(RGA2_VERSION));
+			ret = copy_to_user((void *)arg, RGA2_VERSION, sizeof(RGA2_VERSION));
 #endif
+			if (ret != 0)
+				ret = -EFAULT;
 			break;
 		default:
 			ERR("unknown ioctl cmd!\n");
@@ -2395,200 +2445,99 @@ static void rga2_debugfs_add(void)
 		debugfs_remove_recursive(rga2_debug_root);
 	}
 }
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 0))
+
 void rga2_slt(void)
 {
-	struct rga2_req req;
-	rga2_session session;
-	void *src_vir, *dst_vir;
-	unsigned int *src, *dst;
-	ion_phys_addr_t src_phy, dst_phy;
 	int i;
+	int src_size, dst_size, src_order, dst_order;
+	int err_count = 0, right_count = 0;
+	int task_running;
 	unsigned int srcW, srcH, dstW, dstH;
-	struct ion_handle *src_handle;
-	struct ion_handle *dst_handle;
-	struct rga2_drvdata_t *data;
-	unsigned int srclen, dstlen;
-	int err_count = 0;
-	int right_count = 0;
-	int size;
-	unsigned int *pstd;
-	unsigned int *pnow;
-
-	data = rga2_drvdata;
-	srcW = 1280;
-	srcH = 720;
-	dstW = 1280;
-	dstH = 720;
-	src_handle = ion_alloc(data->ion_client, (size_t)srcW * srcH * 4, 0,
-		   ION_HEAP(ION_CMA_HEAP_ID), 0);
-
-	dst_handle = ion_alloc(data->ion_client, (size_t)dstW * dstH * 4, 0,
-		   ION_HEAP(ION_CMA_HEAP_ID), 0);
-
-	session.pid	= current->pid;
-	INIT_LIST_HEAD(&session.waiting);
-	INIT_LIST_HEAD(&session.running);
-	INIT_LIST_HEAD(&session.list_session);
-	init_waitqueue_head(&session.wait);
-	/* no need to protect */
-	list_add_tail(&session.list_session, &rga2_service.session);
-	atomic_set(&session.task_running, 0);
-	atomic_set(&session.num_done, 0);
-
-	src_vir = ion_map_kernel(data->ion_client, src_handle);
-	dst_vir = ion_map_kernel(data->ion_client, dst_handle);
-
-	ion_phys(rga2_drvdata->ion_client, src_handle, &src_phy, &srclen);
-	ion_phys(rga2_drvdata->ion_client, dst_handle, &dst_phy, &dstlen);
-
-	memset(&req, 0, sizeof(struct rga2_req));
-	src = (unsigned int *)src_vir;
-	dst = (unsigned int *)dst_vir;
-
-	memset(src_vir, 0x80, srcW * srcH * 4);
-
-	INFO("\n********************************\n");
-	INFO("************ RGA_TEST ************\n");
-	INFO("********************************\n\n");
-
-	req.src.act_w = srcW;
-	req.src.act_h = srcH;
-
-	req.src.vir_w = srcW;
-	req.src.vir_h = srcW;
-	req.src.yrgb_addr = 0;
-	req.src.uv_addr = src_phy;
-	req.src.v_addr = src_phy + srcH * srcW;
-	req.src.format = RGA2_FORMAT_RGBA_8888;
-
-	req.dst.act_w = dstW;
-	req.dst.act_h = dstH;
-
-	req.dst.vir_w = dstW;
-	req.dst.vir_h = dstH;
-	req.dst.x_offset = 0;
-	req.dst.y_offset = 0;
-
-	req.dst.yrgb_addr = 0;
-	req.dst.uv_addr = dst_phy;
-	req.dst.v_addr = dst_phy + dstH * dstW;
-
-	req.dst.format = RGA2_FORMAT_RGBA_8888;
-
-	rga2_blit_sync(&session, &req);
-
-	size = dstW * dstH * 4;
-	pstd = (unsigned int *)src_vir;
-	pnow = (unsigned int *)dst_vir;
-
-	INFO("[  num   : srcInfo    dstInfo ]\n");
-	for (i = 0; i < size / 4; i++) {
-		if (*pstd != *pnow) {
-			INFO("[X%.8d : 0x%x 0x%x]", i, *pstd, *pnow);
-			if (i % 4 == 0)
-				INFO("\n");
-			err_count++;
-		} else {
-			if (i % (640 * 1024) == 0)
-				INFO("[Y%.8d : 0x%.8x 0x%.8x]\n",
-				     i, *pstd, *pnow);
-			right_count++;
-		}
-		pstd++;
-		pnow++;
-		if (err_count > 64)
-			break;
-	}
-
-	INFO("err_count=%d, right_count=%d\n", err_count, right_count);
-	if (err_count != 0)
-		INFO("rga slt err !!\n");
-	else
-		INFO("rga slt success !!\n");
-
-	ion_unmap_kernel(data->ion_client, src_handle);
-	ion_unmap_kernel(data->ion_client, dst_handle);
-
-	ion_free(data->ion_client, src_handle);
-	ion_free(data->ion_client, dst_handle);
-}
-#else
-unsigned long src_buf[400 * 200];
-unsigned long dst_buf[400 * 200];
-void rga2_slt(void)
-{
-	struct rga2_req req;
-	rga2_session session;
+	unsigned int *pstd, *pnow;
 	unsigned long *src_vir, *dst_vir;
-	int i;
-	unsigned int srcW, srcH, dstW, dstH;
-	int err_count = 0;
-	int right_count = 0;
-	int size;
-	unsigned int *pstd;
-	unsigned int *pnow;
+	struct rga2_req req;
+	rga2_session session;
 
 	srcW = 400;
 	srcH = 200;
 	dstW = 400;
 	dstH = 200;
 
-	session.pid	= current->pid;
+	src_size = srcW * srcH * 4;
+	dst_size = dstW * dstH * 4;
+
+	src_order = get_order(src_size);
+	src_vir = (unsigned long *)__get_free_pages(GFP_KERNEL | GFP_DMA32, src_order);
+	if (src_vir == NULL) {
+		ERR("%s[%d], can not alloc pages for src, order = %d\n",
+		    __func__, __LINE__, src_order);
+		return;
+	}
+
+	dst_order = get_order(dst_size);
+	dst_vir = (unsigned long *)__get_free_pages(GFP_KERNEL | GFP_DMA32, dst_order);
+	if (dst_vir == NULL) {
+		ERR("%s[%d], can not alloc pages for dst, order = %d\n",
+		    __func__, __LINE__, dst_order);
+		return;
+	}
+
+	/* Init session */
+	session.pid = current->pid;
+
 	INIT_LIST_HEAD(&session.waiting);
 	INIT_LIST_HEAD(&session.running);
 	INIT_LIST_HEAD(&session.list_session);
 	init_waitqueue_head(&session.wait);
-	/* no need to protect */
+	mutex_lock(&rga2_service.lock);
 	list_add_tail(&session.list_session, &rga2_service.session);
+	mutex_unlock(&rga2_service.lock);
 	atomic_set(&session.task_running, 0);
 	atomic_set(&session.num_done, 0);
 
-	memset(&req, 0, sizeof(struct rga2_req));
-	src_vir = src_buf;
-	dst_vir = dst_buf;
-
-	memset(src_buf, 0x50, 400 * 200 * 4);
-	memset(dst_buf, 0x00, 400 * 200 * 4);
-
-	rga2_dma_flush_range(&src_buf[0], &src_buf[400 * 200]);
-	rga2_dma_flush_range(&dst_buf[0], &dst_buf[400 * 200]);
-
-	INFO("\n********************************\n");
+	INFO("**********************************\n");
 	INFO("************ RGA_TEST ************\n");
-	INFO("********************************\n\n");
+	INFO("**********************************\n");
 
+	memset(src_vir, 0x50, src_size);
+	memset(dst_vir, 0x50, dst_size);
+
+	rga2_dma_flush_range(src_vir, src_vir + src_size);
+	rga2_dma_flush_range(dst_vir, dst_vir + dst_size);
+
+	memset(&req, 0, sizeof(struct rga2_req));
+	req.src.x_offset = 0;
+	req.src.y_offset = 0;
 	req.src.act_w = srcW;
 	req.src.act_h = srcH;
-
 	req.src.vir_w = srcW;
 	req.src.vir_h = srcW;
+	req.src.format = RGA2_FORMAT_RGBA_8888;
+
 	req.src.yrgb_addr = 0;
 	req.src.uv_addr = (unsigned long)virt_to_phys(src_vir);
 	req.src.v_addr = req.src.uv_addr + srcH * srcW;
-	req.src.format = RGA2_FORMAT_RGBA_8888;
 
-	req.dst.act_w = dstW;
-	req.dst.act_h = dstH;
-
-	req.dst.vir_w = dstW;
-	req.dst.vir_h = dstH;
 	req.dst.x_offset = 0;
 	req.dst.y_offset = 0;
+	req.dst.act_w = dstW;
+	req.dst.act_h = dstH;
+	req.dst.vir_w = dstW;
+	req.dst.vir_h = dstH;
+	req.dst.format = RGA2_FORMAT_RGBA_8888;
 
 	req.dst.yrgb_addr = 0;
 	req.dst.uv_addr = (unsigned long)virt_to_phys(dst_vir);
 	req.dst.v_addr = req.dst.uv_addr + dstH * dstW;
 
-	req.dst.format = RGA2_FORMAT_RGBA_8888;
 	rga2_blit_sync(&session, &req);
 
-	size = dstW * dstH * 4;
+	/* Check buffer */
 	pstd = (unsigned int *)src_vir;
 	pnow = (unsigned int *)dst_vir;
 
 	INFO("[  num   : srcInfo    dstInfo ]\n");
-	for (i = 0; i < size / 4; i++) {
+	for (i = 0; i < dst_size / 4; i++) {
 		if (*pstd != *pnow) {
 			INFO("[X%.8d : 0x%x 0x%x]", i, *pstd, *pnow);
 			if (i % 4 == 0)
@@ -2611,8 +2560,23 @@ void rga2_slt(void)
 		INFO("rga slt err !!\n");
 	else
 		INFO("rga slt success !!\n");
+
+	/* Deinit session */
+	task_running = atomic_read(&session.task_running);
+	if (task_running) {
+		pr_err("%s[%d], session %d still has %d task running when closing\n",
+		       __func__, __LINE__, session.pid, task_running);
+		msleep(100);
+	}
+	wake_up(&session.wait);
+	mutex_lock(&rga2_service.lock);
+	list_del(&session.list_session);
+	rga2_service_session_clear(&session);
+	mutex_unlock(&rga2_service.lock);
+
+	free_pages((unsigned long)src_vir, src_order);
+	free_pages((unsigned long)dst_vir, dst_order);
 }
-#endif
 #endif
 
 void rga2_test_0(void);

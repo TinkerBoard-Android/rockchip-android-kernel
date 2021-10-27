@@ -556,6 +556,12 @@ config TINKER_MCU_ILI9881C
 	help
 		Control the power of ASUS ili9881c panel on tinker board.
 
+config RK803
+	tristate "RK803"
+	default n
+	help
+	  Driver for RK803 which is used for driving porjector and IR flood LED.
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
