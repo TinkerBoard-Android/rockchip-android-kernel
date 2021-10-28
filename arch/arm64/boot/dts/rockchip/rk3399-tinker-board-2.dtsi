@@ -316,6 +316,10 @@
 		#sound-dai-cells = <0>;
 	};
 
+	sound-ext-card {
+		status = "disabled";
+	};
+
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		clocks = <&rk808 1>;
