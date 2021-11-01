@@ -277,6 +277,14 @@
 		vin-supply = <&vcc_sys>;
 	};
 
+	vdd_3v3_reg: fixedregulator_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+	};
+
 	rt5651_sound: rt5651-sound {
 		compatible = "simple-audio-card";
 		simple-audio-card,format = "i2s";
