@@ -356,7 +356,7 @@
 		clock-names = "ext_clock";
 		//wifi-bt-power-toggle;
 		pinctrl-names = "default", "rts_gpio";
-		pinctrl-0 = <&uart0_rts>, <&bt_reset_gpio>, <&bt_wake_gpio>, <&bt_irq_gpio>;
+		pinctrl-0 = <&bt_reset_gpio>, <&bt_wake_gpio>, <&bt_irq_gpio>;
 		//BT,power_gpio  = <&gpio3 19 GPIO_ACTIVE_HIGH>; /* GPIOx_xx */
 		BT,reset_gpio    = <&gpio0 9 GPIO_ACTIVE_HIGH>; /* GPIO0_B1 */
 		BT,wake_gpio     = <&gpio2 26 GPIO_ACTIVE_HIGH>; /* GPIO2_D2 */
@@ -1127,7 +1127,7 @@
 
 &uart0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart0_xfer &uart0_cts>;
+	pinctrl-0 = <&uart0_xfer &uart0_cts &uart0_rts>;
 	status = "okay";
 };
 
