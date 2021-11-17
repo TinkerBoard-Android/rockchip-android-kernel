@@ -23,6 +23,8 @@
 	board_info: board-info {
 		compatible = "board-info";
 
+		model = "rk3399";
+
 		hw-id0 = <&gpio4 RK_PA7 GPIO_ACTIVE_HIGH>;
 		hw-id1 = <&gpio4 RK_PA6 GPIO_ACTIVE_HIGH>;
 		hw-id2 = <&gpio4 RK_PA5 GPIO_ACTIVE_HIGH>;
