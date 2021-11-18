@@ -6,6 +6,8 @@
 
 #define MAX_I2C_LEN 255
 
+#define MERGER_RK3399_AND_RK3288
+
 struct tinker_mcu_data {
 	struct device *dev;
 	struct i2c_client *client;

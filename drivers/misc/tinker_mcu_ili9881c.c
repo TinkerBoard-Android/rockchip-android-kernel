@@ -336,6 +336,10 @@ static int tinker_mcu_ili9881c_probe(struct i2c_client *client,
 
 	i2c_id = of_alias_get_id(np->parent, "i2c");
 
+	#ifdef MERGER_RK3399_AND_RK3288
+	dsi_id = 0;
+	client->dev.id = 0;
+	#else
 	//DSI-0:i2c-8
 	//DSI-1:i2c-2
 	if(i2c_id == 8) {
@@ -349,6 +353,8 @@ static int tinker_mcu_ili9881c_probe(struct i2c_client *client,
 		ret = -1;
 		goto error;
 	}
+	#endif
+
 	LOG_INFO("i2c_id= 0x%x\n", i2c_id);
 	g_mcu_ili9881c_data[dsi_id] = mcu_data;
 

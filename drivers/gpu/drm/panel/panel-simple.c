@@ -66,8 +66,6 @@ static void sn65dsi86_bridge_disable(void) { return ; }
 static bool sn65dsi86_is_connected(void) { return false; }
 #endif
 
-
-
 struct panel_cmd_header {
 	u8 data_type;
 	u8 delay;
@@ -3570,7 +3568,38 @@ static const struct panel_desc_dsi panasonic_vvx10f004b00 = {
 	.lanes = 4,
 };
 
-static const struct drm_display_mode tc358762_mode = {
+static const struct drm_display_mode tc358762_mode_for_tinker = {
+	.clock = 27200000 / 1000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 1,
+	.hsync_end = 800 + 1 + 2,
+	.htotal = 800 + 1 + 2 + 52,
+	.vdisplay = 480,
+	.vsync_start = 480 + 26,
+	.vsync_end = 480 + 26 + 2,
+	.vtotal = 480 + 26 + 2 + 21,
+	.vrefresh = 60,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi tc358762_dec_for_tinker= {
+	.desc = {
+		.modes = &tc358762_mode_for_tinker,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 217,
+			.height = 136,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		 MIPI_DSI_MODE_VIDEO_BURST |
+		 MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 1,
+};
+
+static const struct drm_display_mode tc358762_mode_for_tinker2 = {
 	.clock = 26101800 / 1000,
 	.hdisplay = 800,
 	.hsync_start = 800 + 1,
@@ -3584,9 +3613,9 @@ static const struct drm_display_mode tc358762_mode = {
 	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
 };
 
-static const struct panel_desc_dsi tc358762_dec= {
+static const struct panel_desc_dsi tc358762_dec_for_tinker2= {
 	.desc = {
-		.modes = &tc358762_mode,
+		.modes = &tc358762_mode_for_tinker2,
 		.num_modes = 1,
 		.bpc = 8,
 		.size = {
@@ -3714,17 +3743,22 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	int err;
 	int dsi_id;
 
+	printk("panel_simple_dsi_probe+\n");
 	id = of_match_node(dsi_of_match, dsi->dev.of_node);
 	if (!id)
 		return -ENODEV;
 
 #if defined(CONFIG_TINKER_MCU)
 	dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
+	printk("panel_simple_dsi_probe dsi_id =%d\n", dsi_id);
 	d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
 	if (!d)
 			return -ENOMEM;
 	if (tinker_mcu_is_connected(dsi_id)) {
-		memcpy(d, &tc358762_dec, sizeof(tc358762_dec));
+		if (of_property_read_bool(dev->of_node, "rk3288_tinker_baord"))
+			memcpy(d, &tc358762_dec_for_tinker, sizeof(tc358762_dec_for_tinker));
+		else
+			memcpy(d, &tc358762_dec_for_tinker2, sizeof(tc358762_dec_for_tinker2));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
 	else if (tinker_mcu_ili9881c_is_connected(dsi_id)) {
