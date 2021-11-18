@@ -105,12 +105,12 @@
 };
 
 &dfi {
-	status = "okay";
+	status = "disabled";
 };
 
 &dmc {
 	center-supply = <&vdd_log>;
-	status = "okay";
+	status = "disabled";
 };
 
 &edp {
