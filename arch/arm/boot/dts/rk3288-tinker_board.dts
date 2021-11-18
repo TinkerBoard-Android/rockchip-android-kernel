@@ -14,6 +14,25 @@
 		bootargs = "earlycon=uart8250,mmio32,0xff1b0000 vmalloc=496M console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init kpti=0";
 	};
 
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		pwr-led {
+				gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger = "default-on";
+		};
+
+		act-led {
+				gpios=<&gpio1 24 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger="mmc1";
+		};
+
+		rsv-led {
+				gpios=<&gpio1 25 GPIO_ACTIVE_HIGH>;
+				linux,default-trigger="default-off";
+		};
+	};
+
 	board_info: board-info {
 		compatible = "board-info";
 
