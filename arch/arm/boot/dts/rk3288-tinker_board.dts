@@ -8,7 +8,7 @@
 #include "rk3288-tinker_board.dtsi"
 
 / {
-	model = "Rockchip rk3288 evb avb board";
+	model = "ASUS Tinker Board (S)";
 	compatible = "rockchip,rk3288-evb-android-rk808-edp", "rockchip,rk3288";
 	chosen: chosen {
 		bootargs = "earlycon=uart8250,mmio32,0xff690000 vmalloc=496M console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init kpti=0";
