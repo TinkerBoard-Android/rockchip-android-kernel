@@ -1264,10 +1264,21 @@ static void dw_mipi_dsi_pre_enable(struct dw_mipi_dsi *dsi)
 		dw_mipi_dsi_pre_enable(dsi->slave);
 }
 
+#if defined(CONFIG_DRM_I2C_SN65DSI84)
 extern void sn65dsi84_bridge_enable(void);
-extern void sn65dsi86_bridge_enable(void);
 extern  bool sn65dsi84_is_connected(void);
+#else
+static void sn65dsi84_bridge_enable(void) { return; }
+static bool sn65dsi84_is_connected(void) { return false; }
+#endif
+
+#if defined(CONFIG_DRM_I2C_SN65DSI86)
+extern void sn65dsi86_bridge_enable(void);
 extern bool sn65dsi86_is_connected(void);
+#else
+static void sn65dsi86_bridge_enable(void) { return; }
+static bool sn65dsi86_is_connected(void) { return false; }
+#endif
 
 static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 {

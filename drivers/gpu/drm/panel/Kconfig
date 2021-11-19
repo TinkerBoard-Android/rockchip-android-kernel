@@ -210,4 +210,11 @@ config DRM_PANEL_ASUS_ILI9881C
         help
           ASUS ili9881c 720x1280
 
+config DRM_PANEL_ASUS
+        tristate "ASUS panel"
+        depends on OF
+        depends on DRM_MIPI_DSI
+        help
+           Say Y here if you want to enable support for ASUS panel mechanism.
+
 endmenu

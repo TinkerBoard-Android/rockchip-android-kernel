@@ -44,14 +44,29 @@
 #include "../bridge/sn65dsi8x/sn65dsi84.h"
 #include "../bridge/sn65dsi8x/sn65dsi86.h"
 
+#if defined(CONFIG_DRM_I2C_SN65DSI84)
 extern void sn65dsi84_loader_protect(bool on);
 extern void sn65dsi84_bridge_disable(void);
 extern bool sn65dsi84_is_connected(void);
+extern struct sn65dsi84_data *g_sn65dsi84;
+#else
+static void sn65dsi84_loader_protect(bool on) { return ; }
+static void sn65dsi84_bridge_disable(void) { return ; }
+static bool sn65dsi84_is_connected(void) { return false; }
+#endif
+
+#if defined(CONFIG_DRM_I2C_SN65DSI84)
 extern void sn65dsi86_loader_protect(bool on);
 extern void sn65dsi86_bridge_disable(void);
 extern bool sn65dsi86_is_connected(void);
-extern struct sn65dsi84_data *g_sn65dsi84;
 extern struct sn65dsi86_data *g_sn65dsi86;
+#else
+static void sn65dsi86_loader_protect(bool on) { return ; }
+static void sn65dsi86_bridge_disable(void) { return ; }
+static bool sn65dsi86_is_connected(void) { return false; }
+#endif
+
+
 
 struct panel_cmd_header {
 	u8 data_type;
@@ -173,7 +188,7 @@ extern int tinker_mcu_ili9881c_set_bright(int bright, int dsi_id);
 extern int tinker_mcu_ili9881c_screen_power_up(int dsi_id);
 extern int tinker_mcu_ili9881c_screen_power_off(int dsi_id);
 extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
-extern void tinker_ft5406_start_polling(int dsi_id);
+//extern void tinker_ft5406_start_polling(int dsi_id);
 
 extern int lcd_size_flag[2];
 #endif
@@ -648,7 +663,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 	if (tinker_mcu_ili9881c_is_connected(p->dsi_id)) {
 		printk("tinker_mcu_ili9881c_screen_power_up\n");
 		tinker_mcu_ili9881c_screen_power_up(p->dsi_id);
-		tinker_ft5406_start_polling(p->dsi_id);
+		//tinker_ft5406_start_polling(p->dsi_id);
 	}
 #endif
 
@@ -715,7 +730,7 @@ static int panel_simple_enable(struct drm_panel *panel)
 		printk("tinker_mcu_screen_power_up\n");
 		tinker_mcu_screen_power_up(p->dsi_id);
 		panel_simple_sleep(20);
-		tinker_ft5406_start_polling(p->dsi_id);
+		//tinker_ft5406_start_polling(p->dsi_id);
 	}
 
 	if (p->desc->init_seq) {
@@ -3666,12 +3681,17 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	return 0;
 }
 
+#if defined(CONFIG_DRM_I2C_SN65DSI84)
 void sn65dsi84_setup_desc(struct panel_desc_dsi *desc)
 {
 	drm_display_mode_to_videomode(desc->desc.modes, &g_sn65dsi84->vm);
 	g_sn65dsi84->dsi_lanes = desc->lanes;
 }
+#else
+void sn65dsi84_setup_desc(struct panel_desc_dsi *desc) {return;}
+#endif
 
+#if defined(CONFIG_DRM_I2C_SN65DSI86)
 void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
 {
 	drm_display_mode_to_videomode(desc->desc.modes, &g_sn65dsi86->vm);
@@ -3680,6 +3700,9 @@ void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
 	g_sn65dsi86->format = desc->format;
 	g_sn65dsi86->bpc = desc->desc.bpc;
 }
+#else
+void sn65dsi86_setup_desc(struct panel_desc_dsi *desc) {return;}
+#endif
 
 static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 {
