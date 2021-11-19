@@ -31,6 +31,20 @@
 		ddr-id1 = <&gpio2 RK_PB5 GPIO_ACTIVE_HIGH>;
 		ddr-id2 = <&gpio2 RK_PB6 GPIO_ACTIVE_HIGH>;
 	};
+
+	sound-simple-card {
+		status = "okay";
+		compatible = "simple-audio-card";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,name = "rockchip,miniarm-codec";
+		simple-audio-card,mclk-fs = <512>;
+		simple-audio-card,cpu {
+			sound-dai = <&i2s>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&hdmi>;
+		};
+	};
 };
 
 &hevc {
@@ -172,4 +186,15 @@
 &vopl {
 	assigned-clocks = <&cru DCLK_VOP1>;
 	assigned-clock-parents = <&cru PLL_CPLL>;
+};
+
+&hdmi {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	#sound-dai-cells = <0>;
+};
+
+&i2s {
+	#sound-dai-cells = <0>;
+	status = "okay";
 };
