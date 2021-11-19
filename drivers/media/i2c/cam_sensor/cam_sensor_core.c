@@ -25,27 +25,35 @@
 
 #include "cam_sensor.h"
 
-static int sCameraId = 0;
+static int sCameraId = -1;
 
 static int cam_sensor_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct gpio_desc	*enable_gpio;
-	int ret;
+	int ret, i;
 
 	enable_gpio = devm_gpiod_get(dev, "enable", GPIOD_OUT_HIGH);
 	if (IS_ERR(enable_gpio))
 		dev_warn(dev, "Failed to get enable_gpios\n");
 
-	ret = ov5647_detect(client);
-	if (ret < 0) {
-		client->addr = 0x10;
-		ret = imx219_detect(client);
-		if(ret < 0) return ret;
-		sCameraId = CAMERA_IMX219;
-	} else {
-		sCameraId = CAMERA_OV5647;
+	for (i = 0; i < 3; i++) {
+		client->addr = 0x36;
+		ret = ov5647_detect(client);
+		if (ret < 0) {
+			client->addr = 0x10;
+			ret = imx219_detect(client);
+			if(ret >= 0) {
+				sCameraId = CAMERA_IMX219;
+				break;
+			}
+		} else {
+			sCameraId = CAMERA_OV5647;
+			break;
+		}
+		msleep(500);
+		dev_warn(dev, "delay 500ms to wait power up\n");
 	}
 
 	if(sCameraId == CAMERA_OV5647) {
