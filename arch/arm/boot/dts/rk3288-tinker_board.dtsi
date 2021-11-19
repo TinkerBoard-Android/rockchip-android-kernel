@@ -163,7 +163,7 @@
 };
 
 &sound {
-	status = "okay";
+	status = "disabled";
 };
 
 &i2c0 {
