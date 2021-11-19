@@ -198,3 +198,7 @@
 	#sound-dai-cells = <0>;
 	status = "okay";
 };
+
+&rk_headset {
+	status = "disabled";
+};

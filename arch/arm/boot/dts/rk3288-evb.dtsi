@@ -138,7 +138,7 @@
 		status = "disabled";
 	};
 
-	rk_headset {
+	rk_headset: rk-headset {
 		compatible = "rockchip_headset";
 		headset_gpio = <&gpio7 RK_PA7 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
