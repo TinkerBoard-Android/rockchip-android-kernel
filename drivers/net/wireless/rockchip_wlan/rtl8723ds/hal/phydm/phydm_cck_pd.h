@@ -27,8 +27,7 @@
 #ifndef __PHYDM_CCK_PD_H__
 #define __PHYDM_CCK_PD_H__
 
-/* 2019.10.03 Revert to partIII due to idle test in WQC.*/
-#define CCK_PD_VERSION "3.9"
+#define CCK_PD_VERSION "3.1"
 
 /*@
  * 1 ============================================================
@@ -37,9 +36,6 @@
  */
 #define CCK_FA_MA_RESET 0xffffffff
 
-#define INVALID_CS_RATIO_0 0x1b /* @ only for type4 ICs*/
-#define INVALID_CS_RATIO_1 0x1d /* @ only for type4 ICs*/
-#define MAXVALID_CS_RATIO 0x1f
 /*@Run time flag of CCK_PD HW type*/
 #define CCK_PD_IC_TYPE1 (ODM_RTL8188E | ODM_RTL8812 | ODM_RTL8821 |\
 			ODM_RTL8192E | ODM_RTL8723B | ODM_RTL8814A |\
@@ -49,7 +45,7 @@
 #define CCK_PD_IC_TYPE2 (ODM_RTL8197F | ODM_RTL8821C | ODM_RTL8723D |\
 			ODM_RTL8710B | ODM_RTL8195B) /*extend 0xaaa*/
 
-#define CCK_PD_IC_TYPE3 (ODM_RTL8192F | ODM_RTL8721D | ODM_RTL8710C)
+#define CCK_PD_IC_TYPE3 (ODM_RTL8192F | ODM_RTL8721D)
 /*@extend for different bw & path*/
 
 #define CCK_PD_IC_TYPE4 ODM_IC_JGR3_SERIES /*@extend for different bw & path*/
@@ -67,7 +63,7 @@
 	#define PHYDM_COMPILE_CCKPD_TYPE2 /*@extend 0xaaa*/
 #endif
 
-#if (RTL8192F_SUPPORT || RTL8721D_SUPPORT || RTL8710C_SUPPORT)
+#if (RTL8192F_SUPPORT || RTL8721D_SUPPORT)
 	#define PHYDM_COMPILE_CCKPD_TYPE3 /*@extend for different & path*/
 #endif
 
@@ -100,17 +96,6 @@ enum cckpd_mode {
 	CCK_BW40_4R = 7
 };
 
-enum dcc_mode {
-	DCC_DIG		= 0,
-	DCC_CCK_PD	= 1
-};
-
-enum phydm_cck_pd_trend {
-	CCKPD_STABLE			= 0,
-	CCKPD_INCREASING		= 1,
-	CCKPD_DECREASING		= 2
-};
-
 /*@
  * 1 ============================================================
  * 1  structure
@@ -118,24 +103,13 @@ enum phydm_cck_pd_trend {
  */
 
 #ifdef PHYDM_SUPPORT_CCKPD
-
-#ifdef PHYDM_DCC_ENHANCE
-struct phydm_dcc_struct { /*DIG CCK_PD coexistence*/
-	boolean		dcc_en;
-	enum dcc_mode	dcc_mode;
-	u32		dig_execute_cnt;
-	u8		dcc_ratio;
-};
-#endif
-
 struct phydm_cckpd_struct {
 	u8		cckpd_hw_type;
 	u8		cur_cck_cca_thres; /*@current cck_pd value 0xa0a*/
 	u32		cck_fa_ma;
-	u32		rvrt_val; /*all rvrt_val for pause API must set to u32*/
+	u8		rvrt_val;
 	u8		pause_lv;
 	u8		cck_n_rx;
-	u16		cck_fa_th[2];
 	enum channel_width cck_bw;
 	enum cckpd_lv	cck_pd_lv;
 	#ifdef PHYDM_COMPILE_CCKPD_TYPE2
@@ -164,7 +138,7 @@ struct phydm_cckpd_struct {
 	#endif
 	#ifdef PHYDM_COMPILE_CCKPD_TYPE4
 	/*@[bw][nrx][0:PD/1:CS][lv]*/
-	u8		cckpd_jgr3[2][4][2][CCK_PD_LV_MAX];
+	u8		cck_pd_table_jgr3[2][4][2][CCK_PD_LV_MAX];
 	#endif
 };
 #endif
@@ -179,15 +153,4 @@ void phydm_set_cckpd_val(void *dm_void, u32 *val_buf, u8 val_len);
 void phydm_cck_pd_th(void *dm_void);
 
 void phydm_cck_pd_init(void *dm_void);
-
-#ifdef PHYDM_DCC_ENHANCE
-void phydm_cckpd_type4_dcc(void *dm_void);
-
-void phydm_dig_cckpd_coex(void *dm_void);
-
-void phydm_dig_cckpd_coex_init(void *dm_void);
-
-void phydm_dig_cckpd_coex_dbg(void *dm_void, char input[][16], u32 *_used,
-			      char *output, u32 *_out_len);
-#endif
 #endif

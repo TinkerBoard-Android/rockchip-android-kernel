@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************************
  *
- * Copyright(c) 2015 - 2017 Realtek Corporation.
+ * Copyright(c) 2009-2010 - 2017 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -13,20 +13,23 @@
  * more details.
  *
  *****************************************************************************/
-#ifndef _RTL8822CS_HAL_H_
-#define _RTL8822CS_HAL_H_
 
-#include <drv_types.h>		/* PADAPTER */
+#ifndef __RTW_WIFI_REGD_H__
+#define __RTW_WIFI_REGD_H__
 
-/* rtl8822cs_ops.c */
-void rtl8822cs_set_hal_ops(PADAPTER);
+struct country_code_to_enum_rd {
+	u16 countrycode;
+	const char *iso_name;
+};
 
-#if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
-void rtl8822cs_disable_interrupt_but_cpwm2(PADAPTER adapter);
-#endif
+enum country_code_type_t {
+	COUNTRY_CODE_USER = 0,
 
-/* rtl8822cs_xmit.c */
-s32 rtl8822cs_dequeue_writeport(PADAPTER);
-#define _dequeue_writeport(a)	rtl8822cs_dequeue_writeport(a)
+	/*add new channel plan above this line */
+	COUNTRY_CODE_MAX
+};
 
-#endif /* _RTL8822CS_HAL_H_ */
+void rtw_regd_apply_flags(struct wiphy *wiphy);
+int rtw_regd_init(struct wiphy *wiphy);
+
+#endif /* __RTW_WIFI_REGD_H__ */
