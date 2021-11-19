@@ -16,6 +16,9 @@ obj-$(CONFIG_PINCTRL)		+= pinctrl/
 obj-$(CONFIG_GPIOLIB)		+= gpio/
 obj-y				+= pwm/
 
+# boardinfo must come after gpio
+obj-$(CONFIG_BOARDINFO)         += boardinfo/
+
 obj-y				+= pci/
 
 obj-$(CONFIG_PARISC)		+= parisc/
@@ -194,5 +197,4 @@ obj-$(CONFIG_GNSS)		+= gnss/
 obj-$(CONFIG_RK_NAND)		+= rk_nand/
 obj-$(CONFIG_RK_HEADSET)	+= headset_observe/
 obj-$(CONFIG_RK_FLASH)		+= rkflash/
-obj-$(CONFIG_BOARDINFO)		+= boardinfo/
 obj-$(CONFIG_ROCKCHIP_RKNPU)	+= rknpu/
