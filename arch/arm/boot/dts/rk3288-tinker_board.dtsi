@@ -461,7 +461,12 @@
 
 
 &route_dsi0 {
-	status = "disabled";
+	status = "okay";
+	logo,uboot = "tinkerboard.bmp";
+	logo,kernel = "tinkerboard.bmp";
+	connect = <&vopl_out_dsi0>;
+	rk3288_tinker_baord;
+	i2c_busnum=<3>;
 };
 
 &dsi0 {
@@ -831,13 +836,13 @@
 			native-mode = <&timing2>;
 
 			timing2: timing2 {
-				clock-frequency = <26101800>;
+				clock-frequency = <27200000>;
 				hactive = <800>;
 				vactive = <480>;
-				hfront-porch = <2>;
+				hfront-porch = <1>;
 				hsync-len = <2>;
 				hback-porch = <52>;
-				vfront-porch = <7>;
+				vfront-porch = <28>;//Let it be different from panel-simple to force re-init
 				vsync-len = <2>;
 				vback-porch = <21>;
 				hsync-active = <0>;
