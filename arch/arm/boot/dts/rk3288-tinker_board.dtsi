@@ -439,6 +439,14 @@
 
 &rockchip_suspend {
 	status = "okay";
+	rockchip,sleep-mode-config = <
+		(0
+		|RKPM_CTR_PWR_DMNS
+		|RKPM_CTR_PLLS
+		|RKPM_CTR_ARMOFF_LPMD
+		|RKPM_CTR_SYSCLK_OSC_DIS
+		)
+	>;
 	rockchip,pwm-regulator-config = <
 	(0
 	| PWM1_REGULATOR_EN
