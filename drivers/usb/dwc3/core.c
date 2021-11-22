@@ -41,6 +41,8 @@
 
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
 
+extern int get_project_id(void);
+
 /**
  * dwc3_get_dr_mode - Validates and sets dr_mode
  * @dwc: pointer to our context structure
@@ -1703,6 +1705,18 @@ static int dwc3_probe(struct platform_device *pdev)
 	ret = dwc3_core_init_mode(dwc);
 	if (ret)
 		goto err5;
+
+	if (!strcmp(dev_name(dev), "fe900000.dwc3")) {
+		int i = (get_project_id() == 4)? 1 : 0;
+
+		dwc->gpio_hub_vbus = devm_gpiod_get_index_optional(dev, "hub-vbus", i, GPIOD_OUT_HIGH);
+		if (IS_ERR(dwc->gpio_hub_vbus))
+			dev_err(dev, "Could not get named GPIO for hub-vbus-gpios.\n");
+		else {
+			dev_info(dev, "Set hub-vbus-gpios to high.\n");
+			gpiod_set_value(dwc->gpio_hub_vbus, 1);
+		}
+	}
 
 	dwc3_debugfs_init(dwc);
 

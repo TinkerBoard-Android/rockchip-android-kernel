@@ -21,6 +21,7 @@
 #include <linux/debugfs.h>
 #include <linux/wait.h>
 #include <linux/workqueue.h>
+#include <linux/gpio.h>
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
@@ -1255,6 +1256,7 @@ struct dwc3 {
 	unsigned		uwk_en:1;
 
 	u16			imod_interval;
+	struct gpio_desc        *gpio_hub_vbus;
 };
 
 #define INCRX_BURST_MODE 0
