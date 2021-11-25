@@ -11,7 +11,7 @@
 	model = "ASUS Tinker Board (S)";
 	compatible = "rockchip,rk3288-evb-android-rk808-edp", "rockchip,rk3288";
 	chosen: chosen {
-		bootargs = "earlycon=uart8250,mmio32,0xff690000 vmalloc=496M console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init kpti=0";
+		bootargs = "earlycon=uart8250,mmio32,0xff1b0000 vmalloc=496M console=ttyFIQ0 androidboot.baseband=N/A androidboot.veritymode=enforcing androidboot.hardware=rk30board androidboot.console=ttyFIQ0 init=/init kpti=0";
 	};
 
 	board_info: board-info {
@@ -243,4 +243,9 @@
 
 &rk_headset {
 	status = "disabled";
+};
+
+&fiq_debugger {
+	rockchip,serial-id = <3>;
+	pinctrl-0 = <&uart3_xfer>;
 };
