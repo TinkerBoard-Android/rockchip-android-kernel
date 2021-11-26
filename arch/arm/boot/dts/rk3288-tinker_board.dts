@@ -201,5 +201,5 @@
 };
 
 &rk_headset {
-	status = "disabled";
+	status = "okay";
 };

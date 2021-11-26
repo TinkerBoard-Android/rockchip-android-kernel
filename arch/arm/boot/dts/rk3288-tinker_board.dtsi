@@ -11,6 +11,7 @@
 
 / {
 	panel {
+		status = "disabled";
 		compatible = "simple-panel";
 		backlight = <&backlight>;
 		enable-gpios = <&gpio7 RK_PA4 GPIO_ACTIVE_HIGH>;
