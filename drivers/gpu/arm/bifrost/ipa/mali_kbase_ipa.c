@@ -71,7 +71,7 @@ KBASE_EXPORT_TEST_API(kbase_ipa_model_ops_find);
 
 const char *kbase_ipa_model_name_from_id(u32 gpu_id)
 {
-	const char* model_name =
+	const char *model_name =
 		kbase_ipa_counter_model_name_from_id(gpu_id);
 
 	if (!model_name)
@@ -324,7 +324,7 @@ int kbase_ipa_init(struct kbase_device *kbdev)
 		kbdev->ipa.configured_model = default_model;
 	}
 
-	kbdev->ipa.last_sample_time = ktime_get();
+	kbdev->ipa.last_sample_time = ktime_get_raw();
 
 end:
 	if (err)
@@ -396,7 +396,7 @@ static u32 kbase_scale_dynamic_power(const u32 c, const u32 freq,
  *
  * Return: Power consumption, in mW. Range: 0 < p < 2^13 (0W to ~8W)
  */
-u32 kbase_scale_static_power(const u32 c, const u32 voltage)
+static u32 kbase_scale_static_power(const u32 c, const u32 voltage)
 {
 	/* Range: 2^8 < v2 < 2^16 m(V^2) */
 	const u32 v2 = (voltage * voltage) / 1000;
@@ -537,11 +537,26 @@ static void opp_translate_freq_voltage(struct kbase_device *kbdev,
 				       unsigned long *freqs,
 				       unsigned long *volts)
 {
+#if IS_ENABLED(CONFIG_MALI_BIFROST_NO_MALI)
+	/* An arbitrary voltage and frequency value can be chosen for testing
+	 * in no mali configuration which may not match with any OPP level.
+	 */
+	freqs[KBASE_IPA_BLOCK_TYPE_TOP_LEVEL] = nominal_freq;
+	volts[KBASE_IPA_BLOCK_TYPE_TOP_LEVEL] = nominal_voltage;
+
+	freqs[KBASE_IPA_BLOCK_TYPE_SHADER_CORES] = nominal_freq;
+	volts[KBASE_IPA_BLOCK_TYPE_SHADER_CORES] = nominal_voltage;
+#else
 	u64 core_mask;
+	unsigned int i;
 
 	kbase_devfreq_opp_translate(kbdev, nominal_freq, nominal_voltage,
 				    &core_mask, freqs, volts);
 	CSTD_UNUSED(core_mask);
+
+	/* Convert micro volts to milli volts */
+	for (i = 0; i < kbdev->nr_clocks; i++)
+		volts[i] /= 1000;
 
 	if (kbdev->nr_clocks == 1) {
 		freqs[KBASE_IPA_BLOCK_TYPE_SHADER_CORES] =
@@ -549,6 +564,7 @@ static void opp_translate_freq_voltage(struct kbase_device *kbdev,
 		volts[KBASE_IPA_BLOCK_TYPE_SHADER_CORES] =
 			volts[KBASE_IPA_BLOCK_TYPE_TOP_LEVEL];
 	}
+#endif
 }
 
 #if KERNEL_VERSION(5, 10, 0) > LINUX_VERSION_CODE
@@ -594,7 +610,7 @@ static unsigned long kbase_get_dynamic_power(unsigned long freq,
 
 		/* Here unlike kbase_get_real_power(), shader core frequency is
 		 * used for the scaling as simple power model is used to obtain
-		 * the value of dynamic coefficient (which is is a fixed value
+		 * the value of dynamic coefficient (which is a fixed value
 		 * retrieved from the device tree).
 		 */
 		power += kbase_scale_dynamic_power(
@@ -734,7 +750,7 @@ void kbase_ipa_reset_data(struct kbase_device *kbdev)
 
 	mutex_lock(&kbdev->ipa.lock);
 
-	now = ktime_get();
+	now = ktime_get_raw();
 	diff = ktime_sub(now, kbdev->ipa.last_sample_time);
 	elapsed_time = ktime_to_ms(diff);
 
@@ -749,7 +765,7 @@ void kbase_ipa_reset_data(struct kbase_device *kbdev)
 		if (model != kbdev->ipa.fallback_model)
 			model->ops->reset_counter_data(model);
 
-		kbdev->ipa.last_sample_time = ktime_get();
+		kbdev->ipa.last_sample_time = ktime_get_raw();
 	}
 
 	mutex_unlock(&kbdev->ipa.lock);

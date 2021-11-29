@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 WITH Linux-syscall-note */
 /*
  *
- * (C) COPYRIGHT 2020-2021 ARM Limited. All rights reserved.
+ * (C) COPYRIGHT 2020-2022 ARM Limited. All rights reserved.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -44,10 +44,38 @@
  * - Add ioctl 40: kbase_ioctl_cs_queue_register_ex, this is a new
  *   queue registration call with extended format for supporting CS
  *   trace configurations with CSF trace_command.
+ * 1.6:
+ * - Added new HW performance counters interface to all GPUs.
+ * 1.7:
+ * - Added reserved field to QUEUE_GROUP_CREATE ioctl for future use
+ * 1.8:
+ * - Removed Kernel legacy HWC interface
+ * 1.9:
+ * - Reorganization of GPU-VA memory zones, including addition of
+ *   FIXED_VA zone and auto-initialization of EXEC_VA zone.
+ * - Added new Base memory allocation interface
+ * 1.10:
+ * - First release of new HW performance counters interface.
+ * 1.11:
+ * - Dummy model (no mali) backend will now clear HWC values after each sample
+ * 1.12:
+ * - Added support for incremental rendering flag in CSG create call
+ * 1.13:
+ * - Added ioctl to query a register of USER page.
+ * 1.14:
+ * - Added support for passing down the buffer descriptor VA in tiler heap init
+ * 1.15:
+ * - Enable new sync_wait GE condition
+ * 1.16:
+ * - Remove legacy definitions:
+ *   - base_jit_alloc_info_10_2
+ *   - base_jit_alloc_info_11_5
+ *   - kbase_ioctl_mem_jit_init_10_2
+ *   - kbase_ioctl_mem_jit_init_11_5
  */
 
 #define BASE_UK_VERSION_MAJOR 1
-#define BASE_UK_VERSION_MINOR 5
+#define BASE_UK_VERSION_MINOR 16
 
 /**
  * struct kbase_ioctl_version_check - Check version compatibility between
@@ -64,7 +92,6 @@ struct kbase_ioctl_version_check {
 #define KBASE_IOCTL_VERSION_CHECK_RESERVED \
 	_IOWR(KBASE_IOCTL_TYPE, 0, struct kbase_ioctl_version_check)
 
-
 /**
  * struct kbase_ioctl_cs_queue_register - Register a GPU command queue with the
  *                                        base back-end
@@ -74,7 +101,7 @@ struct kbase_ioctl_version_check {
  * @priority: Priority of the queue within a group when run within a process
  * @padding: Currently unused, must be zero
  *
- * @Note: There is an identical sub-section in kbase_ioctl_cs_queue_register_ex.
+ * Note: There is an identical sub-section in kbase_ioctl_cs_queue_register_ex.
  *        Any change of this struct should also be mirrored to the latter.
  */
 struct kbase_ioctl_cs_queue_register {
@@ -143,7 +170,7 @@ union kbase_ioctl_cs_queue_bind {
  * @ex_event_state: Trace event states configuration
  * @ex_padding: Currently unused, must be zero
  *
- * @Note: There is an identical sub-section at the start of this struct to that
+ * Note: There is an identical sub-section at the start of this struct to that
  *        of @ref kbase_ioctl_cs_queue_register. Any change of this sub-section
  *        must also be mirrored to the latter. Following the said sub-section,
  *        the remaining fields forms the extension, marked with ex_*.
@@ -177,7 +204,8 @@ struct kbase_ioctl_cs_queue_terminate {
 	_IOW(KBASE_IOCTL_TYPE, 41, struct kbase_ioctl_cs_queue_terminate)
 
 /**
- * union kbase_ioctl_cs_queue_group_create - Create a GPU command queue group
+ * union kbase_ioctl_cs_queue_group_create_1_6 - Create a GPU command queue
+ *                                               group
  * @in:               Input parameters
  * @in.tiler_mask:    Mask of tiler endpoints the group is allowed to use.
  * @in.fragment_mask: Mask of fragment endpoints the group is allowed to use.
@@ -196,7 +224,7 @@ struct kbase_ioctl_cs_queue_terminate {
  * @out.padding:      Currently unused, must be zero
  * @out.group_uid:    UID of the queue group available to base.
  */
-union kbase_ioctl_cs_queue_group_create {
+union kbase_ioctl_cs_queue_group_create_1_6 {
 	struct {
 		__u64 tiler_mask;
 		__u64 fragment_mask;
@@ -216,8 +244,58 @@ union kbase_ioctl_cs_queue_group_create {
 	} out;
 };
 
-#define KBASE_IOCTL_CS_QUEUE_GROUP_CREATE \
-	_IOWR(KBASE_IOCTL_TYPE, 42, union kbase_ioctl_cs_queue_group_create)
+#define KBASE_IOCTL_CS_QUEUE_GROUP_CREATE_1_6                                  \
+	_IOWR(KBASE_IOCTL_TYPE, 42, union kbase_ioctl_cs_queue_group_create_1_6)
+
+/**
+ * union kbase_ioctl_cs_queue_group_create - Create a GPU command queue group
+ * @in:               Input parameters
+ * @in.tiler_mask:    Mask of tiler endpoints the group is allowed to use.
+ * @in.fragment_mask: Mask of fragment endpoints the group is allowed to use.
+ * @in.compute_mask:  Mask of compute endpoints the group is allowed to use.
+ * @in.cs_min:        Minimum number of CSs required.
+ * @in.priority:      Queue group's priority within a process.
+ * @in.tiler_max:     Maximum number of tiler endpoints the group is allowed
+ *                    to use.
+ * @in.fragment_max:  Maximum number of fragment endpoints the group is
+ *                    allowed to use.
+ * @in.compute_max:   Maximum number of compute endpoints the group is allowed
+ *                    to use.
+ * @in.csi_handlers:  Flags to signal that the application intends to use CSI
+ *                    exception handlers in some linear buffers to deal with
+ *                    the given exception types.
+ * @in.padding:       Currently unused, must be zero
+ * @out:              Output parameters
+ * @out.group_handle: Handle of a newly created queue group.
+ * @out.padding:      Currently unused, must be zero
+ * @out.group_uid:    UID of the queue group available to base.
+ */
+union kbase_ioctl_cs_queue_group_create {
+	struct {
+		__u64 tiler_mask;
+		__u64 fragment_mask;
+		__u64 compute_mask;
+		__u8 cs_min;
+		__u8 priority;
+		__u8 tiler_max;
+		__u8 fragment_max;
+		__u8 compute_max;
+		__u8 csi_handlers;
+		__u8 padding[2];
+		/**
+		 * @in.dvs_buf: buffer for deferred vertex shader
+		 */
+		__u64 dvs_buf;
+	} in;
+	struct {
+		__u8 group_handle;
+		__u8 padding[3];
+		__u32 group_uid;
+	} out;
+};
+
+#define KBASE_IOCTL_CS_QUEUE_GROUP_CREATE                                      \
+	_IOWR(KBASE_IOCTL_TYPE, 58, union kbase_ioctl_cs_queue_group_create)
 
 /**
  * struct kbase_ioctl_cs_queue_group_term - Terminate a GPU command queue group
@@ -295,6 +373,7 @@ struct kbase_ioctl_kcpu_queue_enqueue {
  *                     allowed.
  * @in.group_id:       Group ID to be used for physical allocations.
  * @in.padding:        Padding
+ * @in.buf_desc_va:    Buffer descriptor GPU VA for tiler heap reclaims.
  * @out:               Output parameters
  * @out.gpu_heap_va:   GPU VA (virtual address) of Heap context that was set up
  *                     for the heap.
@@ -310,6 +389,7 @@ union kbase_ioctl_cs_tiler_heap_init {
 		__u16 target_in_flight;
 		__u8 group_id;
 		__u8 padding;
+		__u64 buf_desc_va;
 	} in;
 	struct {
 		__u64 gpu_heap_va;
@@ -319,6 +399,43 @@ union kbase_ioctl_cs_tiler_heap_init {
 
 #define KBASE_IOCTL_CS_TILER_HEAP_INIT \
 	_IOWR(KBASE_IOCTL_TYPE, 48, union kbase_ioctl_cs_tiler_heap_init)
+
+/**
+ * union kbase_ioctl_cs_tiler_heap_init_1_13 - Initialize chunked tiler memory heap,
+ *                                             earlier version upto 1.13
+ * @in:                Input parameters
+ * @in.chunk_size:     Size of each chunk.
+ * @in.initial_chunks: Initial number of chunks that heap will be created with.
+ * @in.max_chunks:     Maximum number of chunks that the heap is allowed to use.
+ * @in.target_in_flight: Number of render-passes that the driver should attempt to
+ *                     keep in flight for which allocation of new chunks is
+ *                     allowed.
+ * @in.group_id:       Group ID to be used for physical allocations.
+ * @in.padding:        Padding
+ * @out:               Output parameters
+ * @out.gpu_heap_va:   GPU VA (virtual address) of Heap context that was set up
+ *                     for the heap.
+ * @out.first_chunk_va: GPU VA of the first chunk allocated for the heap,
+ *                     actually points to the header of heap chunk and not to
+ *                     the low address of free memory in the chunk.
+ */
+union kbase_ioctl_cs_tiler_heap_init_1_13 {
+	struct {
+		__u32 chunk_size;
+		__u32 initial_chunks;
+		__u32 max_chunks;
+		__u16 target_in_flight;
+		__u8 group_id;
+		__u8 padding;
+	} in;
+	struct {
+		__u64 gpu_heap_va;
+		__u64 first_chunk_va;
+	} out;
+};
+
+#define KBASE_IOCTL_CS_TILER_HEAP_INIT_1_13                                                        \
+	_IOWR(KBASE_IOCTL_TYPE, 48, union kbase_ioctl_cs_tiler_heap_init_1_13)
 
 /**
  * struct kbase_ioctl_cs_tiler_heap_term - Terminate a chunked tiler heap
@@ -340,7 +457,7 @@ struct kbase_ioctl_cs_tiler_heap_term {
  * @in:                    Input parameters
  * @in.max_group_num:      The maximum number of groups to be read. Can be 0, in
  *                         which case groups_ptr is unused.
- * @in.max_total_stream    _num: The maximum number of CSs to be read. Can be 0, in
+ * @in.max_total_stream_num: The maximum number of CSs to be read. Can be 0, in
  *                         which case streams_ptr is unused.
  * @in.groups_ptr:         Pointer where to store all the group data (sequentially).
  * @in.streams_ptr:        Pointer where to store all the CS data (sequentially).
@@ -389,6 +506,60 @@ struct kbase_ioctl_cs_cpu_queue_info {
 
 #define KBASE_IOCTL_CS_CPU_QUEUE_DUMP \
 	_IOW(KBASE_IOCTL_TYPE, 53, struct kbase_ioctl_cs_cpu_queue_info)
+
+/**
+ * union kbase_ioctl_mem_alloc_ex - Allocate memory on the GPU
+ * @in: Input parameters
+ * @in.va_pages: The number of pages of virtual address space to reserve
+ * @in.commit_pages: The number of physical pages to allocate
+ * @in.extension: The number of extra pages to allocate on each GPU fault which grows the region
+ * @in.flags: Flags
+ * @in.fixed_address: The GPU virtual address requested for the allocation,
+ *                    if the allocation is using the BASE_MEM_FIXED flag.
+ * @in.extra: Space for extra parameters that may be added in the future.
+ * @out: Output parameters
+ * @out.flags: Flags
+ * @out.gpu_va: The GPU virtual address which is allocated
+ */
+union kbase_ioctl_mem_alloc_ex {
+	struct {
+		__u64 va_pages;
+		__u64 commit_pages;
+		__u64 extension;
+		__u64 flags;
+		__u64 fixed_address;
+		__u64 extra[3];
+	} in;
+	struct {
+		__u64 flags;
+		__u64 gpu_va;
+	} out;
+};
+
+#define KBASE_IOCTL_MEM_ALLOC_EX _IOWR(KBASE_IOCTL_TYPE, 59, union kbase_ioctl_mem_alloc_ex)
+
+/**
+ * union kbase_ioctl_read_user_page - Read a register of USER page
+ *
+ * @in:               Input parameters.
+ * @in.offset:        Register offset in USER page.
+ * @in.padding:       Padding to round up to a multiple of 8 bytes, must be zero.
+ * @out:              Output parameters.
+ * @out.val_lo:       Value of 32bit register or the 1st half of 64bit register to be read.
+ * @out.val_hi:       Value of the 2nd half of 64bit register to be read.
+ */
+union kbase_ioctl_read_user_page {
+	struct {
+		__u32 offset;
+		__u32 padding;
+	} in;
+	struct {
+		__u32 val_lo;
+		__u32 val_hi;
+	} out;
+};
+
+#define KBASE_IOCTL_READ_USER_PAGE _IOWR(KBASE_IOCTL_TYPE, 60, union kbase_ioctl_read_user_page)
 
 /***************
  * test ioctls *

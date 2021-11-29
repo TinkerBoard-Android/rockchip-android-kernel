@@ -39,18 +39,17 @@
 #define ORDER_OF_PAGES_PER_BITFIELD_ELEM 6
 
 /**
- * struct simple_pma_device -	Simple implementation of a protected memory
- *				allocator device
- *
- * @pma_dev:			Protected memory allocator device pointer
- * @dev:  			Device pointer
- * @alloc_pages_bitfield_arr:	Status of all the physical memory pages within the
- *				protected memory region, one bit per page
- * @rmem_base:			Base address of the reserved memory region
- * @rmem_size:			Size of the reserved memory region, in pages
- * @num_free_pages:		Number of free pages in the memory region
- * @rmem_lock:			Lock to serialize the allocation and freeing of
- *				physical pages from the protected memory region
+ * struct simple_pma_device - Simple implementation of a protected memory
+ *                            allocator device
+ * @pma_dev: Protected memory allocator device pointer
+ * @dev:     Device pointer
+ * @allocated_pages_bitfield_arr: Status of all the physical memory pages within the
+ *                                protected memory region, one bit per page
+ * @rmem_base:      Base address of the reserved memory region
+ * @rmem_size:      Size of the reserved memory region, in pages
+ * @num_free_pages: Number of free pages in the memory region
+ * @rmem_lock:      Lock to serialize the allocation and freeing of
+ *                  physical pages from the protected memory region
  */
 struct simple_pma_device {
 	struct protected_memory_allocator_device pma_dev;
@@ -63,15 +62,24 @@ struct simple_pma_device {
 };
 
 /**
- * Number of elements in array 'allocated_pages_bitfield_arr'. If the number of
- * pages required does not divide exactly by PAGES_PER_BITFIELD_ELEM, adds an
- * extra page for the remainder.
+ * ALLOC_PAGES_BITFIELD_ARR_SIZE() - Number of elements in array
+ *                                   'allocated_pages_bitfield_arr'
+ * If the number of pages required does not divide exactly by
+ * PAGES_PER_BITFIELD_ELEM, adds an extra page for the remainder.
+ * @num_pages: number of pages
  */
 #define ALLOC_PAGES_BITFIELD_ARR_SIZE(num_pages) \
 	((PAGES_PER_BITFIELD_ELEM * (0 != (num_pages % PAGES_PER_BITFIELD_ELEM)) + \
 	num_pages) / PAGES_PER_BITFIELD_ELEM)
 
 /**
+ * small_granularity_alloc() - Allocate 1-32 power-of-two pages.
+ * @epma_dev: protected memory allocator device structure.
+ * @alloc_bitfield_idx: index of the relevant bitfield.
+ * @start_bit: starting bitfield index.
+ * @order: bitshift for number of pages. Order of 0 to 5 equals 1 to 32 pages.
+ * @pma: protected_memory_allocation struct.
+ *
  * Allocate a power-of-two number of pages, N, where
  * 0 <= N <= ORDER_OF_PAGES_PER_BITFIELD_ELEM - 1.  ie, Up to 32 pages. The routine
  * fills-in a pma structure and sets the appropriate bits in the allocated-pages
@@ -99,20 +107,20 @@ static void small_granularity_alloc(struct simple_pma_device *const epma_dev,
 	alloc_pages_bitfield_size = ALLOC_PAGES_BITFIELD_ARR_SIZE(epma_dev->rmem_size);
 
 	WARN(alloc_bitfield_idx >= alloc_pages_bitfield_size,
-	     "%s: idx>bf_size: %zu %zu", __FUNCTION__,
+	     "%s: idx>bf_size: %zu %zu", __func__,
 	     alloc_bitfield_idx, alloc_pages_bitfield_size);
 
 	WARN((start_bit + (1 << order)) > PAGES_PER_BITFIELD_ELEM,
 	     "%s: start=%zu order=%zu ppbe=%zu",
-	     __FUNCTION__, start_bit, order, PAGES_PER_BITFIELD_ELEM);
+	     __func__, start_bit, order, PAGES_PER_BITFIELD_ELEM);
 
 	bitfield = &epma_dev->allocated_pages_bitfield_arr[alloc_bitfield_idx];
 
 	for (i = 0; i < (1 << order); i++) {
 		/* Check the pages represented by this bit are actually free */
-		WARN (*bitfield & (1ULL << (start_bit + i)),
+		WARN(*bitfield & (1ULL << (start_bit + i)),
 		      "in %s: page not free: %zu %zu %.16llx %zu\n",
-		      __FUNCTION__, i, order, *bitfield, alloc_pages_bitfield_size);
+		      __func__, i, order, *bitfield, alloc_pages_bitfield_size);
 
 		/* Mark the pages as now allocated */
 		*bitfield |= (1ULL << (start_bit + i));
@@ -127,6 +135,12 @@ static void small_granularity_alloc(struct simple_pma_device *const epma_dev,
 }
 
 /**
+ * large_granularity_alloc() - Allocate pages at multiples of 64 pages.
+ * @epma_dev: protected memory allocator device structure.
+ * @start_alloc_bitfield_idx: index of the starting bitfield.
+ * @order: bitshift for number of pages. Order of 6+ equals 64+ pages.
+ * @pma: protected_memory_allocation struct.
+ *
  * Allocate a power-of-two number of pages, N, where
  * N >= ORDER_OF_PAGES_PER_BITFIELD_ELEM. ie, 64 pages or more. The routine fills-in
  * a pma structure and sets the appropriate bits in the allocated-pages bitfield array
@@ -158,7 +172,7 @@ static void large_granularity_alloc(struct simple_pma_device *const epma_dev,
 	 */
 	WARN((start_alloc_bitfield_idx + order) >= ALLOC_PAGES_BITFIELD_ARR_SIZE(epma_dev->rmem_size),
 	     "%s: start=%zu order=%zu ms=%zu",
-	     __FUNCTION__, start_alloc_bitfield_idx, order, epma_dev->rmem_size);
+	     __func__, start_alloc_bitfield_idx, order, epma_dev->rmem_size);
 
 	for (i = 0; i < num_bitfield_elements_needed; i++) {
 		u64 *bitfield = &epma_dev->allocated_pages_bitfield_arr[start_alloc_bitfield_idx + i];
@@ -166,7 +180,7 @@ static void large_granularity_alloc(struct simple_pma_device *const epma_dev,
 		/* We expect all pages that relate to this bitfield element to be free */
 		WARN((*bitfield != 0),
 		     "in %s: pages not free: i=%zu o=%zu bf=%.16llx\n",
-		     __FUNCTION__, i, order, *bitfield);
+		     __func__, i, order, *bitfield);
 
 		/* Mark all the pages for this element as not free */
 		*bitfield = ~0ULL;
@@ -304,9 +318,7 @@ static struct protected_memory_allocation *simple_pma_alloc_page(
 					spin_unlock(&epma_dev->rmem_lock);
 					return pma;
 				}
-			}
-			else
-			{
+			} else {
 				count = 0;
 			}
 		}
@@ -388,11 +400,10 @@ static void simple_pma_free_page(
 
 		/* Clear the bits for the pages we're now freeing */
 		*bitfield &= ~(((1ULL << num_pages_in_allocation) - 1) << bitfield_start_bit);
-	}
-	else {
+	} else {
 		WARN(page_num % PAGES_PER_BITFIELD_ELEM,
 		     "%s: Expecting allocs of order >= %d to be %zu-page aligned\n",
-		     __FUNCTION__, ORDER_OF_PAGES_PER_BITFIELD_ELEM, PAGES_PER_BITFIELD_ELEM);
+		     __func__, ORDER_OF_PAGES_PER_BITFIELD_ELEM, PAGES_PER_BITFIELD_ELEM);
 
 		for (i = 0; i < num_bitfield_elems_used_by_alloc; i++) {
 			bitfield = &epma_dev->allocated_pages_bitfield_arr[bitfield_idx + i];
@@ -400,7 +411,7 @@ static void simple_pma_free_page(
 			/* We expect all bits to be set (all pages allocated) */
 			WARN((*bitfield != ~0),
 			     "%s: alloc being freed is not fully allocated: of=%zu np=%zu bf=%.16llx\n",
-			     __FUNCTION__, offset, num_pages_in_allocation, *bitfield);
+			     __func__, offset, num_pages_in_allocation, *bitfield);
 
 			/*
 			 * Now clear all the bits in the bitfield element to mark all the pages
