@@ -147,6 +147,26 @@
 	};
 };
 
+&i2c4 {
+        status = "disabled";
+};
+
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_xfer>, <&uart1_cts>, <&uart1_rts>;
+	status = "disabled";
+};
+
+&uart3 {
+        status = "disabled";
+};
+
+&uart4 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart4_xfer>, <&uart4_cts>, <&uart4_rts>;
+        status = "disabled";
+};
+
 &mipi_phy_rx0 {
 	status = "okay";
 
