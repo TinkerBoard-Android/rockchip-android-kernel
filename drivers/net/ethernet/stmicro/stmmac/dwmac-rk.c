@@ -1840,6 +1840,8 @@ static int rk_gmac_phy_power_on(struct rk_priv_data *bsp_priv, bool enable)
 	return 0;
 }
 
+extern int get_board_model(void);
+extern int get_board_id(void);
 static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 					  struct plat_stmmacenet_data *plat,
 					  const struct rk_gmac_ops *ops)
@@ -1849,6 +1851,15 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 	int ret;
 	const char *strings = NULL;
 	int value;
+
+	bool is_rk3288 = get_board_model() == 3288 ? true: false;
+	int tx_delay_r201a = 0x21, rx_delay_r201a = 0x15;
+	int tx_delay_r201b = 0x15, rx_delay_r201b = 0x1c;
+	bool is_r20 = get_board_id() == 3 ? true: false;
+	bool is_r201a = get_board_id() == 4 ? true: false;
+	bool is_r201b = get_board_id() == 5 ? true: false;
+	printk("%s: #### board_model = %d, board_id = %d\n", __func__,
+			get_board_model(), get_board_id());
 
 	bsp_priv = devm_kzalloc(dev, sizeof(*bsp_priv), GFP_KERNEL);
 	if (!bsp_priv)
@@ -1901,6 +1912,17 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 	} else {
 		dev_info(dev, "RX delay(0x%x).\n", value);
 		bsp_priv->rx_delay = value;
+	}
+
+	if (is_rk3288) {
+		if (is_r201a || is_r20) {
+			bsp_priv->tx_delay = tx_delay_r201a;
+			bsp_priv->rx_delay = rx_delay_r201a;
+		} else if (is_r201b) {
+			bsp_priv->tx_delay = tx_delay_r201b;
+			bsp_priv->rx_delay = rx_delay_r201b;
+		}
+		dev_info(dev, "Tune TX delay(0x%x) RX delay(0x%x).\n", bsp_priv->tx_delay, bsp_priv->rx_delay);
 	}
 
 	bsp_priv->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
