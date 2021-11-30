@@ -416,7 +416,7 @@
         };
 
         spidev@1 {
-                compatible = "rockchip,spidev"";
+                compatible = "rockchip,spidev";
                 reg = <1>;
                 spi-max-frequency = <50000000>;
                 spi-cpha = <1>;
