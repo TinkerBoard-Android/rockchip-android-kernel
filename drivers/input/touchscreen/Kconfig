@@ -1411,8 +1411,9 @@ config TOUCHSCREEN_FT5436
 
 config TOUCHSCREEN_TINKER_FT5406
         tristate "tinker ft5406"
-        default y
+        default n
         depends on I2C
+        depends on TINKER_MCU
         help
           Control ft5406 touch ic.
 
