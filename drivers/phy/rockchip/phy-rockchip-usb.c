@@ -712,6 +712,11 @@ static int rk3288_usb_phy_probe_init(struct rockchip_usb_phy *rk_phy)
 	unsigned int val;
 
 	if (rk_phy->reg_offset == 0x320) {
+		/* set otg reg to default value */
+		regmap_write(rk_phy->base->reg_base, RK3288_UOC0_CON0, 0xffff0089);
+		regmap_write(rk_phy->base->reg_base, RK3288_UOC0_CON2, 0xffff0d08);
+		regmap_write(rk_phy->base->reg_base, RK3288_UOC0_CON3, 0xffff0001);
+
 		/* Enable Bvalid interrupt and charge detection */
 		ops.init = rk3288_usb_phy_init;
 		ops.exit = rk3288_usb_phy_exit;
