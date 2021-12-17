@@ -104,8 +104,7 @@ static void rockchip_pwm_get_state(struct pwm_chip *chip,
 				 true : false;
 
 	if (pc->data->supports_polarity) {
-		if (!(val & PWM_DUTY_POSITIVE))
-			state->polarity = PWM_POLARITY_INVERSED;
+		state->polarity = PWM_POLARITY_NORMAL;
 	}
 
 	clk_disable(pc->pclk);
