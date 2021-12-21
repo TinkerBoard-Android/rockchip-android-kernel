@@ -3027,6 +3027,24 @@ static void dw_hdmi_connector_force(struct drm_connector *connector)
 	mutex_unlock(&hdmi->mutex);
 }
 
+static bool dw_hdmi_connector_check_edid(struct drm_connector *connector)
+{
+	struct dw_hdmi *hdmi = container_of(connector, struct dw_hdmi,
+					     connector);
+	struct edid *edid;
+
+	if (!hdmi->ddc)
+	    return false;
+
+	edid = drm_get_edid(connector, hdmi->ddc);
+	if (edid) {
+	    kfree(edid);
+	    return true;
+	} else {
+	    return false;
+	}
+}
+
 static const struct drm_connector_funcs dw_hdmi_connector_funcs = {
 	.fill_modes = drm_helper_probe_single_connector_modes,
 	.detect = dw_hdmi_connector_detect,
@@ -3044,6 +3062,7 @@ static const struct drm_connector_helper_funcs dw_hdmi_connector_helper_funcs = 
 	.get_modes = dw_hdmi_connector_get_modes,
 	.best_encoder = drm_atomic_helper_best_encoder,
 	.atomic_check = dw_hdmi_connector_atomic_check,
+	.check_edid = dw_hdmi_connector_check_edid,
 };
 
 static void dw_hdmi_attach_properties(struct dw_hdmi *hdmi)

@@ -2567,6 +2567,9 @@ vop_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 	const struct vop_data *vop_data = vop->data;
 	int request_clock = mode->clock;
 	int clock;
+	bool eve_vgg804838_panel = false;
+
+	eve_vgg804838_panel = detect_eve_vgg804838_panel();
 
 	//MAJOR = 3, MINOR = 0 for rk3288-C
 	//MAJOR = 3, MINOR = 1 for rk3288-CGW
@@ -2587,10 +2590,19 @@ vop_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 	 * Hdmi or DisplayPort request a Accurate clock.
 	 */
 	if (output_type == DRM_MODE_CONNECTOR_HDMIA ||
-	    output_type == DRM_MODE_CONNECTOR_DisplayPort)
-		if (clock != request_clock)
+	    output_type == DRM_MODE_CONNECTOR_DisplayPort) {
+		if (clock != request_clock) {
+			//MAJOR = 3, MINOR = 0 for rk3288-C
+			//MAJOR = 3, MINOR = 1 for rk3288-CGW
+			if (((VOP_MAJOR(vop->version) == 3) && (VOP_MINOR(vop->version) == 0 || VOP_MINOR(vop->version) == 1))) {
+				if(request_clock == 33260 && eve_vgg804838_panel) {
+					pr_err("%s: don't block pixel clock %d KHz", __func__, request_clock);
+					return MODE_OK;
+				}
+			}
 			return MODE_CLOCK_RANGE;
-
+		}
+	}
 	return MODE_OK;
 }
 

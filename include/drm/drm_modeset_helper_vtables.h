@@ -1000,6 +1000,8 @@ struct drm_connector_helper_funcs {
 	 */
 	void (*atomic_commit)(struct drm_connector *connector,
 			      struct drm_connector_state *state);
+
+	bool (*check_edid)(struct drm_connector *connector);
 };
 
 /**

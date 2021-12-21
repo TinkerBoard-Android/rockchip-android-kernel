@@ -61,6 +61,7 @@
  * The probe helpers share the function table structures with other display
  * helper libraries. See &struct drm_connector_helper_funcs for the details.
  */
+static bool drm_eve_vgg804838_panel = false;
 
 static bool drm_kms_helper_poll = true;
 module_param_named(poll, drm_kms_helper_poll, bool, 0600);
@@ -388,6 +389,7 @@ int drm_helper_probe_single_connector_modes(struct drm_connector *connector,
 					    uint32_t maxX, uint32_t maxY)
 {
 	struct drm_device *dev = connector->dev;
+	struct edid *edid_manufacturer;
 	struct drm_display_mode *mode;
 	const struct drm_connector_helper_funcs *connector_funcs =
 		connector->helper_private;
@@ -501,6 +503,13 @@ retry:
 	if (connector->stereo_allowed)
 		mode_flags |= DRM_MODE_FLAG_3D_MASK;
 
+	if (!strcmp(connector->name, "HDMI-A-1")) {
+		if( (*connector_funcs->check_edid)(connector) ) {
+			edid_manufacturer = (struct edid *) connector->edid_blob_ptr->data;
+			drm_eve_vgg804838_panel = drm_dect_eve_vgg804838_edid(edid_manufacturer);
+		}
+	}
+
 	list_for_each_entry(mode, &connector->modes, head) {
 		if (mode->status == MODE_OK)
 			mode->status = drm_mode_validate_driver(dev, mode);
@@ -544,6 +553,12 @@ prune:
 	return count;
 }
 EXPORT_SYMBOL(drm_helper_probe_single_connector_modes);
+
+bool detect_eve_vgg804838_panel (void)
+{
+	return drm_eve_vgg804838_panel;
+}
+EXPORT_SYMBOL(detect_eve_vgg804838_panel);
 
 /**
  * drm_kms_helper_hotplug_event - fire off KMS hotplug events
