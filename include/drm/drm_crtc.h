@@ -78,6 +78,8 @@ struct drm_plane_helper_funcs;
 
 extern bool drm_dect_eve_vgg804838_edid(struct edid *edid);
 extern bool detect_eve_vgg804838_panel(void);
+extern bool drm_dect_dwe2100_edid(struct edid *edid);
+extern bool detect_dwe2100_panel(void);
 /**
  * struct drm_crtc_state - mutable CRTC state
  *

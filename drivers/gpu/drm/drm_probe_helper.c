@@ -62,6 +62,7 @@
  * helper libraries. See &struct drm_connector_helper_funcs for the details.
  */
 static bool drm_eve_vgg804838_panel = false;
+static bool drm_dwe2100_panel = false;
 
 static bool drm_kms_helper_poll = true;
 module_param_named(poll, drm_kms_helper_poll, bool, 0600);
@@ -507,6 +508,7 @@ retry:
 		if( (*connector_funcs->check_edid)(connector) ) {
 			edid_manufacturer = (struct edid *) connector->edid_blob_ptr->data;
 			drm_eve_vgg804838_panel = drm_dect_eve_vgg804838_edid(edid_manufacturer);
+			drm_dwe2100_panel = drm_dect_dwe2100_edid(edid_manufacturer);
 		}
 	}
 
@@ -559,6 +561,12 @@ bool detect_eve_vgg804838_panel (void)
 	return drm_eve_vgg804838_panel;
 }
 EXPORT_SYMBOL(detect_eve_vgg804838_panel);
+
+bool detect_dwe2100_panel (void)
+{
+	return drm_dwe2100_panel;
+}
+EXPORT_SYMBOL(detect_dwe2100_panel);
 
 /**
  * drm_kms_helper_hotplug_event - fire off KMS hotplug events
