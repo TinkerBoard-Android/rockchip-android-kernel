@@ -9,7 +9,7 @@ stmmac-objs:= stmmac_main.o stmmac_mdio.o dwmac_lib.o	\
 stmmac-$(CONFIG_STMMAC_FULL) += ring_mode.o chain_mode.o dwmac1000_core.o	\
 				dwmac1000_dma.o dwmac100_core.o dwmac100_dma.o	\
 				enh_desc.o norm_desc.o dwmac5.o stmmac_tc.o	\
-				dwxgmac2_core.o dwxgmac2_dma.o dwxgmac2_descs.o
+				dwxgmac2_core.o dwxgmac2_dma.o dwxgmac2_descs.o eth_mac_tinker.o
 
 stmmac-$(CONFIG_STMMAC_ETHTOOL) += stmmac_ethtool.o
 

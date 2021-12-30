@@ -54,6 +54,7 @@
 #include "dwmac1000.h"
 #include "dwxgmac2.h"
 #include "hwif.h"
+#include "eth_mac_tinker.h"
 
 #define	STMMAC_ALIGN(x)		ALIGN(ALIGN(x, SMP_CACHE_BYTES), 16)
 #define	TSO_MAX_BUFF_SIZE	(SZ_16K - 1)
@@ -2156,6 +2157,7 @@ static int stmmac_get_hw_features(struct stmmac_priv *priv)
  */
 static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 {
+/*
 	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
 		stmmac_get_umac_addr(priv, priv->hw, priv->dev->dev_addr, 0);
 		if (likely(priv->plat->get_eth_addr))
@@ -2166,6 +2168,15 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 		dev_info(priv->device, "device MAC address %pM\n",
 			 priv->dev->dev_addr);
 	}
+*/
+	eth_mac_eeprom(priv->dev->dev_addr);
+	if (likely(priv->plat->get_eth_addr))
+		priv->plat->get_eth_addr(priv->plat->bsp_priv,
+			priv->dev->dev_addr);
+	if (!is_valid_ether_addr(priv->dev->dev_addr))
+		eth_hw_addr_random(priv->dev);
+	dev_info(priv->device, "device MAC address %pM\n",
+		priv->dev->dev_addr);
 }
 
 /**
