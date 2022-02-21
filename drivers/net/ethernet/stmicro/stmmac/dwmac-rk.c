@@ -33,6 +33,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/soc/rockchip/rk_vendor_storage.h>
 #include "stmmac_platform.h"
+#define GPIO2_D0_DELAY 88
 
 struct rk_priv_data;
 struct rk_gmac_ops {
@@ -1463,6 +1464,18 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 		dev_info(dev, "RX delay(0x%x).\n", value);
 		bsp_priv->rx_delay = value;
 	}
+
+	if (gpio_get_value(GPIO2_D0_DELAY)){
+		dev_info(dev, "Ethernet : PHY = RTL8211F\n");
+		bsp_priv->tx_delay = 0x23;
+		bsp_priv->rx_delay = 0x22;
+	} else {
+		dev_info(dev, "Ethernet : PHY = RTL8211F-VD\n");
+		bsp_priv->tx_delay = 0x1a;
+		bsp_priv->rx_delay = 0x1d;
+	}
+
+	dev_info(dev, "Tune TX delay(0x%x) RX delay(0x%x).\n", bsp_priv->tx_delay, bsp_priv->rx_delay);
 
 	bsp_priv->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
 							"rockchip,grf");
