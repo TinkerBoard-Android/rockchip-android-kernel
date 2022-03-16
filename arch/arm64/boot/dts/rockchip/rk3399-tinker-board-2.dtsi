@@ -8,6 +8,7 @@
 #include <dt-bindings/sensor-dev.h>
 #include <dt-bindings/display/drm_mipi_dsi.h>
 #include <dt-bindings/display/media-bus-format.h>
+#include <dt-bindings/usb/pd.h>
 #include "rk3399.dtsi"
 #include "rk3399-opp.dtsi"
 #include "rk3399-vop-clk-set.dtsi"
@@ -871,6 +872,28 @@
 		status = "okay";
 	};
 
+	rtusb0: rt1711h@4e {
+		status = "okay";
+		compatible = "richtek,rt1711h";
+		reg = <0x4e>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fusb0_int>;
+		interrupt-parent = <&gpio1>;
+		interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
+		vbus-5v-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
+		usb_con: connector {
+			compatible = "usb-c-connector";
+			label = "USB-C";
+			data-role = "dual";
+			power-role = "dual";
+			try-power-role = "source";
+			source-pdos = <PDO_FIXED(5000, 500, PDO_FIXED_USB_COMM)>;
+			sink-pdos = <PDO_FIXED(5000, 500, PDO_FIXED_USB_COMM)>;
+			op-sink-microwatt = <1000000>;
+			typec-altmodes = <0xff01 1 0x001c0c00 1>;
+		};
+	};
+
 	mpu6500@68 {
 		status = "disabled";
 		compatible = "invensense,mpu6500";
@@ -1071,7 +1094,7 @@
 };
 
 &tcphy0 {
-	extcon = <&fusb0>;
+	extcon = <&fusb0>, <&rtusb0>;
 	status = "okay";
 };
 
@@ -1089,7 +1112,7 @@
 
 &u2phy0 {
 	status = "okay";
-	extcon = <&fusb0>;
+	extcon = <&fusb0>, <&rtusb0>;
 
 	u2phy0_otg: otg-port {
 		status = "okay";
@@ -1145,7 +1168,7 @@
 &usbdrd_dwc3_0 {
 	status = "okay";
 	dr_mode = "otg";
-	extcon = <&fusb0>;
+	extcon = <&fusb0>, <&rtusb0>;
 };
 
 &usbdrd3_1 {
@@ -2030,7 +2053,7 @@
 
 &cdn_dp {
 	status = "okay";
-	extcon = <&fusb0>;
+	extcon = <&fusb0>, <0>, <&rtusb0>;
 	phys = <&tcphy0_dp>;
 };
 
