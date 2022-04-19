@@ -2709,9 +2709,9 @@ static void stmmac_hw_teardown(struct net_device *dev)
 extern void rk_send_wakeup_key(void);
 static irqreturn_t wol_io_isr(int irq, void *dev_id)
 {
-		printk("===========%s\n", __func__);
-			rk_send_wakeup_key();
-				return IRQ_HANDLED;
+	printk("===========%s\n", __func__);
+	rk_send_wakeup_key();
+	return IRQ_HANDLED;
 }
 
 int set_wakeup_enable(int wakeup_enable, struct net_device *dev)
@@ -4685,6 +4685,62 @@ int stmmac_dvr_remove(struct device *dev)
 }
 EXPORT_SYMBOL_GPL(stmmac_dvr_remove);
 
+void set_rtl8211e_wol_enable(struct phy_device *phydev)
+{
+	int value;
+	struct net_device * ndev = phydev->attached_dev;
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6e);
+
+	phy_write(phydev, 21, ((u16)ndev->dev_addr[1] << 8) + ndev->dev_addr[0]);
+	phy_write(phydev, 22, ((u16)ndev->dev_addr[3] << 8) + ndev->dev_addr[2]);
+	phy_write(phydev, 23, ((u16)ndev->dev_addr[5] << 8) + ndev->dev_addr[4]);
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	phy_write(phydev, 22, 0x1fff);
+	value = phy_read(phydev, 22);
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	phy_write(phydev, 21, 0x1000);
+	value = phy_read(phydev, 21);
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	value =  phy_read(phydev, 25);
+	phy_write(phydev, 25, value | 0x1);
+
+	phy_write(phydev, 31, 0x0);
+	value = phy_read(phydev, 31);
+}
+
+void set_rtl8211e_wol_disable(struct phy_device *phydev)
+{
+	int value;
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	phy_write(phydev, 21, 0x0);
+	value = phy_read(phydev, 21);
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	value =  phy_read(phydev, 22);
+	phy_write(phydev, 22, value | BIT(15));
+	value = phy_read(phydev, 22);
+
+	phy_write(phydev, 31, 0x07);
+	phy_write(phydev, 30, 0x6d);
+	value =  phy_read(phydev, 25);
+	phy_write(phydev, 25, value & (~(0x1)));
+
+	phy_write(phydev, 31, 0x0);
+	value = phy_read(phydev, 31);
+
+}
+
 void set_rtl8211f_wol_enable(struct phy_device *phydev)
 {
 	int value;
@@ -4752,9 +4808,14 @@ int stmmac_suspend(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
+	struct phy_device *phydev = ndev->phydev;
 	u32 chan;
+	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 
 	if (!ndev || !netif_running(ndev))
+		return 0;
+
+	if (!phydev)
 		return 0;
 
 	if (ndev->phydev)
@@ -4781,7 +4842,23 @@ int stmmac_suspend(struct device *dev)
 	if (device_may_wakeup(priv->device)) {
 		stmmac_pmt(priv, priv->hw, priv->wolopts);
 		//priv->irq_wake = 1;
-		set_rtl8211f_wol_enable(ndev->phydev);
+		if (is_rk3288) {
+			if (get_board_id() < 5) {
+				// RTL8211E
+				set_rtl8211e_wol_enable(phydev);
+			} else {
+				// RTL8211F
+				set_rtl8211f_wol_enable(phydev);
+			}
+		} else {
+			if (get_board_id() >= 3) {
+				// RTL8211E
+				set_rtl8211e_wol_enable(phydev);
+			} else {
+				// RTL8211F
+				set_rtl8211f_wol_enable(phydev);
+			}
+		}
 	} else {
 		stmmac_mac_set(priv, priv->ioaddr, false);
 		pinctrl_pm_select_sleep_state(priv->device);
@@ -4838,6 +4915,11 @@ int stmmac_resume(struct device *dev)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
+	struct phy_device *phydev = ndev->phydev;
+	bool is_rk3288 = get_board_model() == 3288 ? true: false;
+
+	if (!phydev)
+		return 0;
 
 	if (!netif_running(ndev))
 		return 0;
@@ -4851,7 +4933,23 @@ int stmmac_resume(struct device *dev)
 	if (device_may_wakeup(priv->device)) {
 		mutex_lock(&priv->lock);
 		stmmac_pmt(priv, priv->hw, 0);
-		set_rtl8211f_wol_disable(ndev->phydev);
+		if (is_rk3288) {
+			if (get_board_id() < 5) {
+				// RTL8211E
+				set_rtl8211e_wol_disable(phydev);
+			} else {
+				// RTL8211F
+				set_rtl8211f_wol_disable(phydev);
+			}
+		} else {
+			if (get_board_id() >= 3) {
+				// RTL8211E
+				set_rtl8211e_wol_disable(phydev);
+			} else {
+				// RTL8211F
+				set_rtl8211f_wol_disable(phydev);
+			}
+		}
 		mutex_unlock(&priv->lock);
 		//priv->irq_wake = 0;
 	} else {

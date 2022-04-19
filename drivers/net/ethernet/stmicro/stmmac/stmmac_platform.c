@@ -32,6 +32,9 @@
 
 #ifdef CONFIG_OF
 
+extern int get_board_model(void);
+extern int get_board_id(void);
+
 /**
  * dwmac1000_validate_mcast_bins - validates the number of Multicast filter bins
  * @mcast_bins: Multicast filtering bins
@@ -392,6 +395,9 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	enum of_gpio_flags flags;
 	const char *wakeup_enable;
 	int rc;
+	int wolirq_gpio_rtl8211e = 106;
+	int wolirq_gpio_rtl8211f = 112;
+	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 
 	plat = devm_kzalloc(&pdev->dev, sizeof(*plat), GFP_KERNEL);
 	if (!plat)
@@ -400,6 +406,8 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	*mac = of_get_mac_address(np);
 	plat->interface = of_get_phy_mode(np);
 	plat->wolirq_io = of_get_named_gpio_flags(np, "wolirq-gpio", 0, &flags);
+	if (!is_rk3288)
+		plat->wolirq_io = get_board_id() >= 3 ? wolirq_gpio_rtl8211e: wolirq_gpio_rtl8211f;
 
 	/* Get wakeup_enable */
 	if (of_property_read_string(np, "wakeup-enable", &wakeup_enable)) {
