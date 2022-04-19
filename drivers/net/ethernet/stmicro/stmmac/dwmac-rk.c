@@ -1840,9 +1840,14 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 	int tx_delay_r201a = 0x21, rx_delay_r201a = 0x15;
 	int tx_delay_r201b = 0x15, rx_delay_r201b = 0x1c;
+	int tx_delay_rtl8211e_rk3399 = 0x27, rx_delay_rtl8211e_rk3399 = 0x1f;
+	int tx_delay_rtl8211f_rk3399 = 0x25, rx_delay_rtl8211f_rk3399 = 0x20;
 	bool is_r20 = get_board_id() == 3 ? true: false;
 	bool is_r201a = get_board_id() == 4 ? true: false;
 	bool is_r201b = get_board_id() == 5 ? true: false;
+	bool is_rtl8211e_rk3399 = get_board_id() >= 3 ? true: false;
+	bool is_rtl8211f_rk3399 = get_board_id() < 3 ? true: false;
+
 	printk("%s: #### board_model = %d, board_id = %d\n", __func__,
 			get_board_model(), get_board_id());
 
@@ -1907,8 +1912,17 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 			bsp_priv->tx_delay = tx_delay_r201b;
 			bsp_priv->rx_delay = rx_delay_r201b;
 		}
-		dev_info(dev, "Tune TX delay(0x%x) RX delay(0x%x).\n", bsp_priv->tx_delay, bsp_priv->rx_delay);
+	} else {
+		if (is_rtl8211e_rk3399) {
+			bsp_priv->tx_delay = tx_delay_rtl8211e_rk3399;
+			bsp_priv->rx_delay = rx_delay_rtl8211e_rk3399;
+		} else if (is_rtl8211f_rk3399) {
+			bsp_priv->tx_delay = tx_delay_rtl8211f_rk3399;
+			bsp_priv->rx_delay = rx_delay_rtl8211f_rk3399;
+		}
 	}
+
+	dev_info(dev, "Tune TX delay(0x%x) RX delay(0x%x).\n", bsp_priv->tx_delay, bsp_priv->rx_delay);
 
 	bsp_priv->grf = syscon_regmap_lookup_by_phandle(dev->of_node,
 							"rockchip,grf");

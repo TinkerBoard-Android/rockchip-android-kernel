@@ -811,7 +811,7 @@ static void stmmac_release_ptp(struct stmmac_priv *priv)
 	stmmac_ptp_unregister(priv);
 }
 
-void set_led_configuration_e_rk3288(struct phy_device *phydev) {
+void set_led_configuration_e(struct phy_device *phydev) {
 
 	// disable EEE LED mode
 	phy_write(phydev, 31, 0x0005);
@@ -849,23 +849,7 @@ void set_led_configuration_e_rk3288(struct phy_device *phydev) {
 	phy_write(phydev, 31, 0);
 }
 
-void set_led_configuration_f_rk3288(struct phy_device *phydev) {
-	// To switch Page0xd04
-	phy_write(phydev, 31, 0x0d04);
-
-	//Disable EEELCR mode
-	phy_write(phydev, 17, 0);
-	printk("%s: #### before setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
-
-	//LED Link speed default setting
-	phy_write(phydev, 16, 0x8910);
-	printk("%s: #### after setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
-
-	//switch to PHY`s Page0
-	phy_write(phydev, 31, 0);
-}
-
-void set_led_configuration_rk3399(struct phy_device *phydev) {
+void set_led_configuration_f(struct phy_device *phydev) {
 	// To switch Page0xd04
 	phy_write(phydev, 31, 0x0d04);
 
@@ -915,21 +899,24 @@ extern int get_board_model(void);
 extern int get_board_id(void);
 void setConfiguration(struct phy_device *phydev) {
 	bool is_rk3288 = get_board_model() == 3288 ? true: false;
-	printk("%s: #### board_model = %d, board_id = %d\n", __func__,
-			get_board_model(), get_board_id());
-	if (is_rk3288) {
-		bool is_rtl8211f = get_board_id() >= 5 ? true: false;
-		printk("%s: #### hwid = %d, PYH is %s \n", __func__, get_board_id(), is_rtl8211f ? "RTL8211F" : "RTL8211E");
-		if (is_rtl8211f) {
-			// RTL8211F
-			set_led_configuration_f_rk3288(phydev);
-		} else {
-			// RTL8211E
-			set_led_configuration_e_rk3288(phydev);
-			adjust_rgmii_driving(phydev);
-		}
+	bool is_rtl8211f;
+
+	printk("%s: #### board_model = %d, board_id = %d\n", __func__, get_board_model(), get_board_id());
+
+	if (is_rk3288)
+		is_rtl8211f = get_board_id() >= 5 ? true: false;
+	else
+		is_rtl8211f = get_board_id() < 3 ? true: false;
+
+	printk("%s: #### hwid = %d, PYH is %s \n", __func__, get_board_id(), is_rtl8211f ? "RTL8211F" : "RTL8211E");
+
+	if (is_rtl8211f) {
+		// RTL8211F
+		set_led_configuration_f(phydev);
 	} else {
-		set_led_configuration_rk3399(phydev);
+		// RTL8211E
+		set_led_configuration_e(phydev);
+		adjust_rgmii_driving(phydev);
 	}
 }
 
