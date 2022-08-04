@@ -99,8 +99,14 @@
 };
 
 &backlight {
-	pwms = <&pwm0 0 1000000 0>;
-	enable-gpios = <&gpio7 RK_PA2 GPIO_ACTIVE_HIGH>;
+	pwms = <&pwm3 0 1000000 0>;
+	default-brightness-level = <200>;
+	minimal-brightness-level = <26>;
+	soc_enablekl-gpios = <&gpio8 RK_PB1 GPIO_ACTIVE_HIGH>;
+	enable_delay = <15>;
+	disable_delay = <5>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_lvds_bl_en>;
 };
 
 &cpu0 {
@@ -483,6 +489,32 @@
 			rockchip,pins = <8 RK_PA1 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+
+	mipi_to_lvds {
+		/*pinctrl_lvds_hdmi_sel: lvds_hdmi_sel {
+			rockchip,pins = <0 5 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};*/
+
+		pinctrl_lvds_bl_en: lvds_bl_en {
+			rockchip,pins = <8 RK_PB1 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_sn65dsi84_en: sn65dsi84_en {
+			rockchip,pins = <8 RK_PB0 RK_FUNC_GPIO   &pcfg_pull_none>;
+		};
+
+		pinctrl_lvds_vdd_en: lvds_vdd_en {
+			rockchip,pins = <8 RK_PA6 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_sn65dsi84_irq: sn65dsi84_irq{
+			rockchip,pins = <8 RK_PA7 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_pwr_source: pwr_source {
+			rockchip,pins = <8 RK_PA3 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+	 };
 };
 
 &i2c5 {
@@ -491,6 +523,36 @@
 
 &i2c3 {
 	status = "okay";
+
+	dsi_lvds_bridge2: lt9211@2d {
+		compatible = "lt9211";
+		status = "disabled";
+		reg = <0x2d>;
+
+		lvds-clk-rate = <72000000>;
+		lvds-format = <2>;//VESA
+		lvds-bpp = <24>;///RGB888
+		dsi-lanes = <2>;//u-boot
+		sync_delay = <33>;
+		//dual-link;
+		//test-pattern;
+
+		t1=<0>;
+		t2=<1>;
+		t3=<500>;
+		t4=<200>;
+		t5=<1>;
+		t6=<0>;
+		t7=<1000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en &pinctrl_lvds_vdd_en  &pinctrl_pwr_source>;//<&pinctrl_sn65dsi84_irq>
+
+		EN-gpios = <&gpio8 RK_PB0 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio8 RK_PA6 GPIO_ACTIVE_HIGH>;
+		//lt9211_irq-gpios = <&gpio8 RK_PA7 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio8 RK_PA3 GPIO_ACTIVE_HIGH>;
+	};
 
 	tinker_mcu: tinker_mcu@45 {
 		compatible = "tinker_mcu";
