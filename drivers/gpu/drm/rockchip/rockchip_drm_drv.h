@@ -25,6 +25,7 @@
 
 #include <linux/module.h>
 #include <linux/component.h>
+#include <linux/dmabuf_page_pool.h>
 
 #define ROCKCHIP_MAX_FB_BUFFER	3
 #define ROCKCHIP_MAX_CONNECTOR	2
@@ -100,6 +101,9 @@ struct rockchip_hdr_state {
 	bool hdr2sdr_en;
 	struct rockchip_sdr2hdr_state sdr2hdr_state;
 };
+
+#define VOP_COLOR_KEY_NONE	(0 << 31)
+#define VOP_COLOR_KEY_MASK	(1 << 31)
 
 #define VOP_OUTPUT_IF_RGB	BIT(0)
 #define VOP_OUTPUT_IF_BT1120	BIT(1)
@@ -183,6 +187,7 @@ struct loader_cubic_lut {
  */
 struct rockchip_drm_private {
 	struct rockchip_logo *logo;
+	struct dmabuf_page_pool *page_pools;
 	struct drm_property *eotf_prop;
 	struct drm_property *color_space_prop;
 	struct drm_property *global_alpha_prop;

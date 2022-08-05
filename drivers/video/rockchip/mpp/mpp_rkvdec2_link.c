@@ -17,6 +17,10 @@
 
 #include "hack/mpp_rkvdec2_link_hack_rk3568.c"
 
+#ifdef CONFIG_PM_DEVFREQ
+#include "../../../devfreq/governor.h"
+#endif
+
 #define WAIT_TIMEOUT_MS		(500)
 
 #define RKVDEC_MAX_WRITE_PART	6
@@ -497,6 +501,8 @@ static int rkvdec2_link_finish(struct mpp_dev *mpp, struct mpp_task *mpp_task)
 		n = part[i].reg_num;
 		memcpy(&task->reg[s], &tb_reg[off], n * sizeof(u32));
 	}
+	/* revert hack for irq status */
+	task->reg[RKVDEC_REG_INT_EN_INDEX] = task->irq_status;
 
 	mpp_debug_leave();
 
@@ -574,7 +580,7 @@ static int rkvdec_link_isr_recv_task(struct mpp_dev *mpp,
 		mpp_dbg_link_flow("slot %d rd task %d\n", idx,
 				  mpp_task->task_index);
 
-		task->irq_status = irq_status;
+		task->irq_status = irq_status ? irq_status : mpp->irq_status;
 
 		cancel_delayed_work_sync(&mpp_task->timeout_work);
 		set_bit(TASK_STATE_HANDLE, &mpp_task->state);
@@ -1032,9 +1038,26 @@ static void rkvdec2_link_power_on(struct mpp_dev *mpp)
 		}
 
 		mpp_clk_set_rate(&dec->aclk_info, CLK_MODE_ADVANCED);
-		mpp_clk_set_rate(&dec->core_clk_info, CLK_MODE_ADVANCED);
 		mpp_clk_set_rate(&dec->cabac_clk_info, CLK_MODE_ADVANCED);
 		mpp_clk_set_rate(&dec->hevc_cabac_clk_info, CLK_MODE_ADVANCED);
+
+#ifdef CONFIG_PM_DEVFREQ
+		if (dec->devfreq) {
+			unsigned long core_rate_hz;
+
+			mutex_lock(&dec->devfreq->lock);
+			core_rate_hz = mpp_get_clk_info_rate_hz(&dec->core_clk_info,
+								CLK_MODE_ADVANCED);
+			if (dec->core_rate_hz != core_rate_hz) {
+				dec->core_rate_hz = core_rate_hz;
+				update_devfreq(dec->devfreq);
+			}
+			mutex_unlock(&dec->devfreq->lock);
+
+			return;
+		}
+#endif
+		mpp_clk_set_rate(&dec->core_clk_info, CLK_MODE_ADVANCED);
 	}
 }
 
@@ -1055,6 +1078,28 @@ static void rkvdec2_link_power_off(struct mpp_dev *mpp)
 
 		link_dec->task_decoded = 0;
 		link_dec->task_total = 0;
+
+		mpp_clk_set_rate(&dec->aclk_info, CLK_MODE_NORMAL);
+		mpp_clk_set_rate(&dec->cabac_clk_info, CLK_MODE_NORMAL);
+		mpp_clk_set_rate(&dec->hevc_cabac_clk_info, CLK_MODE_NORMAL);
+
+#ifdef CONFIG_PM_DEVFREQ
+		if (dec->devfreq) {
+			unsigned long core_rate_hz;
+
+			mutex_lock(&dec->devfreq->lock);
+			core_rate_hz = mpp_get_clk_info_rate_hz(&dec->core_clk_info,
+								CLK_MODE_NORMAL);
+			if (dec->core_rate_hz != core_rate_hz) {
+				dec->core_rate_hz = core_rate_hz;
+				update_devfreq(dec->devfreq);
+			}
+			mutex_unlock(&dec->devfreq->lock);
+
+			return;
+		}
+#endif
+		mpp_clk_set_rate(&dec->core_clk_info, CLK_MODE_NORMAL);
 	}
 }
 

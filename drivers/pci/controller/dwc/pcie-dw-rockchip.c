@@ -54,20 +54,33 @@ struct reset_bulk_data	{
 };
 
 #define PCIE_DMA_OFFSET			0x380000
+
 #define PCIE_DMA_WR_ENB			0xc
-#define PCIE_DMA_CTRL_LO		0x200
-#define PCIE_DMA_CTRL_HI		0x204
-#define PCIE_DMA_XFERSIZE		0x208
-#define PCIE_DMA_SAR_PTR_LO		0x20c
-#define PCIE_DMA_SAR_PTR_HI		0x210
-#define PCIE_DMA_DAR_PTR_LO		0x214
-#define PCIE_DMA_DAR_PTR_HI		0x218
+#define PCIE_DMA_WR_CTRL_LO		0x200
+#define PCIE_DMA_WR_CTRL_HI		0x204
+#define PCIE_DMA_WR_XFERSIZE		0x208
+#define PCIE_DMA_WR_SAR_PTR_LO		0x20c
+#define PCIE_DMA_WR_SAR_PTR_HI		0x210
+#define PCIE_DMA_WR_DAR_PTR_LO		0x214
+#define PCIE_DMA_WR_DAR_PTR_HI		0x218
 #define PCIE_DMA_WR_WEILO		0x18
 #define PCIE_DMA_WR_WEIHI		0x1c
 #define PCIE_DMA_WR_DOORBELL		0x10
 #define PCIE_DMA_WR_INT_STATUS		0x4c
 #define PCIE_DMA_WR_INT_MASK		0x54
 #define PCIE_DMA_WR_INT_CLEAR		0x58
+
+#define PCIE_DMA_RD_ENB			0x2c
+#define PCIE_DMA_RD_CTRL_LO		0x300
+#define PCIE_DMA_RD_CTRL_HI		0x304
+#define PCIE_DMA_RD_XFERSIZE		0x308
+#define PCIE_DMA_RD_SAR_PTR_LO		0x30c
+#define PCIE_DMA_RD_SAR_PTR_HI		0x310
+#define PCIE_DMA_RD_DAR_PTR_LO		0x314
+#define PCIE_DMA_RD_DAR_PTR_HI		0x318
+#define PCIE_DMA_RD_WEILO		0x38
+#define PCIE_DMA_RD_WEIHI		0x3c
+#define PCIE_DMA_RD_DOORBELL		0x30
 #define PCIE_DMA_RD_INT_STATUS		0xa0
 #define PCIE_DMA_RD_INT_MASK		0xa8
 #define PCIE_DMA_RD_INT_CLEAR		0xac
@@ -144,6 +157,7 @@ struct rk_pcie {
 	struct regulator		*vpcie3v3;
 	struct irq_domain		*irq_domain;
 	raw_spinlock_t			intx_lock;
+	struct dentry			*debugfs;
 };
 
 struct rk_pcie_of_data {
@@ -948,64 +962,119 @@ static int rk_pcie_reset_grant_ctrl(struct rk_pcie *rk_pcie,
 	return ret;
 }
 
-static void rk_pcie_start_dma_dwc(struct dma_trx_obj *obj)
+static void rk_pcie_start_dma_rd(struct dma_trx_obj *obj, int ctr_off)
 {
 	struct rk_pcie *rk_pcie = dev_get_drvdata(obj->dev);
+	struct dma_table *cur = obj->cur;
+
+	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_RD_ENB,
+			   cur->enb.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_CTRL_LO,
+			   cur->ctx_reg.ctrllo.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_CTRL_HI,
+			   cur->ctx_reg.ctrlhi.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_XFERSIZE,
+			   cur->ctx_reg.xfersize);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_SAR_PTR_LO,
+			   cur->ctx_reg.sarptrlo);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_SAR_PTR_HI,
+			   cur->ctx_reg.sarptrhi);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_DAR_PTR_LO,
+			   cur->ctx_reg.darptrlo);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_RD_DAR_PTR_HI,
+			   cur->ctx_reg.darptrhi);
+	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_RD_DOORBELL,
+			   cur->start.asdword);
+}
+
+static void rk_pcie_start_dma_wr(struct dma_trx_obj *obj, int ctr_off)
+{
+	struct rk_pcie *rk_pcie = dev_get_drvdata(obj->dev);
+	struct dma_table *cur = obj->cur;
 
 	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_WR_ENB,
-					   obj->cur->wr_enb.asdword);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_CTRL_LO,
-					   obj->cur->ctx_reg.ctrllo.asdword);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_CTRL_HI,
-					   obj->cur->ctx_reg.ctrlhi.asdword);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_XFERSIZE,
-					   obj->cur->ctx_reg.xfersize);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_SAR_PTR_LO,
-					   obj->cur->ctx_reg.sarptrlo);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_SAR_PTR_HI,
-					   obj->cur->ctx_reg.sarptrhi);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_DAR_PTR_LO,
-					   obj->cur->ctx_reg.darptrlo);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_DAR_PTR_HI,
-					   obj->cur->ctx_reg.darptrhi);
-	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_WR_WEILO,
-					   obj->cur->wr_weilo.asdword);
+			   cur->enb.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_CTRL_LO,
+			   cur->ctx_reg.ctrllo.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_CTRL_HI,
+			   cur->ctx_reg.ctrlhi.asdword);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_XFERSIZE,
+			   cur->ctx_reg.xfersize);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_SAR_PTR_LO,
+			   cur->ctx_reg.sarptrlo);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_SAR_PTR_HI,
+			   cur->ctx_reg.sarptrhi);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_DAR_PTR_LO,
+			   cur->ctx_reg.darptrlo);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_DAR_PTR_HI,
+			   cur->ctx_reg.darptrhi);
+	dw_pcie_writel_dbi(rk_pcie->pci, ctr_off + PCIE_DMA_WR_WEILO,
+			   cur->weilo.asdword);
 	dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET + PCIE_DMA_WR_DOORBELL,
-					   obj->cur->start.asdword);
+			   cur->start.asdword);
+}
+
+static void rk_pcie_start_dma_dwc(struct dma_trx_obj *obj)
+{
+	int dir = obj->cur->dir;
+	int chn = obj->cur->chn;
+
+	int ctr_off = PCIE_DMA_OFFSET + chn * 0x200;
+
+	if (dir == DMA_FROM_BUS)
+		rk_pcie_start_dma_rd(obj, ctr_off);
+	else if (dir == DMA_TO_BUS)
+		rk_pcie_start_dma_wr(obj, ctr_off);
 }
 
 static void rk_pcie_config_dma_dwc(struct dma_table *table)
 {
-	table->wr_enb.enb = 0x1;
+	table->enb.enb = 0x1;
 	table->ctx_reg.ctrllo.lie = 0x1;
 	table->ctx_reg.ctrllo.rie = 0x0;
 	table->ctx_reg.ctrllo.td = 0x1;
 	table->ctx_reg.ctrlhi.asdword = 0x0;
 	table->ctx_reg.xfersize = table->buf_size;
-	table->ctx_reg.sarptrlo = (u32)(table->local & 0xffffffff);
-	table->ctx_reg.sarptrhi = (u32)(table->local >> 32);
-	table->ctx_reg.darptrlo = (u32)(table->bus & 0xffffffff);
-	table->ctx_reg.darptrhi = (u32)(table->bus >> 32);
-	table->wr_weilo.weight0 = 0x0;
+	if (table->dir == DMA_FROM_BUS) {
+		table->ctx_reg.sarptrlo = (u32)(table->bus & 0xffffffff);
+		table->ctx_reg.sarptrhi = (u32)(table->bus >> 32);
+		table->ctx_reg.darptrlo = (u32)(table->local & 0xffffffff);
+		table->ctx_reg.darptrhi = (u32)(table->local >> 32);
+	} else if (table->dir == DMA_TO_BUS) {
+		table->ctx_reg.sarptrlo = (u32)(table->local & 0xffffffff);
+		table->ctx_reg.sarptrhi = (u32)(table->local >> 32);
+		table->ctx_reg.darptrlo = (u32)(table->bus & 0xffffffff);
+		table->ctx_reg.darptrhi = (u32)(table->bus >> 32);
+	}
+	table->weilo.weight0 = 0x0;
 	table->start.stop = 0x0;
-	table->start.chnl = PCIE_DMA_CHN0;
+	table->start.chnl = table->chn;
 }
 
 static inline void
 rk_pcie_handle_dma_interrupt(struct rk_pcie *rk_pcie)
 {
 	struct dma_trx_obj *obj = rk_pcie->dma_obj;
+	struct dma_table *cur;
 
 	if (!obj)
 		return;
 
+	cur = obj->cur;
+	if (!cur) {
+		pr_err("no pcie dma table\n");
+		return;
+	}
+
 	obj->dma_free = true;
 	obj->irq_num++;
 
-	if (list_empty(&obj->tbl_list)) {
-		if (obj->dma_free &&
-		    obj->loop_count >= obj->loop_count_threshold)
-			complete(&obj->done);
+	if (cur->dir == DMA_TO_BUS) {
+		if (list_empty(&obj->tbl_list)) {
+			if (obj->dma_free &&
+			    obj->loop_count >= obj->loop_count_threshold)
+				complete(&obj->done);
+		}
 	}
 }
 
@@ -1023,18 +1092,35 @@ static irqreturn_t rk_pcie_sys_irq_handler(int irq, void *arg)
 	if (rk_pcie->dma_obj && rk_pcie->dma_obj->cur)
 		chn = rk_pcie->dma_obj->cur->chn;
 
-	if (status.donesta & BIT(0)) {
+	if (status.donesta & BIT(chn)) {
 		clears.doneclr = 0x1 << chn;
 		dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET +
 				   PCIE_DMA_WR_INT_CLEAR, clears.asdword);
 		rk_pcie_handle_dma_interrupt(rk_pcie);
 	}
 
-	if (status.abortsta & BIT(0)) {
+	if (status.abortsta & BIT(chn)) {
 		dev_err(rk_pcie->pci->dev, "%s, abort\n", __func__);
 		clears.abortclr = 0x1 << chn;
 		dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET +
 				   PCIE_DMA_WR_INT_CLEAR, clears.asdword);
+	}
+
+	status.asdword = dw_pcie_readl_dbi(rk_pcie->pci, PCIE_DMA_OFFSET +
+					   PCIE_DMA_RD_INT_STATUS);
+
+	if (status.donesta & BIT(chn)) {
+		clears.doneclr = 0x1 << chn;
+		dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET +
+				   PCIE_DMA_RD_INT_CLEAR, clears.asdword);
+		rk_pcie_handle_dma_interrupt(rk_pcie);
+	}
+
+	if (status.abortsta & BIT(chn)) {
+		dev_err(rk_pcie->pci->dev, "%s, abort\n", __func__);
+		clears.abortclr = 0x1 << chn;
+		dw_pcie_writel_dbi(rk_pcie->pci, PCIE_DMA_OFFSET +
+				   PCIE_DMA_RD_INT_CLEAR, clears.asdword);
 	}
 
 	reg = rk_pcie_readl_apb(rk_pcie, PCIE_CLIENT_INTR_STATUS_MISC);
@@ -1275,6 +1361,181 @@ static int rk_pcie_disable_power(struct rk_pcie *rk_pcie)
 	return ret;
 }
 
+static int rk_pci_find_capability(struct rk_pcie *rk_pcie, int cap)
+{
+	u32 header;
+	int ttl;
+	int start = 0;
+	int pos = PCI_CFG_SPACE_SIZE;
+
+	/* minimum 8 bytes per capability */
+	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
+
+	header = dw_pcie_readl_dbi(rk_pcie->pci, pos);
+
+	/*
+	 * If we have no capabilities, this is indicated by cap ID,
+	 * cap version and next pointer all being 0.
+	 */
+	if (header == 0)
+		return 0;
+
+	while (ttl-- > 0) {
+		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+		if (pos < PCI_CFG_SPACE_SIZE)
+			break;
+
+		header = dw_pcie_readl_dbi(rk_pcie->pci, pos);
+		if (!header)
+			break;
+	}
+
+	return 0;
+}
+
+#define RAS_DES_EVENT(ss, v) \
+do { \
+	dw_pcie_writel_dbi(pcie->pci, cap_base + 8, v); \
+	seq_printf(s, ss "0x%x\n", dw_pcie_readl_dbi(pcie->pci, cap_base + 0xc)); \
+} while (0)
+
+static int rockchip_pcie_rasdes_show(struct seq_file *s, void *unused)
+{
+	struct rk_pcie *pcie = s->private;
+	int cap_base;
+
+	cap_base = rk_pci_find_capability(pcie, PCI_EXT_CAP_ID_VNDR);
+	if (!cap_base) {
+		dev_err(pcie->pci->dev, "Not able to find RASDES CAP!\n");
+		return 0;
+	}
+
+	RAS_DES_EVENT("EBUF Overflow: ", 0);
+	RAS_DES_EVENT("EBUF Under-run: ", 0x0010000);
+	RAS_DES_EVENT("Decode Error: ", 0x0020000);
+	RAS_DES_EVENT("Running Disparity Error: ", 0x0030000);
+	RAS_DES_EVENT("SKP OS Parity Error: ", 0x0040000);
+	RAS_DES_EVENT("SYNC Header Error: ", 0x0050000);
+	RAS_DES_EVENT("CTL SKP OS Parity Error: ", 0x0060000);
+	RAS_DES_EVENT("Detect EI Infer: ", 0x1050000);
+	RAS_DES_EVENT("Receiver Error: ", 0x1060000);
+	RAS_DES_EVENT("Rx Recovery Request: ", 0x1070000);
+	RAS_DES_EVENT("N_FTS Timeout: ", 0x1080000);
+	RAS_DES_EVENT("Framing Error: ", 0x1090000);
+	RAS_DES_EVENT("Deskew Error: ", 0x10a0000);
+	RAS_DES_EVENT("BAD TLP: ", 0x2000000);
+	RAS_DES_EVENT("LCRC Error: ", 0x2010000);
+	RAS_DES_EVENT("BAD DLLP: ", 0x2020000);
+	RAS_DES_EVENT("Replay Number Rollover: ", 0x2030000);
+	RAS_DES_EVENT("Replay Timeout: ", 0x2040000);
+	RAS_DES_EVENT("Rx Nak DLLP: ", 0x2050000);
+	RAS_DES_EVENT("Tx Nak DLLP: ", 0x2060000);
+	RAS_DES_EVENT("Retry TLP: ", 0x2070000);
+	RAS_DES_EVENT("FC Timeout: ", 0x3000000);
+	RAS_DES_EVENT("Poisoned TLP: ", 0x3010000);
+	RAS_DES_EVENT("ECRC Error: ", 0x3020000);
+	RAS_DES_EVENT("Unsupported Request: ", 0x3030000);
+	RAS_DES_EVENT("Completer Abort: ", 0x3040000);
+	RAS_DES_EVENT("Completion Timeout: ", 0x3050000);
+
+	return 0;
+}
+
+static int rockchip_pcie_rasdes_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, rockchip_pcie_rasdes_show,
+			   inode->i_private);
+}
+
+static ssize_t rockchip_pcie_rasdes_write(struct file *file,
+				       const char __user *ubuf,
+				       size_t count, loff_t *ppos)
+{
+	struct seq_file *s = file->private_data;
+	struct rk_pcie *pcie = s->private;
+	char buf[32];
+	int cap_base;
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	cap_base = rk_pci_find_capability(pcie, PCI_EXT_CAP_ID_VNDR);
+	if (!cap_base) {
+		dev_err(pcie->pci->dev, "Not able to find RASDES CAP!\n");
+		return 0;
+	}
+
+	if (!strncmp(buf, "enable", 6))	{
+		dev_info(pcie->pci->dev, "RAS DES Event: Enable ALL!\n");
+		dw_pcie_writel_dbi(pcie->pci, cap_base + 8, 0x1c);
+		dw_pcie_writel_dbi(pcie->pci, cap_base + 8, 0x3);
+	} else if (!strncmp(buf, "disable", 7)) {
+		dev_info(pcie->pci->dev, "RAS DES Event: disable ALL!\n");
+		dw_pcie_writel_dbi(pcie->pci, cap_base + 8, 0x14);
+	} else if (!strncmp(buf, "clear", 5)) {
+		dev_info(pcie->pci->dev, "RAS DES Event: Clear ALL!\n");
+		dw_pcie_writel_dbi(pcie->pci, cap_base + 8, 0x3);
+	} else {
+		dev_info(pcie->pci->dev, "Not support command!\n");
+	}
+
+	return count;
+}
+
+static const struct file_operations rockchip_pcie_rasdes_ops = {
+	.owner = THIS_MODULE,
+	.open = rockchip_pcie_rasdes_open,
+	.read = seq_read,
+	.write = rockchip_pcie_rasdes_write,
+};
+
+static int rockchip_pcie_fifo_show(struct seq_file *s, void *data)
+{
+	struct rk_pcie *pcie = (struct rk_pcie *)dev_get_drvdata(s->private);
+	u32 loop;
+
+	seq_printf(s, "ltssm = 0x%x\n",
+		   rk_pcie_readl_apb(pcie, PCIE_CLIENT_LTSSM_STATUS));
+	for (loop = 0; loop < 64; loop++)
+		seq_printf(s, "fifo_status = 0x%x\n",
+			   rk_pcie_readl_apb(pcie, PCIE_CLIENT_DBG_FIFO_STATUS));
+
+	return 0;
+}
+
+static void rockchip_pcie_debugfs_exit(struct rk_pcie *pcie)
+{
+	debugfs_remove_recursive(pcie->debugfs);
+	pcie->debugfs = NULL;
+}
+
+static int rockchip_pcie_debugfs_init(struct rk_pcie *pcie)
+{
+	struct dentry *file;
+
+	pcie->debugfs = debugfs_create_dir(dev_name(pcie->pci->dev), NULL);
+	if (!pcie->debugfs)
+		return -ENOMEM;
+
+	debugfs_create_devm_seqfile(pcie->pci->dev, "dumpfifo",
+				    pcie->debugfs,
+				    rockchip_pcie_fifo_show);
+	file = debugfs_create_file("err_event", 0644, pcie->debugfs,
+				   pcie, &rockchip_pcie_rasdes_ops);
+	if (!file)
+		goto remove;
+
+	return 0;
+
+remove:
+	rockchip_pcie_debugfs_exit(pcie);
+
+	return -ENOMEM;
+}
+
 static int rk_pcie_really_probe(void *p)
 {
 	struct platform_device *pdev = p;
@@ -1439,6 +1700,22 @@ static int rk_pcie_really_probe(void *p)
 
 	device_init_wakeup(dev, true);
 	drv->driver.pm = &rockchip_dw_pcie_pm_ops;
+
+	if (IS_ENABLED(CONFIG_DEBUG_FS)) {
+		ret = rockchip_pcie_debugfs_init(rk_pcie);
+		if (ret < 0)
+			dev_err(dev, "failed to setup debugfs: %d\n", ret);
+
+		/* Enable RASDES Error event by default */
+		val = rk_pci_find_capability(rk_pcie, PCI_EXT_CAP_ID_VNDR);
+		if (!val) {
+			dev_err(dev, "Not able to find RASDES CAP!\n");
+			return 0;
+		}
+
+		dw_pcie_writel_dbi(rk_pcie->pci, val + 8, 0x1c);
+		dw_pcie_writel_dbi(rk_pcie->pci, val + 8, 0x3);
+	}
 
 	return 0;
 
