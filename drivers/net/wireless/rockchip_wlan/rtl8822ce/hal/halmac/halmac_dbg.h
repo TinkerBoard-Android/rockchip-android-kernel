@@ -1,6 +1,6 @@
 /******************************************************************************
  *
- * Copyright(c) 2017 - 2018 Realtek Corporation. All rights reserved.
+ * Copyright(c) 2018 - 2019 Realtek Corporation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -13,24 +13,14 @@
  *
  ******************************************************************************/
 
-#ifndef _HALMAC_COMMON_8822C_H_
-#define _HALMAC_COMMON_8822C_H_
+#ifndef _HALMAC_DBG_H_
+#define _HALMAC_DBG_H_
 
-#include "../../halmac_api.h"
+#include "halmac_api.h"
 
-#if HALMAC_8822C_SUPPORT
-
+#if HALMAC_DBG_MONITOR_IO
 enum halmac_ret_status
-get_hw_value_8822c(struct halmac_adapter *adapter, enum halmac_hw_id hw_id,
-		   void *value);
+mount_api_dbg(struct halmac_adapter *adapter);
+#endif
 
-enum halmac_ret_status
-set_hw_value_8822c(struct halmac_adapter *adapter, enum halmac_hw_id hw_id,
-		   void *value);
-
-enum halmac_ret_status
-fill_txdesc_check_sum_8822c(struct halmac_adapter *adapter, u8 *txdesc);
-
-#endif/* HALMAC_8822C_SUPPORT */
-
-#endif/* _HALMAC_COMMON_8822C_H_ */
+#endif
