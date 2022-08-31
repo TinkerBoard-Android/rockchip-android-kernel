@@ -16,6 +16,9 @@ obj-$(CONFIG_PINCTRL)		+= pinctrl/
 obj-$(CONFIG_GPIOLIB)		+= gpio/
 obj-y				+= pwm/
 
+# boardinfo must come after gpio
+obj-$(CONFIG_BOARDINFO)         += boardinfo/
+
 obj-y				+= pci/
 
 obj-$(CONFIG_PARISC)		+= parisc/
