@@ -1105,7 +1105,7 @@
 };
 
 &i2s0 {
-	status = "okay";
+	status = "disabled";
 	rockchip,playback-channels = <8>;
 	rockchip,capture-channels = <8>;
 	#sound-dai-cells = <0>;
@@ -1225,7 +1225,7 @@
 };
 
 &pwm0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm2 {
@@ -1513,7 +1513,59 @@
 	connect = <&vopl_out_hdmi>;
 };
 
+&i2c6 {
+	status = "disabled";
+};
+
+&i2c7 {
+	status = "disabled";
+};
+
+&spi1 {
+	status = "disabled";
+	max-freq = <48000000>; /* spi internal clk, don't modify */
+	spi_dev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;
+		spi-max-frequency = <48000000>;
+		spi-lsb-first;
+	};
+};
+
+&spi5 {
+	status = "disabled";
+	max-freq = <48000000>;   //spi internal clk, don't modify
+	spi_dev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;   //chip select  0:cs0  1:cs1
+		id = <0>;
+		spi-max-frequency = <48000000>;   //spi output clock
+	};
+};
+
+&uart0 {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
 &pinctrl {
+	pinctrl-names = "default";
+	pinctrl-0 = <&gpio_init>;
+
+	gpio_init_config {
+		gpio_init: gpio_init {
+			rockchip,pins =
+				<1 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>,
+				<1 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>,
+				<1 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>,
+				<1 RK_PB2 RK_FUNC_GPIO &pcfg_pull_none>,
+				<2 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+	};
+
 	lcd-panel {
 		lcd_panel_reset: lcd-panel-reset {
 			rockchip,pins = <4 RK_PD6 RK_FUNC_GPIO &pcfg_pull_up>;
