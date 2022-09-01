@@ -114,7 +114,7 @@
 
 &edp {
 	force-hpd;
-	status = "okay";
+	status = "disabled";
 
 	ports {
 		port@1 {
@@ -132,12 +132,12 @@
 };
 
 &edp_in_vopl {
-	status = "okay";
+	status = "disabled";
 };
 
 &route_edp {
 	connect = <&vopl_out_edp>;
-	status = "okay";
+	status = "disabled";
 };
 
 &gpu {
