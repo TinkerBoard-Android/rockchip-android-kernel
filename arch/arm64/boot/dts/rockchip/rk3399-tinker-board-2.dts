@@ -71,6 +71,14 @@
 	};
 };
 
+&i2c8 {
+	status = "okay";
+	m24c08@50 {
+		compatible = "at,24c08";
+		reg = <0x50>;
+	};
+};
+
 &mipi_dphy_rx0 {
 	status = "okay";
 
