@@ -381,6 +381,15 @@
 
 };
 
+&i2c2 {
+	status = "okay";
+
+	m24c: m24c08@50 {
+		compatible = "at,24c08";
+		reg = <0x50>;
+	};
+};
+
 &io_domains {
 	status = "okay";
 	audio-supply = <&vcc_io>;
