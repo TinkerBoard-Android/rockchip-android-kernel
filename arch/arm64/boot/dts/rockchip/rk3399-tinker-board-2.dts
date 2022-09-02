@@ -224,3 +224,14 @@
 		clock-latency-ns = <40000>;
 	};
 };
+
+&thermal_zones {
+        soc_thermal: soc-thermal {
+                sustainable-power = <1761>; /* milliwatts */
+
+                trips {
+                        soc_crit: soc-crit {
+                                temperature = <105000>; /* millicelsius */
+                        };
+        };
+};

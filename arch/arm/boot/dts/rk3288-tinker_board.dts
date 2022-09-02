@@ -201,3 +201,17 @@
 	assigned-clocks = <&cru DCLK_VOP1>;
 	assigned-clock-parents = <&cru PLL_CPLL>;
 };
+
+&thermal_zones {
+        cpu_thermal: soc-thermal {
+                trips {
+                        cpu_alert0: trip-point@0 {
+                                temperature = <70000>; /* millicelsius */
+                        };
+                        cpu_alert1: trip-point@1 {
+                                temperature = <80000>; /* millicelsius */
+                        };
+                };
+
+        };
+};
