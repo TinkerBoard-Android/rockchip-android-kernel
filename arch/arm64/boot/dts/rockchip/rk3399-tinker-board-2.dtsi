@@ -101,7 +101,7 @@
 	};
 
 	test-power {
-		status = "okay";
+		status = "disabled";
 	};
 
 	hdmiin_sound: hdmiin-sound {
