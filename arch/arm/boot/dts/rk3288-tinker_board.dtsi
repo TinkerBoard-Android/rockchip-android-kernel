@@ -5,8 +5,8 @@
  */
 
 /dts-v1/;
-#include "rk3288-evb.dtsi"
-#include "rk3288-android.dtsi"
+#include "rk3288-tinker_board-common.dtsi"
+#include "rk3288-tinker_board-android.dtsi"
 #include <dt-bindings/sensor-dev.h>
 
 / {
