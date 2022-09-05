@@ -1,0 +1,7 @@
+config DRM_I2C_LT9211
+	tristate "LT9211"
+	depends on OF
+	select DRM_KMS_HELPER
+	select REGMAP_I2C
+	help
+	  Support for the Lontium LT9211.

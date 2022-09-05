@@ -1264,6 +1264,28 @@ static void dw_mipi_dsi_pre_enable(struct dw_mipi_dsi *dsi)
 		dw_mipi_dsi_pre_enable(dsi->slave);
 }
 
+#if defined(CONFIG_DRM_I2C_SN65DSI84)
+extern void sn65dsi84_bridge_enable(void);
+extern  bool sn65dsi84_is_connected(void);
+#else
+static void sn65dsi84_bridge_enable(void) { return; }
+static bool sn65dsi84_is_connected(void) { return false; }
+#endif
+
+#if defined(CONFIG_DRM_I2C_SN65DSI86)
+extern void sn65dsi86_bridge_enable(void);
+extern bool sn65dsi86_is_connected(void);
+#else
+static void sn65dsi86_bridge_enable(void) { return; }
+static bool sn65dsi86_is_connected(void) { return false; }
+#endif
+
+#if defined(CONFIG_DRM_I2C_LT9211)
+extern bool lt9211_is_connected(void);
+#else
+static bool lt9211_is_connected(void) { return false; }
+#endif
+
 static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 {
 	struct drm_display_mode *mode = &dsi->mode;
@@ -1302,6 +1324,12 @@ static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 
 	regmap_update_bits(dsi->regmap, DSI_LPCLK_CTRL,
 			   PHY_TXREQUESTCLKHS, PHY_TXREQUESTCLKHS);
+
+	if (sn65dsi84_is_connected())
+		sn65dsi84_bridge_enable();
+
+	if (sn65dsi86_is_connected())
+		sn65dsi86_bridge_enable();
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO)
 		dw_mipi_dsi_set_vid_mode(dsi);
@@ -1442,7 +1470,7 @@ static int dw_mipi_dsi_encoder_loader_protect(struct drm_encoder *encoder,
 					      bool on)
 {
 	struct dw_mipi_dsi *dsi = encoder_to_dsi(encoder);
-
+	printk("%s\n", __func__);
 	if (dsi->panel)
 		drm_panel_loader_protect(dsi->panel, on);
 
@@ -1534,6 +1562,11 @@ static int dw_mipi_dsi_dual_channel_probe(struct dw_mipi_dsi *dsi)
 	return 0;
 }
 
+#if defined(CONFIG_TINKER_MCU)
+extern int tinker_mcu_is_connected(int dsi_id);
+extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
+#endif
+
 static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 			    void *data)
 {
@@ -1542,6 +1575,19 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 	struct drm_encoder *encoder = &dsi->encoder;
 	struct drm_connector *connector = &dsi->connector;
 	int ret;
+
+#if defined(CONFIG_TINKER_MCU)
+	if(!tinker_mcu_is_connected(dsi->id) &&
+		!tinker_mcu_ili9881c_is_connected(dsi->id) &&
+		!sn65dsi84_is_connected() &&
+		!sn65dsi86_is_connected() &&
+		!lt9211_is_connected()) {
+		pr_info("dsi-%d panel and sn65dsi8x and lt9211 aren't connected\n", dsi->id);
+		return 0;
+	} else {
+		pr_info("dsi-%d panel  or sn65dsi8x or lt9211 is connected\n", dsi->id);
+	}
+#endif
 
 	ret = dw_mipi_dsi_dual_channel_probe(dsi);
 	if (ret)
