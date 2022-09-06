@@ -69,8 +69,6 @@
 		clock-names = "ext_clock";
 	};
 
-	/delete-node/ sdmmc-regulator;
-
 	vdd_log: vdd-logic {
 		compatible = "pwm-regulator";
 		rockchip,pwm_id = <1>;
@@ -334,16 +332,16 @@
 				regulator-boot-on;
 				regulator-name = "vcc_sd";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 
-			vcc_lcd: SWITCH_REG2 {
+			vcc33_lan: SWITCH_REG2 {
 				regulator-always-on;
 				regulator-boot-on;
-				regulator-name = "vcc_lcd";
+				regulator-name = "vcc33_lan";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 		};
@@ -975,7 +973,7 @@
 	flash1-supply = <&vcc_io>;
 	gpio30-supply = <&vcc_io>;
 	gpio1830 = <&vcc_io>;
-	lcdc-supply = <&vcc_lcd>;
+	lcdc-supply = <&vcc_io>;
 	sdcard-supply = <&vccio_sd>;
 	wifi-supply = <&vcc_wl>;
 };
