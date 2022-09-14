@@ -152,6 +152,7 @@ obj-$(CONFIG_VIDEO_LT7911D)	+= lt7911d.o
 obj-$(CONFIG_VIDEO_LT8619C)	+= lt8619c.o
 obj-$(CONFIG_VIDEO_IMX178)	+= imx178.o
 obj-$(CONFIG_VIDEO_IMX219)	+= imx219.o
+obj-$(CONFIG_VIDEO_CAM_SENSOR) += cam_sensor/
 obj-$(CONFIG_VIDEO_IMX258)	+= imx258.o
 obj-$(CONFIG_VIDEO_IMX258_EEPROM)	+= imx258_eeprom.o
 obj-$(CONFIG_VIDEO_IMX274)	+= imx274.o
