@@ -18,15 +18,15 @@
 *                           MSDIO.TXT
 ******************************************************************************/
 
-u16
-EFUSE_GetArrayLen_MP_8723D_MSDIO(void);
+u2Byte
+EFUSE_GetArrayLen_MP_8723D_MSDIO(VOID);
 
-void
+VOID
 EFUSE_GetMaskArray_MP_8723D_MSDIO(
-		u8 *Array
+	IN	OUT pu1Byte Array
 );
 /* TC: Test Chip, MP: MP Chip */
 BOOLEAN
 EFUSE_IsAddressMasked_MP_8723D_MSDIO(
-		u16 Offset
+	IN   u2Byte  Offset
 );

@@ -49,9 +49,9 @@ SwLedBlink(
 		break;
 
 	case LED_BLINK_StartToBlink:
-		if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) && check_fwstate(pmlmepriv, WIFI_STATION_STATE))
+		if (check_fwstate(pmlmepriv, _FW_LINKED) && check_fwstate(pmlmepriv, WIFI_STATION_STATE))
 			bStopBlinking = _TRUE;
-		if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) &&
+		if (check_fwstate(pmlmepriv, _FW_LINKED) &&
 		    (check_fwstate(pmlmepriv, WIFI_ADHOC_STATE) || check_fwstate(pmlmepriv, WIFI_ADHOC_MASTER_STATE)))
 			bStopBlinking = _TRUE;
 		else if (pLed->BlinkTimes == 0)
@@ -73,9 +73,9 @@ SwLedBlink(
 	if (bStopBlinking) {
 		if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 			SwLedOff(padapter, pLed);
-		else if ((check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) && (pLed->bLedOn == _FALSE))
+		else if ((check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) && (pLed->bLedOn == _FALSE))
 			SwLedOn(padapter, pLed);
-		else if ((check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) &&  pLed->bLedOn == _TRUE)
+		else if ((check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) &&  pLed->bLedOn == _TRUE)
 			SwLedOff(padapter, pLed);
 
 		pLed->BlinkTimes = 0;
@@ -98,9 +98,13 @@ SwLedBlink(
 			_set_timer(&(pLed->BlinkTimer), LED_BLINK_SLOWLY_INTERVAL);
 			break;
 
-		case LED_BLINK_WPS:
-			_set_timer(&(pLed->BlinkTimer), LED_BLINK_LONG_INTERVAL);
-		        break;
+		case LED_BLINK_WPS: {
+			if (pLed->BlinkingLedState == RTW_LED_ON)
+				_set_timer(&(pLed->BlinkTimer), LED_BLINK_LONG_INTERVAL);
+			else
+				_set_timer(&(pLed->BlinkTimer), LED_BLINK_LONG_INTERVAL);
+		}
+		break;
 
 		default:
 			_set_timer(&(pLed->BlinkTimer), LED_BLINK_SLOWLY_INTERVAL);
@@ -133,7 +137,7 @@ SwLedBlink1(
 
 
 	if (pHalData->CustomerID == RT_CID_DEFAULT) {
-		if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+		if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 			if (!pLed1->bSWLedCtrl) {
 				SwLedOn(padapter, pLed1);
 				pLed1->bSWLedCtrl = _TRUE;
@@ -173,7 +177,7 @@ SwLedBlink1(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->bLedLinkBlinkInProgress = _TRUE;
 				pLed->CurrLedState = LED_BLINK_NORMAL;
 				if (pLed->bLedOn)
@@ -182,7 +186,7 @@ SwLedBlink1(
 					pLed->BlinkingLedState = RTW_LED_ON;
 				_set_timer(&(pLed->BlinkTimer), LED_BLINK_LINK_INTERVAL_ALPHA);
 
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->bLedNoLinkBlinkInProgress = _TRUE;
 				pLed->CurrLedState = LED_BLINK_SLOWLY;
 				if (pLed->bLedOn)
@@ -212,7 +216,7 @@ SwLedBlink1(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->bLedLinkBlinkInProgress = _TRUE;
 				pLed->CurrLedState = LED_BLINK_NORMAL;
 				if (pLed->bLedOn)
@@ -220,7 +224,7 @@ SwLedBlink1(
 				else
 					pLed->BlinkingLedState = RTW_LED_ON;
 				_set_timer(&(pLed->BlinkTimer), LED_BLINK_LINK_INTERVAL_ALPHA);
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->bLedNoLinkBlinkInProgress = _TRUE;
 				pLed->CurrLedState = LED_BLINK_SLOWLY;
 				if (pLed->bLedOn)
@@ -307,12 +311,12 @@ SwLedBlink2(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->CurrLedState = RTW_LED_ON;
 				pLed->BlinkingLedState = RTW_LED_ON;
 				SwLedOn(padapter, pLed);
 
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->CurrLedState = RTW_LED_OFF;
 				pLed->BlinkingLedState = RTW_LED_OFF;
 				SwLedOff(padapter, pLed);
@@ -338,12 +342,12 @@ SwLedBlink2(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->CurrLedState = RTW_LED_ON;
 				pLed->BlinkingLedState = RTW_LED_ON;
 				SwLedOn(padapter, pLed);
 
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->CurrLedState = RTW_LED_OFF;
 				pLed->BlinkingLedState = RTW_LED_OFF;
 				SwLedOff(padapter, pLed);
@@ -394,13 +398,13 @@ SwLedBlink3(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->CurrLedState = RTW_LED_ON;
 				pLed->BlinkingLedState = RTW_LED_ON;
 				if (!pLed->bLedOn)
 					SwLedOn(padapter, pLed);
 
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->CurrLedState = RTW_LED_OFF;
 				pLed->BlinkingLedState = RTW_LED_OFF;
 				if (pLed->bLedOn)
@@ -428,14 +432,14 @@ SwLedBlink3(
 		if (bStopBlinking) {
 			if (adapter_to_pwrctl(padapter)->rf_pwrstate != rf_on)
 				SwLedOff(padapter, pLed);
-			else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE) {
+			else if (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE) {
 				pLed->CurrLedState = RTW_LED_ON;
 				pLed->BlinkingLedState = RTW_LED_ON;
 
 				if (!pLed->bLedOn)
 					SwLedOn(padapter, pLed);
 
-			} else if (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _FALSE) {
+			} else if (check_fwstate(pmlmepriv, _FW_LINKED) == _FALSE) {
 				pLed->CurrLedState = RTW_LED_OFF;
 				pLed->BlinkingLedState = RTW_LED_OFF;
 
@@ -1020,7 +1024,7 @@ SwLedControlMode1(
 		break;
 
 	case LED_CTL_SITE_SURVEY:
-		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE))
+		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE))
 			;
 		else if (pLed->bLedScanBlinkInProgress == _FALSE) {
 			if (IS_LED_WPS_BLINKING(pLed))
@@ -1221,7 +1225,7 @@ SwLedControlMode2(
 
 	case LED_CTL_TX:
 	case LED_CTL_RX:
-		if ((pLed->bLedBlinkInProgress == _FALSE) && (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE)) {
+		if ((pLed->bLedBlinkInProgress == _FALSE) && (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)) {
 			if (pLed->CurrLedState == LED_BLINK_SCAN || IS_LED_WPS_BLINKING(pLed))
 				return;
 
@@ -1360,7 +1364,7 @@ SwLedControlMode3(
 
 	case LED_CTL_TX:
 	case LED_CTL_RX:
-		if ((pLed->bLedBlinkInProgress == _FALSE) && (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE)) {
+		if ((pLed->bLedBlinkInProgress == _FALSE) && (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE)) {
 			if (pLed->CurrLedState == LED_BLINK_SCAN || IS_LED_WPS_BLINKING(pLed))
 				return;
 
@@ -1563,7 +1567,7 @@ SwLedControlMode4(
 		break;
 
 	case LED_CTL_SITE_SURVEY:
-		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE))
+		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE))
 			;
 		else if (pLed->bLedScanBlinkInProgress == _FALSE) {
 			if (IS_LED_WPS_BLINKING(pLed))
@@ -1795,7 +1799,7 @@ SwLedControlMode5(
 		break;
 
 	case LED_CTL_SITE_SURVEY:
-		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, WIFI_ASOC_STATE) == _TRUE))
+		if ((pmlmepriv->LinkDetectInfo.bBusyTraffic) && (check_fwstate(pmlmepriv, _FW_LINKED) == _TRUE))
 			;
 		else if (pLed->bLedScanBlinkInProgress == _FALSE) {
 			if (pLed->bLedBlinkInProgress == _TRUE) {

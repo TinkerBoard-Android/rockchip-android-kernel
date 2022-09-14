@@ -23,7 +23,7 @@
 *                           MUSB.TXT
 ******************************************************************************/
 
-u8 Array_MP_8723D_MUSB[] = {
+u1Byte Array_MP_8723D_MUSB[] = {
 	0xFF,
 	0xF3,
 	0x00,
@@ -59,25 +59,25 @@ u8 Array_MP_8723D_MUSB[] = {
 
 };
 
-u16
-EFUSE_GetArrayLen_MP_8723D_MUSB(void)
+u2Byte
+EFUSE_GetArrayLen_MP_8723D_MUSB(VOID)
 {
-	return sizeof(Array_MP_8723D_MUSB) / sizeof(u8);
+	return sizeof(Array_MP_8723D_MUSB) / sizeof(u1Byte);
 }
 
-void
+VOID
 EFUSE_GetMaskArray_MP_8723D_MUSB(
-		u8 *Array
+	IN	OUT pu1Byte Array
 )
 {
-	u16 len = EFUSE_GetArrayLen_MP_8723D_MUSB(), i = 0;
+	u2Byte len = EFUSE_GetArrayLen_MP_8723D_MUSB(), i = 0;
 
 	for (i = 0; i < len; ++i)
 		Array[i] = Array_MP_8723D_MUSB[i];
 }
 BOOLEAN
 EFUSE_IsAddressMasked_MP_8723D_MUSB(
-		u16 Offset
+	IN   u2Byte  Offset
 )
 {
 	int r = Offset / 16;

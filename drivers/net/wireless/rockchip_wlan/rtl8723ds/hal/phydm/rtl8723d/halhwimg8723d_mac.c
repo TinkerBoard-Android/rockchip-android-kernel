@@ -111,6 +111,15 @@ check_positive(
 	} else
 		return false;
 }
+static boolean
+check_negative(
+	struct dm_struct *dm,
+	const u32	condition1,
+	const u32	condition2
+)
+{
+	return true;
+}
 
 /******************************************************************************
 *                           mac_reg.TXT
@@ -121,7 +130,6 @@ u32 array_mp_8723d_mac_reg[] = {
 		0x02F, 0x00000010,
 		0x077, 0x00000007,
 		0x421, 0x0000000F,
-		0x422, 0x00000078,
 		0x428, 0x0000000A,
 		0x429, 0x00000010,
 		0x430, 0x00000000,
@@ -227,6 +235,7 @@ u32 array_mp_8723d_mac_reg[] = {
 		0x7C0, 0x00000038,
 		0x7C2, 0x0000000F,
 		0x7C3, 0x000000C0,
+		0x073, 0x00000004,
 		0x7C4, 0x00000077,
 		0x07C, 0x00000003,
 		0x016, 0x000000B3,
@@ -288,7 +297,7 @@ odm_read_and_config_mp_8723d_mac_reg(struct dm_struct *dm)
 u32
 odm_get_version_mp_8723d_mac_reg(void)
 {
-		return 40;
+		return 37;
 }
 
 #endif /* end of HWIMG_SUPPORT*/

@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /******************************************************************************
  *
- * Copyright(c) 2007 - 2017 Realtek Corporation.
+ * Copyright(c) 2009-2010 - 2017 Realtek Corporation.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of version 2 of the GNU General Public License as
@@ -13,42 +13,23 @@
  * more details.
  *
  *****************************************************************************/
-#ifndef __BTC_BASIC_TYPES_H__
-#define __BTC_BASIC_TYPES_H__
 
-#define IN
-#define OUT
-#define VOID void
-typedef void *PVOID;
+#ifndef __RTW_WIFI_REGD_H__
+#define __RTW_WIFI_REGD_H__
 
-#define u1Byte		u8
-#define pu1Byte		u8*
+struct country_code_to_enum_rd {
+	u16 countrycode;
+	const char *iso_name;
+};
 
-#define u2Byte		u16
-#define pu2Byte		u16*
+enum country_code_type_t {
+	COUNTRY_CODE_USER = 0,
 
-#define u4Byte		u32
-#define pu4Byte		u32*
+	/*add new channel plan above this line */
+	COUNTRY_CODE_MAX
+};
 
-#define u8Byte		u64
-#define pu8Byte		u64*
+void rtw_regd_apply_flags(struct wiphy *wiphy);
+int rtw_regd_init(struct wiphy *wiphy);
 
-#define s1Byte		s8
-#define ps1Byte		s8*
-
-#define s2Byte		s16
-#define ps2Byte		s16*
-
-#define s4Byte		s32
-#define ps4Byte		s32*
-
-#define s8Byte		s64
-#define ps8Byte		s64*
-
-#define UCHAR u8
-#define USHORT u16
-#define UINT u32
-#define ULONG u32
-#define PULONG u32*
-
-#endif /* __BTC_BASIC_TYPES_H__ */
+#endif /* __RTW_WIFI_REGD_H__ */
