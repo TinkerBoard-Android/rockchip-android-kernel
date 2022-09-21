@@ -307,6 +307,7 @@
 	vmmc-supply = <&vcc_sd>;
 	vqmmc-supply = <&vccio_sd>;
 	supports-sd;
+	supports-emmc;
 };
 
 &sdio0 {
