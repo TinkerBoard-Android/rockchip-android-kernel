@@ -242,7 +242,7 @@
 };
 
 &rk_headset {
-	status = "disabled";
+	status = "okay";
 };
 
 &fiq_debugger {
