@@ -349,7 +349,7 @@
 };
 
 &i2c1 {
-	status = "okay";
+	status = "disabled";
 	clock-frequency = <400000>;
 
 	mpu6050_acc: mpu-acc@68 {
@@ -964,6 +964,10 @@
 	};
 };
 
+&i2c4 {
+        status = "disabled";
+};
+
 &io_domains {
 	status = "okay";
 	audio-supply = <&vcc_io>;
@@ -1058,3 +1062,4 @@
                 clock-latency-ns = <40000>;
         };
 };
+

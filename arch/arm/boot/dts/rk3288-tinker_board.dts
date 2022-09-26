@@ -111,7 +111,6 @@
 		/* reset-gpios = <>; */
 		pinctrl-names = "rockchip,camera_default";
 		pinctrl-0 = <&isp_mipi>;
-		power-gpio = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
 		pwdn-gpios = <&gpio2 RK_PB7 GPIO_ACTIVE_HIGH>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
@@ -135,7 +134,6 @@
 		clock-names = "xvclk";
 		pinctrl-names = "rockchip,camera_default";
 		pinctrl-0 = <&isp_mipi>;
-		reset-gpios = <&gpio0 RK_PC1 GPIO_ACTIVE_LOW>;
 		pwdn-gpios = <&gpio2 RK_PB7 GPIO_ACTIVE_LOW>;
 		rockchip,camera-module-index = <0>;
 		rockchip,camera-module-facing = "back";
@@ -249,3 +247,64 @@
 	rockchip,serial-id = <3>;
 	pinctrl-0 = <&uart3_xfer>;
 };
+
+&spi0 {
+        status = "disabled";
+        max-freq = <50000000>;
+        pinctrl-0 = <&spi0_clk &spi0_tx &spi0_rx &spi0_cs0 &spi0_cs1>;
+
+        spidev@0 {
+                compatible = "rockchip,spidev";
+                reg = <0>;
+                spi-max-frequency = <50000000>;
+                spi-cpha = <1>;
+        };
+
+        spidev@1 {
+                compatible = "rockchip,spidev";
+                reg = <1>;
+                spi-max-frequency = <50000000>;
+                spi-cpha = <1>;
+        };
+};
+
+&spi2 {
+        status = "disabled";
+        max-freq = <50000000>;
+        pinctrl-0 = <&spi2_clk &spi2_tx &spi2_rx &spi2_cs0 &spi2_cs1>;
+
+        spidev@0 {
+                compatible = "rockchip,spidev";
+                reg = <0>;
+                spi-max-frequency = <50000000>;
+                spi-cpha = <1>;
+        };
+
+        spidev@1 {
+                compatible = "rockchip,spidev";
+                reg = <1>;
+                spi-max-frequency = <50000000>;
+                spi-cpha = <1>;
+        };
+};
+
+&uart1 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart1_xfer &uart1_cts &uart1_rts>;
+        status = "disabled";
+};
+
+&uart2 {
+        status = "disabled";
+};
+
+&uart3 {
+        status = "disabled";
+};
+
+&uart4 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&uart4_xfer>, <&uart4_cts>, <&uart4_rts>;
+        status = "disabled";
+};
+
