@@ -1584,6 +1584,10 @@ static const u8 dwe2100_edid[] = {
 	0x12, 0xE5, 0x00, 0x21
 };
 
+static const u8 ada_vgg804826_edid[] = {
+	0x04, 0x81, 0x04, 0x00
+};
+
 /**
  * drm_edid_header_is_valid - sanity check the header of the base EDID block
  * @raw_edid: pointer to raw base EDID block
@@ -1633,6 +1637,21 @@ bool drm_dect_dwe2100_edid(struct edid *edid)
 		return false;
 }
 EXPORT_SYMBOL(drm_dect_dwe2100_edid);
+
+bool drm_dect_ada_vgg804826_edid(struct edid *edid)
+{
+	int i, score = 0;
+	u8 *raw_edid = (u8 *)edid;
+	for (i = 0; i < sizeof(ada_vgg804826_edid); i++) {
+		if (raw_edid[8+i] == ada_vgg804826_edid[i])
+			score++;
+	}
+	if (score == 4)
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL(drm_dect_ada_vgg804826_edid);
 
 static int edid_fixup __read_mostly = 6;
 module_param_named(edid_fixup, edid_fixup, int, 0400);
