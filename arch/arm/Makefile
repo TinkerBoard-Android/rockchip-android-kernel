@@ -406,10 +406,11 @@ endif
 
 ifdef CONFIG_DRM
 LOGO := $(notdir $(wildcard $(srctree)/logo.bmp))
+LOGO_PANEL := $(notdir $(wildcard $(srctree)/tinkerboard.bmp))
 LOGO_KERNEL := $(notdir $(wildcard $(srctree)/logo_kernel.bmp))
 endif
 
-%.img: %.dtb kernel.img $(LOGO) $(LOGO_KERNEL)
+%.img: %.dtb kernel.img $(LOGO) $(LOGO_PANEL) $(LOGO_KERNEL)
 	$(Q)$(srctree)/scripts/mkimg --dtb $*.dtb
 
 CLEAN_DIRS += out

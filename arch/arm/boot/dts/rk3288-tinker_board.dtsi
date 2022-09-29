@@ -493,7 +493,12 @@
 };
 
 &route_dsi0 {
-	status = "disabled";
+	status = "okay";
+	logo,uboot = "tinkerboard.bmp";
+	logo,kernel = "tinkerboard.bmp";
+	connect = <&vopl_out_dsi0>;
+	rk3288_tinker_baord;
+	i2c_busnum=<3>;
 };
 
 &dsi0 {
