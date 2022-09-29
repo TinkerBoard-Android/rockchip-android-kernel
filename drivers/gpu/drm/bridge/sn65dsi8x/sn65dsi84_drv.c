@@ -633,16 +633,29 @@ static int sn65dsi84_parse_dt(struct device_node *np,
 	ret = of_property_read_u32(dev->of_node,"t6", &data->t6);
 	ret = of_property_read_u32(dev->of_node,"t7", &data->t7);
 
-	printk(KERN_INFO "sn65dsi84_parse_dt refclk_multiplier=%u lvds_voltage=0x%x\n", data->refclk_multiplier, data->lvds_voltage);
-	printk(KERN_INFO "sn65dsi84_parse_dt bus_format=%x data->bpc=%u format =%u mode_flags=%u\n",
-		data->bus_format, data->bpc, data->format, data->mode_flags);
+	data->uboot = of_property_read_bool(np, "uboot-logo");
 
-	data->sn65dsi84_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+	printk(KERN_INFO "sn65dsi84_parse_dt refclk_multiplier=%u lvds_voltage=0x%x\n", data->refclk_multiplier, data->lvds_voltage);
+	printk(KERN_INFO "sn65dsi84_parse_dt bus_format=%x data->bpc=%u format =%u mode_flags=%u\n uboot-logo=%s",
+		data->bus_format, data->bpc, data->format, data->mode_flags, data->uboot? "true" : "false");
+
+	if(data->uboot) {
+		data->sn65dsi84_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_HIGH);
+		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_HIGH);
+		data->dsi84_irq_gpio = devm_gpiod_get_optional(dev, "dsi84_irq", GPIOD_OUT_HIGH);
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+
+	} else {
+		data->sn65dsi84_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
+		data->dsi84_irq_gpio = devm_gpiod_get_optional(dev, "dsi84_irq", GPIOD_OUT_LOW);
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+	}
+
 	if (IS_ERR(data->sn65dsi84_en_gpio)) {
 		printk(KERN_INFO "sn65dsi84_parse_dt: failed to get EN GPIO \n");
 	}
 
-	data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
 	if (IS_ERR(data->lvds_vdd_en_gpio)) {
 		printk(KERN_INFO "sn65dsi84_parse_dt: failed to get lvds_vdd_en_gpio\n");
 	}
@@ -652,12 +665,10 @@ static int sn65dsi84_parse_dt(struct device_node *np,
 		printk(KERN_INFO "sn65dsi84_parse_dt: failed to get lvds_hdmi_sel_gpio\n");
 	}
 
-	data->dsi84_irq_gpio = devm_gpiod_get_optional(dev, "dsi84_irq", GPIOD_OUT_LOW);
 	if (IS_ERR(data->dsi84_irq_gpio)) {
 		printk(KERN_INFO "sn65dsi84_parse_dt: failed to get dsi84_irq_gpio\n");
 	}
 
-	data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
 	if (IS_ERR(data->pwr_source_gpio)) {
 		printk(KERN_INFO "sn65dsi84_parse_dt: failed to get  pwr_source gpio\n");
 	}

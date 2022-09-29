@@ -40,6 +40,7 @@ struct sn65dsi84_data {
 	bool enabled;
 	bool debug;
 	bool status;
+	bool uboot;
 
 	bool powered;
 

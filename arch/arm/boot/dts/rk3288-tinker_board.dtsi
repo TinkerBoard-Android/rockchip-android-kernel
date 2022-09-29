@@ -102,6 +102,7 @@
        disable_delay = <5>;
        pinctrl-names = "default";
        pinctrl-0 = <&pinctrl_lvds_bl_en>;
+       //uboot-logo;
 };
 
 &cpu0 {
@@ -413,6 +414,7 @@
 		dsi-lanes = <2>;//u-boot
 		sync_delay = <33>;
 		de-mode;
+		//uboot-logo;
 		//dual-link;
 		//test-pattern;
 
@@ -443,6 +445,7 @@
 		lvds-bpp = <24>;
 		dsi-lanes = <4>;//u-boot
 		sync_delay = <33>;
+		//uboot-logo;
 		//dual-link;
 		//test-pattern;
 
