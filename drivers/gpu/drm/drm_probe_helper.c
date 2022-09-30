@@ -506,11 +506,13 @@ retry:
 		mode_flags |= DRM_MODE_FLAG_3D_MASK;
 
 	if (!strcmp(connector->name, "HDMI-A-1")) {
-		if( (*connector_funcs->check_edid)(connector) ) {
-			edid_manufacturer = (struct edid *) connector->edid_blob_ptr->data;
-			drm_eve_vgg804838_panel = drm_dect_eve_vgg804838_edid(edid_manufacturer);
-			drm_dwe2100_panel = drm_dect_dwe2100_edid(edid_manufacturer);
-			drm_ada_vgg804826_panel = drm_dect_ada_vgg804826_edid(edid_manufacturer);
+		if (connector->edid_blob_ptr != NULL) {
+			if (connector->edid_blob_ptr->data != NULL) {
+				edid_manufacturer = (struct edid *) connector->edid_blob_ptr->data;
+				drm_eve_vgg804838_panel = drm_dect_eve_vgg804838_edid(edid_manufacturer);
+				drm_dwe2100_panel = drm_dect_dwe2100_edid(edid_manufacturer);
+				drm_ada_vgg804826_panel = drm_dect_ada_vgg804826_edid(edid_manufacturer);
+			}
 		}
 	}
 
