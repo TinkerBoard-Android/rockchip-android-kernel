@@ -90,7 +90,7 @@
 };
 
 &pwm3 {
-       status = "okay";
+       status = "disabled";
 };
 
 &backlight {
