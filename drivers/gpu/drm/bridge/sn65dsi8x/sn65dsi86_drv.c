@@ -1532,21 +1532,39 @@ static int sn65dsi86_parse_dt(struct device_node *np,
 	ret = of_property_read_u32(dev->of_node,"t16", &data->t16);
 	ret = of_property_read_u32(dev->of_node,"t17", &data->t17);
 
+	data->uboot = of_property_read_bool(np, "uboot-logo");
+
 	printk(KERN_INFO "sn65dsi86_parse_dt t1=%u t2=%u t3=%u t4=%u t5=%u t6=%u t7=%u t8=%u t12=%u\n",
 		data->t1, data->t2, data->t3, data->t4, data->t5, data->t6, data->t7, data->t8, data->t12);
 
-	data->sn65dsi86_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+	printk(KERN_INFO "sn65dsi86_parse_dt uboot-logo=%s", data->uboot? "true" : "false");
+
+	if(data->uboot) {
+		data->sn65dsi86_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_HIGH);
+		data->edp_vdd_en_gpio = devm_gpiod_get_optional(dev, "edp_vdd_en", GPIOD_OUT_HIGH);
+#ifdef PWM_FROM_SN65DSI86
+		data->dsi86_vbl_en_gpio = devm_gpiod_get_optional(dev, "dsi86_vbl_en", GPIOD_OUT_HIGH);
+#endif
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+
+	} else {
+		data->sn65dsi86_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+		data->edp_vdd_en_gpio = devm_gpiod_get_optional(dev, "edp_vdd_en", GPIOD_OUT_LOW);
+#ifdef PWM_FROM_SN65DSI86
+		data->dsi86_vbl_en_gpio = devm_gpiod_get_optional(dev, "dsi86_vbl_en", GPIOD_OUT_LOW);
+#endif
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+	}
+
 	if (IS_ERR(data->sn65dsi86_en_gpio)) {
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get EN GPIO \n");
 	}
 
-	data->edp_vdd_en_gpio = devm_gpiod_get_optional(dev, "edp_vdd_en", GPIOD_OUT_LOW);
 	if (IS_ERR(data->edp_vdd_en_gpio)) {
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get edp_vdd_en_gpio\n");
 	}
 
 #ifdef PWM_FROM_SN65DSI86
-	data->dsi86_vbl_en_gpio = devm_gpiod_get_optional(dev, "dsi86_vbl_en", GPIOD_OUT_LOW);
 	if (IS_ERR(data->dsi86_vbl_en_gpio)) {
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get dsi86_vbl_en_gpio\n");
 	}

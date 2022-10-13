@@ -952,6 +952,38 @@
 &i2c8 {
 	status = "okay";
 
+	dsi_lvds_bridge2: lt9211@2d {
+		compatible = "lt9211";
+		status = "disabled";
+		reg = <0x2d>;
+
+		lvds-clk-rate = <72000000>;
+		lvds-format = <2>;//VESA
+		lvds-bpp = <24>;///RGB888
+		dsi-lanes = <4>;//u-boot
+		sync_delay = <33>;
+		//uboot-logo;
+		//dual-link;
+		//test-pattern;
+
+		t1=<0>;
+		t2=<1>;
+		t3=<500>;
+		t4=<200>;
+		t5=<1>;
+		t6=<0>;
+		t7=<1000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en &pinctrl_lvds_vdd_en  &pinctrl_pwr_source>;//<&pinctrl_sn65dsi84_irq>
+
+		EN-gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+		//lt9211_irq-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+	};
+
+
 	dsi_lvds_bridge: sn65dsi84@2c {
 		compatible = "sn65dsi84";
 		status = "disabled";
@@ -962,6 +994,7 @@
 		lvds-bpp = <24>;
 		dsi-lanes = <4>;//u-boot
 		sync_delay = <33>;
+		//uboot-logo;
 		//dual-link;
 		//test-pattern;
 
@@ -993,6 +1026,7 @@
 		bpc=<8>;//u-boot
 		data-lanes = <0 1>;
 		lane-polarities = <0 0 0 0>;
+		//uboot-logo;
 
 		t1=<0>;
 		t2=<0>;
@@ -1519,6 +1553,7 @@
 		disable_delay = <15>;//EDP T17,min 10
 		pinctrl-names = "default";
 		pinctrl-0 = <&pinctrl_lvds_bl_en>;
+		//uboot-logo;
 };
 
 &dsi {

@@ -989,24 +989,30 @@ static int lt9211_parse_dt(struct device_node *np,
 
 	data->test_pattern_en = of_property_read_bool(np, "test-pattern");
 
-	printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false");
+	data->uboot = of_property_read_bool(np, "uboot-logo");
 
-	data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+	printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
+
+
+	if(data->uboot) {
+		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN", GPIOD_OUT_HIGH);
+		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_HIGH);
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+	} else {
+		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN", GPIOD_OUT_LOW);
+		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
+		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+
+	}
+
 	if (IS_ERR(data->lt9211_en_gpio)) {
 		printk(KERN_INFO "lt9211_parse_dt: failed to get EN GPIO \n");
 	}
 
-	data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
 	if (IS_ERR(data->lvds_vdd_en_gpio)) {
 		printk(KERN_INFO "lt9211_parse_dt: failed to get lvds_vdd_en_gpio\n");
 	}
 
-	data->lvds_hdmi_sel_gpio = devm_gpiod_get_optional(dev, "lvds_hdmi_sel", GPIOD_IN);
-	if (IS_ERR(data->lvds_hdmi_sel_gpio)) {
-		printk(KERN_INFO "lt9211_parse_dt: failed to get lvds_hdmi_sel_gpio\n");
-	}
-
-	data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
 	if (IS_ERR(data->pwr_source_gpio)) {
 		printk(KERN_INFO "lt9211_parse_dt: failed to get  pwr_source gpio\n");
 	}

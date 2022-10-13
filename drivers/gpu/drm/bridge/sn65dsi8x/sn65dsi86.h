@@ -24,6 +24,7 @@ struct sn65dsi86_data {
 	bool test_pattern_en;
 	bool enabled;
 	bool status;
+	bool uboot;
 
 	bool powered;
 

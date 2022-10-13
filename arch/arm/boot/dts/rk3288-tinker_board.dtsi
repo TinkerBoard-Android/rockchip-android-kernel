@@ -107,6 +107,7 @@
 	disable_delay = <5>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_lvds_bl_en>;
+	//uboot-logo;
 };
 
 &cpu0 {
@@ -534,6 +535,8 @@
 		lvds-bpp = <24>;///RGB888
 		dsi-lanes = <2>;//u-boot
 		sync_delay = <33>;
+		de-mode;
+		//uboot-logo;
 		//dual-link;
 		//test-pattern;
 
@@ -551,6 +554,38 @@
 		EN-gpios = <&gpio8 RK_PB0 GPIO_ACTIVE_HIGH>;
 		lvds_vdd_en-gpios = <&gpio8 RK_PA6 GPIO_ACTIVE_HIGH>;
 		//lt9211_irq-gpios = <&gpio8 RK_PA7 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio8 RK_PA3 GPIO_ACTIVE_HIGH>;
+	};
+
+	dsi_lvds_bridge: sn65dsi84@2c {
+		compatible = "sn65dsi84";
+		status = "disabled";
+		reg = <0x2c>;
+
+		lvds-clk-rate = <72000000>;
+		lvds-format = <2>;
+		lvds-bpp = <24>;
+		dsi-lanes = <4>;//u-boot
+		sync_delay = <33>;
+		//uboot-logo;
+		//dual-link;
+		//test-pattern;
+
+		t1=<0>;
+		t2=<1>;
+		t3=<500>;
+		t4=<200>;
+		t5=<1>;
+		t6=<0>;
+		t7=<1000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en &pinctrl_lvds_vdd_en &pinctrl_sn65dsi84_irq  &pinctrl_pwr_source>;//<&pinctrl_lvds_hdmi_sel>
+
+		/*lvds_hdmi_sel-gpios = <&5 23 GPIO_ACTIVE_HIGH>;*/
+		EN-gpios = <&gpio8 RK_PB0 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio8 RK_PA6 GPIO_ACTIVE_HIGH>;
+		dsi84_irq-gpios = <&gpio8 RK_PA7 GPIO_ACTIVE_HIGH>;
 		pwr_source-gpios = <&gpio8 RK_PA3 GPIO_ACTIVE_HIGH>;
 	};
 

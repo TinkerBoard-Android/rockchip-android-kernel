@@ -546,8 +546,11 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 		goto err_alloc;
 	}
 
-	pb->soc_enablekl = devm_gpiod_get_optional(&pdev->dev, "soc_enablekl",
-						  GPIOD_OUT_LOW);
+	if(of_property_read_bool(node, "uboot-logo")) {
+		pb->soc_enablekl = devm_gpiod_get_optional(&pdev->dev, "soc_enablekl",GPIOD_OUT_HIGH);
+	} else {
+		pb->soc_enablekl = devm_gpiod_get_optional(&pdev->dev, "soc_enablekl",GPIOD_OUT_LOW);
+	}
 	if (IS_ERR(pb->soc_enablekl)) {
 		ret = PTR_ERR(pb->soc_enablekl);
 		goto err_alloc;
