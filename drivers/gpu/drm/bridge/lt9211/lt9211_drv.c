@@ -31,6 +31,44 @@ static bool connect_lt9211 = false;
 
 //int display_debug_timing[8]= {0};
 
+bool lt9211_is_connected(void)
+{
+	printk(KERN_INFO "%s  lt9211 connect = %d\n", __func__, connect_lt9211);
+	return connect_lt9211;
+}
+EXPORT_SYMBOL_GPL(lt9211_is_connected);
+
+void lt9211_lvds_power_on(void)
+{
+	if (!g_lt9211) {
+		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
+		return;
+	}
+
+	printk(KERN_INFO "%s \n", __func__);
+	if (g_lt9211->lvds_vdd_en_gpio) {
+		gpiod_set_value_cansleep(g_lt9211->lvds_vdd_en_gpio, 1);
+	}
+
+	return;
+}
+EXPORT_SYMBOL_GPL(lt9211_lvds_power_on);
+
+void lt9211_lvds_power_off(void)
+{
+	if (!g_lt9211) {
+		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
+		return;
+	}
+
+	printk(KERN_INFO "%s \n", __func__);
+	if (g_lt9211->lvds_vdd_en_gpio) {
+		gpiod_set_value_cansleep(g_lt9211->lvds_vdd_en_gpio, 0);
+	}
+	return;
+}
+EXPORT_SYMBOL_GPL(lt9211_lvds_power_off);
+
 uint8_t lt9211_read(struct i2c_client *client, int reg)
 {
 	int ret;
@@ -696,44 +734,6 @@ void lt9211_lvds_tx_en(struct lt9211_data *lt9211)
 	}
 }
 
-bool lt9211_is_connected(void)
-{
-	printk(KERN_INFO "%s  lt9211 connect = %d\n", __func__, connect_lt9211);
-	return connect_lt9211;
-}
-EXPORT_SYMBOL_GPL(lt9211_is_connected);
-
-void lt9211_lvds_power_on(void)
-{
-	if (!g_lt9211) {
-		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
-		return;
-	}
-
-	printk(KERN_INFO "%s \n", __func__);
-	if (g_lt9211->lvds_vdd_en_gpio) {
-		gpiod_set_value_cansleep(g_lt9211->lvds_vdd_en_gpio, 1);
-	}
-
-	return;
-}
-EXPORT_SYMBOL_GPL(lt9211_lvds_power_on);
-
-void lt9211_lvds_power_off(void)
-{
-	if (!g_lt9211) {
-		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
-		return;
-	}
-
-	printk(KERN_INFO "%s \n", __func__);
-	if (g_lt9211->lvds_vdd_en_gpio) {
-		gpiod_set_value_cansleep(g_lt9211->lvds_vdd_en_gpio, 0);
-	}
-	return;
-}
-EXPORT_SYMBOL_GPL(lt9211_lvds_power_off);
-
 static void ConvertBoard_power_on(struct lt9211_data *lt9211)
 {
 	printk(KERN_INFO "%s \n", __func__);
@@ -791,6 +791,8 @@ static void lt9211_init_seq(struct lt9211_data *lt9211)
 	lt9211_mipipcr(lt9211);
 	msleep(10);
 	lt9211_txpll(lt9211);
+	lt9211_lvds_power_on();
+	msleep(lt9211->t1 + 20);
 	lt9211_txphy(lt9211);
 	lt9211_txdigital(lt9211);
 
@@ -818,6 +820,8 @@ void lt9211_lvds_pattern_config(void)
 		lt9211_write(g_lt9211->client, 0xff, 0x81);//ADD 3.3 LVDS TX LOGIC RESET
 		//msleep(10);
 		lt9211_txpll(g_lt9211);
+		lt9211_lvds_power_on();
+		msleep(g_lt9211->t1 + 20);
 		lt9211_txphy(g_lt9211);
 		lt9211_txdigital(g_lt9211);
 
@@ -856,14 +860,15 @@ static bool lt9211_detect(struct lt9211_data *lt9211)
 	return lt9211->status;
 }
 
-void lt9211_bridge_enable(void)
+void lt9211_bridge_enable(int t)
 {
 	if (!g_lt9211) {
 		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
 		return;
 	}
 
-	printk(KERN_INFO "%s \n", __func__);
+	g_lt9211->t1 = t;
+	printk(KERN_INFO "%s t1 = %d\n", __func__,g_lt9211->t1);
 	if (g_lt9211->enabled)
 		return;
 
