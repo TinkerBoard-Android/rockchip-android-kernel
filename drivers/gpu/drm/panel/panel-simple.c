@@ -68,7 +68,7 @@ static bool sn65dsi86_is_connected(void) { return false; }
 
 #ifdef CONFIG_DRM_I2C_LT9211
 extern void lt9211_loader_protect(bool on);
-extern void lt9211_bridge_enable(void);
+extern void lt9211_bridge_enable(int t);
 extern void lt9211_bridge_disable(void);
 extern bool lt9211_is_connected(void);
 extern void lt9211_set_videomode(struct videomode vm);
@@ -78,7 +78,7 @@ extern void lt9211_lvds_power_on(void);
 extern void lt9211_lvds_power_off(void);
 #else
 static void lt9211_loader_protect(bool on) { return ; }
-static void lt9211_bridge_enable(void) { return ; }
+static void lt9211_bridge_enable(int t) { return ; }
 static void lt9211_bridge_disable(void) { return ; }
 static bool lt9211_is_connected(void) { return false; }
 static void lt9211_set_videomode(struct videomode vm) { return ; }
@@ -715,11 +715,13 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		tinker_ft5406_start_polling(p->dsi_id);
 #endif
 	}
+/*
 	if (lt9211_is_connected()) {
         lt9211_lvds_power_on();
         if(p->desc->pwseq_delay.t1)
             msleep(p->desc->pwseq_delay.t1);//lvds power on to lvds signal
     }
+*/
 #endif
 
 	gpiod_direction_output(p->enable_gpio, 1);
@@ -790,7 +792,7 @@ static int panel_simple_enable(struct drm_panel *panel)
 	}
 
 	if (lt9211_is_connected()) {
-        lt9211_bridge_enable();
+        lt9211_bridge_enable(p->desc->pwseq_delay.t1);
 		if(p->desc->pwseq_delay.t2)
             msleep(p->desc->pwseq_delay.t2);//lvds signal to turn on backlight
     }
