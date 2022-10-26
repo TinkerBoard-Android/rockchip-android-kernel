@@ -226,12 +226,13 @@
 };
 
 &thermal_zones {
-        soc_thermal: soc-thermal {
-                sustainable-power = <1761>; /* milliwatts */
+	soc_thermal: soc-thermal {
+		sustainable-power = <1761>; /* milliwatts */
 
-                trips {
-                        soc_crit: soc-crit {
-                                temperature = <105000>; /* millicelsius */
-                        };
-        };
+		trips {
+			soc_crit: soc-crit {
+				temperature = <105000>; /* millicelsius */
+			};
+		};
+	};
 };
