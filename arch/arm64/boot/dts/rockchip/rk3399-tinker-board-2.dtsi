@@ -437,11 +437,6 @@
 	};
 };
 
-&backlight {
-	status = "okay";
-	enable-gpios = <&gpio4 29 GPIO_ACTIVE_HIGH>;
-};
-
 &edp {
 	status = "okay";
 	force-hpd;
@@ -461,7 +456,31 @@
 	status = "disabled";
 };
 
-&hdmi_in_vopb {
+&edp_in_vopb {
+	status = "disabled";
+};
+
+&hdmi_in_vopl {
+	status = "disabled";
+};
+
+&dsi_in_vopl {
+	status = "okay";
+};
+
+&dsi_in_vopb {
+	status = "disabled";
+};
+
+&dsi1 {
+	status = "disabled";
+};
+
+&dsi1_in_vopl {
+	status = "disabled";
+};
+
+&dsi1_in_vopb {
 	status = "disabled";
 };
 
@@ -480,10 +499,6 @@
 };
 
 &hdmiin_sound {
-	status = "disabled";
-};
-
-&dp_in_vopb {
 	status = "disabled";
 };
 
@@ -1041,6 +1056,11 @@
 		compatible = "tinker_mcu_ili9881c";
 		reg = <0x36>;
 	};
+
+	tinker_ft5406: tinker_ft5406@38 {
+		compatible = "tinker_ft5406";
+		reg = <0x38>;
+	};
 };
 
 &isp0_mmu {
@@ -1085,11 +1105,6 @@
 				remote-endpoint = <&isp0_mipi_in>;
 			};
 		};
-	};
-
-	tinker_ft5406: tinker_ft5406@38 {
-		compatible = "tinker_ft5406";
-		reg = <0x38>;
 	};
 };
 
@@ -1470,10 +1485,6 @@
 
 &vopb {
 	support-multi-area;
-	status = "okay";
-};
-
-&vopb_mmu {
 	status = "okay";
 };
 
@@ -2075,7 +2086,14 @@
 
 &route_hdmi {
 	status = "okay";
-	connect = <&vopl_out_hdmi>;
+	connect = <&vopb_out_hdmi>;
+};
+
+&route_dsi{
+	status = "okay";
+	logo,uboot = "tinkerboard.bmp";
+	logo,kernel = "tinkerboard.bmp";
+	connect = <&vopl_out_dsi>;
 };
 
 &i2c6 {
