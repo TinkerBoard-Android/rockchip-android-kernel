@@ -929,6 +929,120 @@
 	};
 };
 
+&i2c8 {
+	status = "okay";
+
+	dsi_lvds_bridge2: lt9211@2d {
+		compatible = "lt9211";
+		status = "disabled";
+		reg = <0x2d>;
+
+		lvds-clk-rate = <72000000>;
+		lvds-format = <2>;//VESA
+		lvds-bpp = <24>;///RGB888
+		dsi-lanes = <4>;//u-boot
+		sync_delay = <33>;
+		//uboot-logo;
+		//dual-link;
+		//test-pattern;
+
+		t1=<0>;
+		t2=<1>;
+		t3=<500>;
+		t4=<200>;
+		t5=<1>;
+		t6=<0>;
+		t7=<1000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en &pinctrl_lvds_vdd_en  &pinctrl_pwr_source>;//<&pinctrl_sn65dsi84_irq>
+
+		EN-gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+		//lt9211_irq-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+	};
+
+
+	dsi_lvds_bridge: sn65dsi84@2c {
+		compatible = "sn65dsi84";
+		status = "disabled";
+		reg = <0x2c>;
+
+		lvds-clk-rate = <72000000>;
+		lvds-format = <2>;
+		lvds-bpp = <24>;
+		dsi-lanes = <4>;//u-boot
+		sync_delay = <33>;
+		//uboot-logo;
+		//dual-link;
+		//test-pattern;
+
+		t1=<0>;
+		t2=<1>;
+		t3=<500>;
+		t4=<200>;
+		t5=<1>;
+		t6=<0>;
+		t7=<1000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en &pinctrl_lvds_vdd_en &pinctrl_sn65dsi84_irq  &pinctrl_pwr_source>;//<&pinctrl_lvds_hdmi_sel>
+
+		/*lvds_hdmi_sel-gpios = <&5 23 GPIO_ACTIVE_HIGH>;*/
+		EN-gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+		dsi84_irq-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+	};
+
+	dsi_edp_bridge: sn65dsi86@2d {
+		compatible = "sn65dsi86";
+		status = "disabled";
+		reg = <0x2d>;
+
+		dsi-lanes = <4>;//u-boot
+		data-lanes-size = <2>;//u-boot
+		bpc=<8>;//u-boot
+		data-lanes = <0 1>;
+		lane-polarities = <0 0 0 0>;
+		//uboot-logo;
+
+		t1=<0>;
+		t2=<0>;
+		t3=<200>;
+		t4=<20>;
+		t5=<0>;
+		t6=<0>;
+		t7=<0>;
+		t8=<100>;
+		t12= <500>;
+		t14= <15>;//Backlight node:enable_delay = <15>;
+		t15 = <15>;//Backlight node:post-pwm-on-delay-ms = <15>;
+		t16= <15>;//Backlight node:pwm-off-delay-ms = <15>;
+		t17 = <15>;//Backlight node:disable_delay = <15>;
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_sn65dsi84_en>, <&pinctrl_lvds_vdd_en>, <&pinctrl_sn65dsi84_irq>, <&pinctrl_pwr_source>;//<&pinctrl_lvds_bl_en>;
+
+		EN-gpios = <&gpio1 RK_PA7 GPIO_ACTIVE_HIGH>;
+		edp_vdd_en-gpios = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+		//dsi86_vbl_en-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_HIGH>;
+		dsi86_irq-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
+		pwr_source-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+	};
+
+	tinker_mcu: tinker_mcu@45 {
+		compatible = "tinker_mcu";
+		reg = <0x45>;
+	};
+
+	tinker_mcu_ili9881c: tinker_mcu_ili9881c@36 {
+		compatible = "tinker_mcu_ili9881c";
+		reg = <0x36>;
+	};
+};
+
 &isp0_mmu {
 	status = "okay";
 };
@@ -1422,9 +1536,458 @@
 	};
 };
 
+&backlight {
+		status = "disabled";
+		compatible = "pwm-backlight";
+		pwms = <&pwm0 0 400000 0>;//f=2500 t=400,000ns
+		brightness-levels = <
+			  0   1   2   3   4   5   6   7
+			  8   9  10  11  12  13  14  15
+			 16  17  18  19  20  21  22  23
+			 24  25  26  27  28  29  30  31
+			 32  33  34  35  36  37  38  39
+			 40  41  42  43  44  45  46  47
+			 48  49  50  51  52  53  54  55
+			 56  57  58  59  60  61  62  63
+			 64  65  66  67  68  69  70  71
+			 72  73  74  75  76  77  78  79
+			 80  81  82  83  84  85  86  87
+			 88  89  90  91  92  93  94  95
+			 96  97  98  99 100 101 102 103
+			104 105 106 107 108 109 110 111
+			112 113 114 115 116 117 118 119
+			120 121 122 123 124 125 126 127
+			128 129 130 131 132 133 134 135
+			136 137 138 139 140 141 142 143
+			144 145 146 147 148 149 150 151
+			152 153 154 155 156 157 158 159
+			160 161 162 163 164 165 166 167
+			168 169 170 171 172 173 174 175
+			176 177 178 179 180 181 182 183
+			184 185 186 187 188 189 190 191
+			192 193 194 195 196 197 198 199
+			200 201 202 203 204 205 206 207
+			208 209 210 211 212 213 214 215
+			216 217 218 219 220 221 222 223
+			224 225 226 227 228 229 230 231
+			232 233 234 235 236 237 238 239
+			240 241 242 243 244 245 246 247
+			248 249 250 251 252 253 254 255>;
+		default-brightness-level = <200>;
+		minimal-brightness-level = <26>;
+		soc_enablekl-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_HIGH>;
+		enable_delay = <15>;//EDP T14,min 10
+		post-pwm-on-delay-ms = <15>;//EDP T15,min 10ms, Backlight node:post-pwm-on-delay-ms = <15>;
+		pwm-off-delay-ms = <15>;//EDP T16,min 10ms, Backlight node:pwm-off-delay-ms = <15>;
+		disable_delay = <15>;//EDP T17,min 10
+		pinctrl-names = "default";
+		pinctrl-0 = <&pinctrl_lvds_bl_en>;
+		//uboot-logo;
+};
+
 &dsi {
+	status = "okay";
 	panel@0 {
+		compatible ="simple-panel-dsi";
 		reg = <0>;
+
+		rpi-init-sequence = [
+				29 00 06 10 02 03 00 00 00
+				29 00 06 64 01 0C 00 00 00
+				29 00 06 68 01 0C 00 00 00
+				29 00 06 44 01 00 00 00 00
+				29 00 06 48 01 00 00 00 00
+				29 00 06 14 01 15 00 00 00
+				29 00 06 50 04 60 00 00 00
+				29 00 06 20 04 52 01 10 00
+				29 00 06 24 04 14 00 1A 00
+				29 00 06 28 04 20 03 69 00
+				29 00 06 2C 04 02 00 15 00
+				29 00 06 30 04 E0 01 07 00
+				29 00 06 34 04 01 00 00 00
+				29 00 06 64 04 0F 04 00 00
+				29 00 06 04 01 01 00 00 00
+				29 00 06 04 02 01 00 00 00
+		];
+		powertip-exit-sequence = [
+			05 14 01 28
+			05 78 01 10
+		];
+		powertip-rev-a-init-sequence = [
+			39 00 04 ff 98 81 03
+			15 00 02 03 55
+			15 00 02 04 13
+			15 00 02 06 06
+			15 00 02 07 01
+			15 00 02 09 01
+			15 00 02 0a 01
+			15 00 02 0f 18
+			15 00 02 10 18
+			15 00 02 1e 44
+			15 00 02 1f 80
+			15 00 02 20 02
+			15 00 02 21 03
+			15 00 02 28 33
+			15 00 02 29 03
+			15 00 02 34 04
+			15 00 02 38 01
+			15 00 02 50 01
+			15 00 02 51 23
+			15 00 02 52 45
+			15 00 02 53 67
+			15 00 02 54 89
+			15 00 02 55 ab
+			15 00 02 56 01
+			15 00 02 57 23
+			15 00 02 58 45
+			15 00 02 59 67
+			15 00 02 5a 89
+			15 00 02 5b ab
+			15 00 02 5c cd
+			15 00 02 5d ef
+			15 00 02 5e 11
+			15 00 02 5f 14
+			15 00 02 60 15
+			15 00 02 61 0f
+			15 00 02 62 0d
+			15 00 02 63 0e
+			15 00 02 64 0c
+			15 00 02 65 06
+			15 00 02 66 02
+			15 00 02 67 02
+			15 00 02 68 02
+			15 00 02 69 02
+			15 00 02 6a 02
+			15 00 02 6b 02
+			15 00 02 6c 02
+			15 00 02 6d 02
+			15 00 02 6e 02
+			15 00 02 6f 02
+			15 00 02 70 02
+			15 00 02 72 01
+			15 00 02 73 08
+			15 00 02 74 02
+			15 00 02 75 14
+			15 00 02 76 15
+			15 00 02 77 0f
+			15 00 02 78 0d
+			15 00 02 79 0e
+			15 00 02 7a 0c
+			15 00 02 7b 08
+			15 00 02 7c 02
+			15 00 02 7d 02
+			15 00 02 7e 02
+			15 00 02 7f 02
+			15 00 02 80 02
+			15 00 02 81 02
+			15 00 02 82 02
+			15 00 02 83 02
+			15 00 02 84 02
+			15 00 02 85 02
+			15 00 02 86 02
+			15 00 02 88 01
+			15 00 02 89 06
+			15 00 02 8a 02
+			39 00 04 ff 98 81 04
+			15 00 02 6c 15
+			15 00 02 6e 2a
+			15 00 02 6f 33
+			15 00 02 3a 24
+			15 00 02 8d 14
+			15 00 02 87 ba
+			15 00 02 26 76
+			15 00 02 b2 d1
+			15 00 02 b5 d7
+			15 00 02 35 1f
+			39 00 04 ff 98 81 01
+			15 00 02 22 0a
+			15 00 02 53 72
+			15 00 02 55 77
+			15 00 02 50 a6
+			15 00 02 51 a6
+			15 00 02 60 30
+			15 00 02 a0 08
+			15 00 02 a1 1a
+			15 00 02 a2 2a
+			15 00 02 a3 14
+			15 00 02 a4 17
+			15 00 02 a5 2b
+			15 00 02 a6 1d
+			15 00 02 a7 20
+			15 00 02 a8 9d
+			15 00 02 a9 1c
+			15 00 02 aa 29
+			15 00 02 ab 8f
+			15 00 02 ac 20
+			15 00 02 ad 1f
+			15 00 02 ae 4f
+			15 00 02 af 23
+			15 00 02 b0 29
+			15 00 02 b1 56
+			15 00 02 b2 66
+			15 00 02 b3 39
+			15 00 02 c0 08
+			15 00 02 c1 1a
+			15 00 02 c2 2a
+			15 00 02 c3 15
+			15 00 02 c4 17
+			15 00 02 c5 2b
+			15 00 02 c6 1d
+			15 00 02 c7 20
+			15 00 02 c8 9d
+			15 00 02 c9 1d
+			15 00 02 ca 29
+			15 00 02 cb 8f
+			15 00 02 cc 20
+			15 00 02 cd 1f
+			15 00 02 ce 4f
+			15 00 02 cf 24
+			15 00 02 d0 29
+			15 00 02 d1 56
+			15 00 02 d2 66
+			15 00 02 d3 39
+			39 00 04 ff 98 81 00
+			15 00 02 35 00
+			05 78 01 11
+			05 78 01 29
+		];
+		powertip-rev-b-init-sequence = [
+			39 00 04 FF 98 81 03
+			15 00 02 01 00
+			15 00 02 02 00
+			15 00 02 03 73
+			15 00 02 04 00
+			15 00 02 05 00
+			15 00 02 06 0A
+			15 00 02 07 00
+			15 00 02 08 00
+			15 00 02 09 61
+			15 00 02 0A 00
+			15 00 02 0B 00
+			15 00 02 0C 01
+			15 00 02 0D 00
+			15 00 02 0E 00
+			15 00 02 0F 61
+			15 00 02 10 61
+			15 00 02 11 00
+			15 00 02 12 00
+			15 00 02 13 00
+			15 00 02 14 00
+			15 00 02 15 00
+			15 00 02 16 00
+			15 00 02 17 00
+			15 00 02 18 00
+			15 00 02 19 00
+			15 00 02 1A 00
+			15 00 02 1B 00
+			15 00 02 1C 00
+			15 00 02 1D 00
+			15 00 02 1E 40
+			15 00 02 1F 80
+			15 00 02 20 06
+			15 00 02 21 01
+			15 00 02 22 00
+			15 00 02 23 00
+			15 00 02 24 00
+			15 00 02 25 00
+			15 00 02 26 00
+			15 00 02 27 00
+			15 00 02 28 33
+			15 00 02 29 03
+			15 00 02 2A 00
+			15 00 02 2B 00
+			15 00 02 2C 00
+			15 00 02 2D 00
+			15 00 02 2E 00
+			15 00 02 2F 00
+			15 00 02 30 00
+			15 00 02 31 00
+			15 00 02 32 00
+			15 00 02 33 00
+			15 00 02 34 04
+			15 00 02 35 00
+			15 00 02 36 00
+			15 00 02 37 00
+			15 00 02 38 3C
+			15 00 02 39 00
+			15 00 02 3A 00
+			15 00 02 3B 00
+			15 00 02 3C 00
+			15 00 02 3D 00
+			15 00 02 3E 00
+			15 00 02 3F 00
+			15 00 02 40 00
+			15 00 02 41 00
+			15 00 02 42 00
+			15 00 02 43 00
+			15 00 02 44 00
+			15 00 02 50 10
+			15 00 02 51 32
+			15 00 02 52 54
+			15 00 02 53 76
+			15 00 02 54 98
+			15 00 02 55 BA
+			15 00 02 56 10
+			15 00 02 57 32
+			15 00 02 58 54
+			15 00 02 59 76
+			15 00 02 5A 98
+			15 00 02 5B BA
+			15 00 02 5C DC
+			15 00 02 5D FE
+			15 00 02 5E 00
+			15 00 02 5F 0E
+			15 00 02 60 0F
+			15 00 02 61 0C
+			15 00 02 62 0D
+			15 00 02 63 06
+			15 00 02 64 07
+			15 00 02 65 02
+			15 00 02 66 02
+			15 00 02 67 02
+			15 00 02 68 02
+			15 00 02 69 01
+			15 00 02 6A 00
+			15 00 02 6B 02
+			15 00 02 6C 15
+			15 00 02 6D 14
+			15 00 02 6E 02
+			15 00 02 6F 02
+			15 00 02 70 02
+			15 00 02 71 02
+			15 00 02 72 02
+			15 00 02 73 02
+			15 00 02 74 02
+			15 00 02 75 0E
+			15 00 02 76 0F
+			15 00 02 77 0C
+			15 00 02 78 0D
+			15 00 02 79 06
+			15 00 02 7A 07
+			15 00 02 7B 02
+			15 00 02 7C 02
+			15 00 02 7D 02
+			15 00 02 7E 02
+			15 00 02 7F 01
+			15 00 02 80 00
+			15 00 02 81 02
+			15 00 02 82 14
+			15 00 02 83 15
+			15 00 02 84 02
+			15 00 02 85 02
+			15 00 02 86 02
+			15 00 02 87 02
+			15 00 02 88 02
+			15 00 02 89 02
+			15 00 02 8A 02
+			39 00 04 FF 98 81 04
+			15 00 02 6C 15
+			15 00 02 6E 2A
+			15 00 02 6F 33
+			15 00 02 3B 98
+			15 00 02 3A 94
+			15 00 02 8D 14
+			15 00 02 87 BA
+			15 00 02 26 76
+			15 00 02 B2 D1
+			15 00 02 B5 06
+			15 00 02 38 01
+			15 00 02 39 00
+			39 00 04 FF 98 81 01
+			15 00 02 22 0A
+			15 00 02 31 00
+			15 00 02 53 7D
+			15 00 02 55 8F
+			15 00 02 40 33
+			15 00 02 50 96
+			15 00 02 51 96
+			15 00 02 60 23
+			15 00 02 A0 08
+			15 00 02 A1 1D
+			15 00 02 A2 2A
+			15 00 02 A3 10
+			15 00 02 A4 15
+			15 00 02 A5 28
+			15 00 02 A6 1C
+			15 00 02 A7 1D
+			15 00 02 A8 7E
+			15 00 02 A9 1D
+			15 00 02 AA 29
+			15 00 02 AB 6B
+			15 00 02 AC 1A
+			15 00 02 AD 18
+			15 00 02 AE 4B
+			15 00 02 AF 20
+			15 00 02 B0 27
+			15 00 02 B1 50
+			15 00 02 B2 64
+			15 00 02 B3 39
+			15 00 02 C0 08
+			15 00 02 C1 1D
+			15 00 02 C2 2A
+			15 00 02 C3 10
+			15 00 02 C4 15
+			15 00 02 C5 28
+			15 00 02 C6 1C
+			15 00 02 C7 1D
+			15 00 02 C8 7E
+			15 00 02 C9 1D
+			15 00 02 CA 29
+			15 00 02 CB 6B
+			15 00 02 CC 1A
+			15 00 02 CD 18
+			15 00 02 CE 4B
+			15 00 02 CF 20
+			15 00 02 D0 27
+			15 00 02 D1 50
+			15 00 02 D2 64
+			15 00 02 D3 39
+			39 00 04 ff 98 81 00
+			15 00 02 35 00
+			05 78 01 11
+			05 78 01 29
+		];
+
+		rpi-display-timings {
+			native-mode = <&timing2>;
+
+			timing2: timing2 {
+				clock-frequency = <26101800>;
+				hactive = <800>;
+				vactive = <480>;
+				hfront-porch = <2>;
+				hsync-len = <2>;
+				hback-porch = <52>;
+				vfront-porch = <7>;
+				vsync-len = <2>;
+				vback-porch = <21>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
+		powertip-display-timings {
+			native-mode = <&timing1>;
+
+			timing1: timing1 {
+				clock-frequency = <66800000>;
+				hactive = <720>;
+				vactive = <1280>;
+				hfront-porch = <8>;
+				hsync-len = <55>;
+				hback-porch = <55>;
+				vfront-porch = <8>;
+				vsync-len = <20>;
+				vback-porch = <20>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
+
 
 		ports {
 			#address-cells = <1>;
@@ -1567,6 +2130,32 @@
 				<2 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
+
+	mipi_to_lvds {
+		/*pinctrl_lvds_hdmi_sel: lvds_hdmi_sel {
+			rockchip,pins = <0 5 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};*/
+
+		pinctrl_sn65dsi84_irq: sn65dsi84_irq{
+			rockchip,pins = <1 RK_PB2 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_lvds_bl_en: lvds_bl_en {
+			rockchip,pins = <1 RK_PB0 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_sn65dsi84_en: sn65dsi84_en {
+			rockchip,pins = <1 RK_PA7 RK_FUNC_GPIO   &pcfg_pull_none>;
+		};
+
+		pinctrl_lvds_vdd_en: lvds_vdd_en {
+			rockchip,pins = <1 RK_PB1 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_pwr_source: pwr_source {
+			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+    };
 
 	lcd-panel {
 		lcd_panel_reset: lcd-panel-reset {
