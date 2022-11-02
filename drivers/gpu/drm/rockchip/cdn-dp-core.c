@@ -22,6 +22,7 @@
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/extcon.h>
+#include <linux/extcon-provider.h>
 #include <linux/firmware.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
@@ -51,6 +52,11 @@
 #define CDN_FW_TIMEOUT_MS	(64 * 1000)
 #define CDN_DPCD_TIMEOUT_MS	5000
 #define CDN_DP_FIRMWARE		"rockchip/dptx.bin"
+
+static const unsigned int cdn_dp_cable[] = {
+	EXTCON_DISP_DP,
+	EXTCON_NONE,
+};
 
 struct cdn_dp_data {
 	u8 max_phy;
@@ -723,6 +729,9 @@ static void cdn_dp_encoder_enable(struct drm_encoder *encoder)
 	}
 
 out:
+	if (!ret) {
+		extcon_set_state_sync(dp->extcon, EXTCON_DISP_DP, 1);
+	}
 	mutex_unlock(&dp->lock);
 }
 
@@ -740,6 +749,7 @@ static void cdn_dp_encoder_disable(struct drm_encoder *encoder)
 		}
 	}
 	mutex_unlock(&dp->lock);
+	extcon_set_state_sync(dp->extcon, EXTCON_DISP_DP, 0);
 
 	/*
 	 * In the following 2 cases, we need to run the event_work to re-enable
@@ -1263,6 +1273,18 @@ static int cdn_dp_bind(struct device *dev, struct device *master, void *data)
 	}
 
 	drm_connector_helper_add(connector, &cdn_dp_connector_helper_funcs);
+
+	dp->extcon = devm_extcon_dev_allocate(dp->dev, cdn_dp_cable);
+	if (IS_ERR(dp->extcon)) {
+		dev_err(dp->dev, "allocate extcon failed\n");
+		goto err_free_encoder;
+	}
+	ret = devm_extcon_dev_register(dp->dev, dp->extcon);
+	if (ret) {
+		dev_err(dp->dev, "failed to register extcon: %d\n",
+			ret);
+		goto err_free_encoder;
+	}
 
 	ret = drm_connector_attach_encoder(connector, encoder);
 	if (ret) {

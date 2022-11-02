@@ -110,6 +110,7 @@ struct cdn_dp_device {
 	int active_port;
 	u8 train_set[4];
 
+	struct extcon_dev *extcon;
 	u8 dpcd[DP_RECEIVER_CAP_SIZE];
 	bool sink_has_audio;
 };
