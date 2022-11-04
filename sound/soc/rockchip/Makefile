@@ -20,6 +20,8 @@ obj-$(CONFIG_SND_SOC_ROCKCHIP_PDM) += snd-soc-rockchip-pdm.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_SPDIF) += snd-soc-rockchip-spdif.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_VAD) += snd-soc-rockchip-vad.o
 
+ccflags-y += -DROCKCHIP_AUDIO
+
 snd-soc-rockchip-hdmi-objs := rockchip_hdmi.o
 snd-soc-rockchip-max98090-objs := rockchip_max98090.o
 snd-soc-rockchip-multicodecs-objs := rockchip_multicodecs.o
@@ -29,6 +31,13 @@ snd-soc-rockchip-rt5651-objs := rockchip_rt5651.o
 snd-soc-rockchip-rt5651-rk628-objs := rockchip_rt5651_rk628.o
 snd-soc-rk3288-hdmi-analog-objs := rk3288_hdmi_analog.o
 snd-soc-rk3399-gru-sound-objs := rk3399_gru_sound.o
+snd-soc-hifiberry-dac-objs := hifiberry_dac.o
+snd-soc-hifiberry-dacplus-objs := hifiberry_dacplus.o
+snd-soc-hifiberry-digi-objs := hifiberry_digi.o
+snd-soc-iqaudio-dac-objs := iqaudio-dac.o
+snd-soc-iqaudio-digi-objs := iqaudio-digi.o
+snd-soc-justboom-dac-objs := justboom-dac.o
+snd-soc-justboom-digi-objs := justboom-digi.o
 
 obj-$(CONFIG_SND_SOC_ROCKCHIP_HDMI) += snd-soc-rockchip-hdmi.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_MAX98090) += snd-soc-rockchip-max98090.o
@@ -39,3 +48,10 @@ obj-$(CONFIG_SND_SOC_ROCKCHIP_RT5651) += snd-soc-rockchip-rt5651.o
 obj-$(CONFIG_SND_SOC_ROCKCHIP_RT5651_RK628) += snd-soc-rockchip-rt5651-rk628.o
 obj-$(CONFIG_SND_SOC_RK3288_HDMI_ANALOG) += snd-soc-rk3288-hdmi-analog.o
 obj-$(CONFIG_SND_SOC_RK3399_GRU_SOUND) += snd-soc-rk3399-gru-sound.o
+obj-$(CONFIG_SND_SOC_HIFIBERRY_DAC) += snd-soc-hifiberry-dac.o
+obj-$(CONFIG_SND_SOC_HIFIBERRY_DACPLUS) += snd-soc-hifiberry-dacplus.o
+obj-$(CONFIG_SND_SOC_HIFIBERRY_DIGI) += snd-soc-hifiberry-digi.o
+obj-$(CONFIG_SND_SOC_IQAUDIO_DAC) += snd-soc-iqaudio-dac.o
+obj-$(CONFIG_SND_SOC_IQAUDIO_DIGI) += snd-soc-iqaudio-digi.o
+obj-$(CONFIG_SND_SOC_JUSTBOOM_DAC) += snd-soc-justboom-dac.o
+obj-$(CONFIG_SND_SOC_JUSTBOOM_DIGI) += snd-soc-justboom-digi.o

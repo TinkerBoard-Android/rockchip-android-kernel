@@ -150,6 +150,10 @@
 		#sound-dai-cells = <0>;
 	};
 
+	sound-ext-card {
+		status = "disabled";
+	};
+
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
 		clocks = <&rk808 1>;
@@ -349,6 +353,14 @@
 		regulator-min-microvolt = <800000>;
 		regulator-max-microvolt = <1400000>;
 		vin-supply = <&vcc_sys>;
+	};
+
+	vdd_3v3_reg: fixedregulator_3v3 {
+		compatible = "regulator-fixed";
+		regulator-name = "3v3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
 	};
 
 	cpuinfo {
