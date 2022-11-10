@@ -323,6 +323,7 @@ struct tcpm_port {
         enum usb_role extcon_usb_role;
         enum typec_orientation extcon_orientation;
 	struct typec_displayport_data *data;
+	bool notify_alt_anyway;
 
 	bool attached;
 	bool connected;
@@ -362,6 +363,7 @@ struct tcpm_port {
 	enum tcpm_state delayed_state;
 	ktime_t delayed_runtime;
 	unsigned long delay_ms;
+	ktime_t notify_delayed_runtime;
 
 	spinlock_t pd_event_lock;
 	u32 pd_events;
@@ -956,7 +958,20 @@ static int tcpm_mux_set(struct tcpm_port *port, int state,
 	} else if (usb_role != USB_ROLE_NONE)
 		usb_ss = true;
 
-	if ( usb_ss == port->extcon_usb_ss && hpd == port->extcon_hpd
+	if (port->notify_alt_anyway) {
+		port->notify_alt_anyway = false;
+		if (ktime_after(ktime_get(), port->notify_delayed_runtime)) {
+			port->notify_delayed_runtime = ktime_add(ktime_get(), ms_to_ktime(1000));
+		} else {
+			if ( usb_ss == port->extcon_usb_ss && hpd == port->extcon_hpd
+					&& usb_role == port->extcon_usb_role
+					&& orientation == port->extcon_orientation) {
+				tcpm_log_force(port, "Do not notify same state during 1000ms delay.");
+				return 0;
+			} else
+				port->notify_delayed_runtime = ktime_add(ktime_get(), ms_to_ktime(1000));
+		}
+	} else if ( usb_ss == port->extcon_usb_ss && hpd == port->extcon_hpd
 			&& usb_role == port->extcon_usb_role
 			&& orientation == port->extcon_orientation)
 		return 0;
@@ -2277,6 +2292,8 @@ static int tcpm_altmode_notify(struct typec_altmode *altmode,
 
 	tcpm_log_force(port, "altmode notify alt mode: %lu, DisplayPort Status: 0x%08x",
 		       conf, port->data->status);
+
+	port->notify_alt_anyway = true;
 	tcpm_mux_set(port, (int)conf, port->extcon_usb_role,
                      port->extcon_orientation);
         return 0;
