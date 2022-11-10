@@ -1510,6 +1510,7 @@
 	#address-cells = <1>;
 	#size-cells = <0>;
 	#sound-dai-cells = <0>;
+	pinctrl-0 = <&hdmi_i2c_xfer &hdmi_cec>;
 	ddc-i2c-scl-high-time-ns = <9625>;
 	ddc-i2c-scl-low-time-ns = <10000>;
 	status = "okay";
