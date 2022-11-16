@@ -47,6 +47,7 @@ struct rt1711h_chip {
 	struct tcpci_data data;
 	struct tcpci *tcpci;
 	struct device *dev;
+	struct gpio_desc *gpio_vbus_5v;
 	u16 did;
 };
 
@@ -131,6 +132,20 @@ static int rt1711h_init(struct tcpci *tcpci, struct tcpci_data *tdata)
 	/* Decrease wait time of BMC-encoded 1 bit from 2.67us to 2.55us */
 	/* wait time : (val * .4167) us */
 	return rt1711h_write8(chip, RT1711H_PHYCTRL2, 62);
+}
+
+static int rt1711h_set_vbus(struct tcpci *tcpci, struct tcpci_data *tdata,
+			    bool source, bool sink)
+{
+	struct rt1711h_chip *chip = tdata_to_rt1711h(tdata);
+
+        if (chip->gpio_vbus_5v) {
+                gpiod_set_value(chip->gpio_vbus_5v, source);
+		dev_dbg(chip->dev, "rt1711h set vbus to %s\n", source ? "enable" : "disable");
+	} else
+		return -ENODEV;
+
+	return 0;
 }
 
 static int rt1711h_set_vconn(struct tcpci *tcpci, struct tcpci_data *tdata,
@@ -275,6 +290,15 @@ static int rt1711h_probe(struct i2c_client *client,
 	chip->dev = &client->dev;
 	i2c_set_clientdata(client, chip);
 
+	/* Get Vbus 5V gpio */
+	chip->gpio_vbus_5v = devm_gpiod_get_optional(chip->dev, "vbus-5v",
+                                                     GPIOD_OUT_LOW);
+        if (IS_ERR(chip->gpio_vbus_5v))
+                dev_warn(chip->dev,
+                         "Could not get named GPIO for VBus5V!\n");
+        else
+                gpiod_set_value(chip->gpio_vbus_5v, 0);
+
 	ret = rt1711h_sw_reset(chip);
 	if (ret < 0)
 		return ret;
@@ -285,6 +309,7 @@ static int rt1711h_probe(struct i2c_client *client,
 		return ret;
 
 	chip->data.init = rt1711h_init;
+	chip->data.set_vbus = rt1711h_set_vbus;
 	chip->data.set_vconn = rt1711h_set_vconn;
 	chip->data.start_drp_toggling = rt1711h_start_drp_toggling;
 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
@@ -297,7 +322,7 @@ static int rt1711h_probe(struct i2c_client *client,
 					dev_name(chip->dev), chip);
 	if (ret < 0)
 		return ret;
-	enable_irq_wake(client->irq);
+	//enable_irq_wake(client->irq);
 
 	return 0;
 }
