@@ -1144,13 +1144,13 @@
 &vopb {
 	status = "okay";
 	assigned-clocks = <&cru DCLK_VOP0_DIV>;
-	assigned-clock-parents = <&cru PLL_CPLL>;
+	assigned-clock-parents = <&cru PLL_VPLL>;
 };
 
 &vopl {
 	status = "okay";
 	assigned-clocks = <&cru DCLK_VOP1_DIV>;
-	assigned-clock-parents = <&cru PLL_VPLL>;
+	assigned-clock-parents = <&cru PLL_CPLL>;
 };
 
 &pcie_phy {
