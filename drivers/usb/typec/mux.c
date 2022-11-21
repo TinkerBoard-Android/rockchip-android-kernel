@@ -13,9 +13,9 @@
 #include <linux/mutex.h>
 #include <linux/property.h>
 #include <linux/slab.h>
-#include <linux/usb/typec_mux.h>
 
-#include "bus.h"
+#include "class.h"
+#include "mux.h"
 
 static int name_match(struct device *dev, const void *name)
 {
