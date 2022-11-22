@@ -332,6 +332,9 @@ struct tcpm_port {
 	enum typec_cc_status cc2;
 	enum typec_cc_polarity polarity;
 
+	bool extcon_usb_ss;
+	bool extcon_hpd;
+
 	bool attached;
 	bool connected;
 	bool registered;
@@ -371,6 +374,7 @@ struct tcpm_port {
 	enum tcpm_state delayed_state;
 	ktime_t delayed_runtime;
 	unsigned long delay_ms;
+	ktime_t notify_delayed_runtime;
 
 	spinlock_t pd_event_lock;
 	u32 pd_events;
@@ -837,6 +841,8 @@ static void tcpm_send_orientation_notify(struct tcpm_port *port)
 			    EXTCON_PROP_USB_TYPEC_POLARITY, property);
 	extcon_set_property(port->extcon, EXTCON_DISP_DP,
 			    EXTCON_PROP_USB_TYPEC_POLARITY, property);
+
+	tcpm_log_force(port, "extcon notify: Set orientation %d", port->polarity);
 }
 
 static void tcpm_send_data_role_notify(struct tcpm_port *port, bool attached,
@@ -844,17 +850,24 @@ static void tcpm_send_data_role_notify(struct tcpm_port *port, bool attached,
 {
 	bool dfp = false;
 	bool ufp = false;
+	enum usb_role usb_role = USB_ROLE_NONE;
 
 	if (attached) {
-		if (data == TYPEC_HOST)
+		if (data == TYPEC_HOST) {
 			dfp = true;
-		else
+			usb_role = USB_ROLE_HOST;
+
+		} else {
 			ufp = true;
+			usb_role = USB_ROLE_DEVICE;
+		}
 	}
+
 	extcon_set_state(port->extcon, EXTCON_USB, ufp);
 	extcon_set_state(port->extcon, EXTCON_USB_HOST, dfp);
 	extcon_sync(port->extcon, EXTCON_USB);
 	extcon_sync(port->extcon, EXTCON_USB_HOST);
+	tcpm_log_force(port, "extcon notify: Send usb-role %d", usb_role);
 }
 
 static void tcpm_send_dp_notify(struct tcpm_port *port)
@@ -868,6 +881,21 @@ static void tcpm_send_dp_notify(struct tcpm_port *port)
 			  DP_PIN_ASSIGN_MULTI_FUNCTION_MASK) ? true : false;
 		hpd = !!(port->dp_status & DP_STATUS_HPD_STATE);
 	}
+
+	if (ktime_after(ktime_get(), port->notify_delayed_runtime))
+		port->notify_delayed_runtime = ktime_add(ktime_get(), ms_to_ktime(400));
+	else {
+		if ( usb_ss == port->extcon_usb_ss && hpd == port->extcon_hpd) {
+			tcpm_log_force(port, "Do not notify same state during 500ms delay.");
+			return;
+		} else {
+			port->notify_delayed_runtime = ktime_add(ktime_get(), ms_to_ktime(400));
+		}
+	}
+
+	port->extcon_usb_ss = usb_ss;
+	port->extcon_hpd = hpd;
+
 	property.intval = usb_ss;
 	extcon_set_property(port->extcon, EXTCON_USB,
 			    EXTCON_PROP_USB_SS, property);
@@ -877,6 +905,7 @@ static void tcpm_send_dp_notify(struct tcpm_port *port)
 			    EXTCON_PROP_USB_SS, property);
 	extcon_set_state(port->extcon, EXTCON_DISP_DP, port->dp_configured && hpd);
 	extcon_sync(port->extcon, EXTCON_DISP_DP);
+	tcpm_log_force(port, "extcon notify: Send EXTCON_DISP_DP=%d usb_ss=%d", hpd, usb_ss);
 }
 
 static void tcpm_send_power_change_notify(struct tcpm_port *port)
@@ -2353,16 +2382,15 @@ static int tcpm_altmode_notify(struct typec_altmode *altmode,
 	struct tcpm_port *port = typec_altmode_get_drvdata(altmode);
 	struct typec_displayport_data *dp_data = data;
 
+	tcpm_log_force(port, "altmode notify alt mode: %lu, DisplayPort Status: 0x%08x",
+		       conf, dp_data->status);
 	if ((conf >= TYPEC_DP_STATE_A) && (conf <= TYPEC_DP_STATE_F)) {
 		if (port->dp_configured) {
 			port->dp_status = dp_data->status;
 			tcpm_send_dp_notify(port);
-			dev_info(port->dev, "dp_status %x\n", dp_data->status);
 		} else {
 			port->dp_pin_assignment = dp_data->conf;
 			port->dp_configured = true;
-			dev_info(port->dev, "DP pin assignment 0x%x\n",
-				 port->dp_pin_assignment);
 		}
 	} else if ((conf == TYPEC_STATE_USB) && (port->dp_configured)) {
 		/* may receive ufp device response Exit Mode Command Ack */
@@ -2371,7 +2399,6 @@ static int tcpm_altmode_notify(struct typec_altmode *altmode,
 		port->dp_configured = false;
 		tcpm_send_dp_notify(port);
 	}
-
 	return 0;
 }
 
