@@ -1564,6 +1564,10 @@ static int sn65dsi86_parse_dt(struct device_node *np,
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get edp_vdd_en_gpio\n");
 	}
 
+	if (IS_ERR(data->pwr_source_gpio)) {
+		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get pwr_source gpio\n");
+	}
+
 #ifdef PWM_FROM_SN65DSI86
 	if (IS_ERR(data->dsi86_vbl_en_gpio)) {
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get dsi86_vbl_en_gpio\n");
@@ -1575,11 +1579,6 @@ static int sn65dsi86_parse_dt(struct device_node *np,
 	data->dsi86_irq_gpio = devm_gpiod_get_optional(dev, "dsi86_irq", GPIOD_IN);
 	if (IS_ERR(data->dsi86_irq_gpio)) {
 		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get dsi86_irq_gpio\n");
-	}
-
-	data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
-	if (IS_ERR(data->pwr_source_gpio)) {
-		printk(KERN_INFO "sn65dsi86_parse_dt: failed to get pwr_source gpio\n");
 	}
 
 #ifndef PWM_FROM_SN65DSI86
