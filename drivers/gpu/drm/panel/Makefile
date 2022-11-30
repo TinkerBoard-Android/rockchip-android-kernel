@@ -21,4 +21,4 @@ obj-$(CONFIG_DRM_PANEL_SHARP_LS043T1LE01) += panel-sharp-ls043t1le01.o
 obj-$(CONFIG_DRM_PANEL_SITRONIX_ST7789V) += panel-sitronix-st7789v.o
 obj-$(CONFIG_DRM_PANEL_TOSHIBA_TC358762) += panel-toshiba-tc358762.o
 obj-$(CONFIG_DRM_PANEL_ASUS_ILI9881C) += panel-asus-ili9881c.o
-obj-y += panel-asus.o
+obj-$(CONFIG_DRM_PANEL_ASUS) += panel-asus.o
