@@ -1105,6 +1105,7 @@ static int rockchip_pcie_really_probe(struct rockchip_pcie *rockchip)
 		pcie_bus_configure_settings(child);
 
 	pci_bus_add_devices(bus);
+	device_init_wakeup(rockchip->dev, true);
 
 	return 0;
 }
@@ -1358,6 +1359,8 @@ static int rockchip_pcie_remove(struct platform_device *pdev)
 		regulator_disable(rockchip->vpcie1v8);
 	if (!IS_ERR(rockchip->vpcie0v9))
 		regulator_disable(rockchip->vpcie0v9);
+
+	device_init_wakeup(rockchip->dev, false);
 
 	return 0;
 }
