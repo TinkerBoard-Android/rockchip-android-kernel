@@ -67,6 +67,7 @@ struct rockchip_crtc_funcs {
 					   int output_type);
 	void (*crtc_close)(struct drm_crtc *crtc);
 	void (*crtc_send_mcu_cmd)(struct drm_crtc *crtc, u32 type, u32 value);
+	void (*te_handler)(struct drm_crtc *crtc);
 };
 
 struct rockchip_atomic_commit {
@@ -105,6 +106,14 @@ struct rockchip_hdr_state {
 #define VOP_COLOR_KEY_NONE	(0 << 31)
 #define VOP_COLOR_KEY_MASK	(1 << 31)
 
+struct rockchip_bcsh_state {
+	int brightness;
+	int contrast;
+	int saturation;
+	int sin_hue;
+	int cos_hue;
+};
+
 #define VOP_OUTPUT_IF_RGB	BIT(0)
 #define VOP_OUTPUT_IF_BT1120	BIT(1)
 #define VOP_OUTPUT_IF_BT656	BIT(2)
@@ -121,6 +130,22 @@ struct rockchip_hdr_state {
 
 struct rockchip_crtc_state {
 	struct drm_crtc_state base;
+
+	int vp_id;
+
+	/**
+	 * @hold_mode: enabled when it's:
+	 * (1) mcu hold mode
+	 * (2) mipi dsi cmd mode
+	 * (3) edp psr mode
+	 */
+	bool hold_mode;
+	/**
+	 * when enable soft_te, use gpio irq to triggle new fs,
+	 * otherwise use hardware te
+	 */
+	bool soft_te;
+
 	struct drm_tv_connector_state *tv_state;
 	int left_margin;
 	int right_margin;
@@ -251,6 +276,7 @@ void rockchip_drm_register_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
 void rockchip_drm_unregister_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
 struct rockchip_drm_sub_dev *rockchip_drm_get_sub_dev(struct device_node *node);
 int rockchip_drm_add_modes_noedid(struct drm_connector *connector);
+void rockchip_drm_te_handle(struct drm_crtc *crtc);
 #if IS_ENABLED(CONFIG_DRM_ROCKCHIP)
 int rockchip_drm_get_sub_dev_type(void);
 #else

@@ -59,6 +59,7 @@ enum MPP_DEVICE_TYPE {
 	MPP_DEVICE_VEPU22	= 24, /* 0x01000000 */
 
 	MPP_DEVICE_IEP2		= 28, /* 0x10000000 */
+	MPP_DEVICE_VDPP		= 29, /* 0x20000000 */
 	MPP_DEVICE_BUTT,
 };
 
@@ -78,6 +79,8 @@ enum MPP_DRIVER_TYPE {
 	MPP_DRIVER_IEP2,
 	MPP_DRIVER_JPGDEC,
 	MPP_DRIVER_RKVDEC2,
+	MPP_DRIVER_VDPP,
+	MPP_DRIVER_RKVENC2,
 	MPP_DRIVER_BUTT,
 };
 
@@ -214,6 +217,7 @@ struct mpp_hw_info {
 	u32 reg_end;
 	/* register of enable hardware */
 	int reg_en;
+	void *link_info;
 };
 
 struct mpp_trans_info {
@@ -285,10 +289,6 @@ struct mpp_dev {
 	struct mpp_hw_ops *hw_ops;
 	struct mpp_dev_ops *dev_ops;
 
-	/* kworker for attached taskqueue */
-	struct kthread_worker worker;
-	/* task for work queue */
-	struct task_struct *kworker_task;
 	/* per-device work for attached taskqueue */
 	struct kthread_work work;
 	/* the flag for get/get/reduce freq */
@@ -421,6 +421,11 @@ struct mpp_task {
 };
 
 struct mpp_taskqueue {
+	/* kworker for attached taskqueue */
+	struct kthread_worker worker;
+	/* task for work queue */
+	struct task_struct *kworker_task;
+
 	/* lock for session attach and session_detach */
 	struct mutex session_lock;
 	/* link to session session_link for attached sessions */
@@ -765,5 +770,7 @@ extern struct platform_driver rockchip_vepu22_driver;
 extern struct platform_driver rockchip_iep2_driver;
 extern struct platform_driver rockchip_jpgdec_driver;
 extern struct platform_driver rockchip_rkvdec2_driver;
+extern struct platform_driver rockchip_vdpp_driver;
+extern struct platform_driver rockchip_rkvenc2_driver;
 
 #endif

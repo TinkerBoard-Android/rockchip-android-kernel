@@ -68,6 +68,7 @@ const char *mpp_device_name[MPP_DEVICE_BUTT] = {
 	[MPP_DEVICE_VEPU2]		= "VEPU2",
 	[MPP_DEVICE_VEPU22]		= "VEPU22",
 	[MPP_DEVICE_IEP2]		= "IEP2",
+	[MPP_DEVICE_VDPP]		= "VDPP",
 };
 
 const char *enc_info_item_name[ENC_INFO_BUTT] = {
@@ -199,7 +200,7 @@ mpp_taskqueue_pop_running(struct mpp_taskqueue *queue,
 static void
 mpp_taskqueue_trigger_work(struct mpp_dev *mpp)
 {
-	kthread_queue_work(&mpp->worker, &mpp->work);
+	kthread_queue_work(&mpp->queue->worker, &mpp->work);
 }
 
 int mpp_power_on(struct mpp_dev *mpp)
@@ -529,7 +530,7 @@ static int mpp_process_task_default(struct mpp_session *session,
 	/*
 	 * Push task to session should be in front of push task to queue.
 	 * Otherwise, when mpp_task_finish finish and worker_thread call
-	 * mpp_task_try_run, it may be get a task who has push in queue but
+	 * task worker, it may be get a task who has push in queue but
 	 * not in session, cause some errors.
 	 */
 	atomic_inc(&session->task_count);
@@ -698,7 +699,7 @@ static int mpp_task_run(struct mpp_dev *mpp,
 	return 0;
 }
 
-static void mpp_task_try_run(struct kthread_work *work_s)
+static void mpp_task_worker_default(struct kthread_work *work_s)
 {
 	struct mpp_task *task;
 	struct mpp_dev *mpp = container_of(work_s, struct mpp_dev, work);
@@ -886,27 +887,22 @@ static int mpp_attach_service(struct mpp_dev *mpp, struct device *dev)
 
 	ret = of_property_read_u32(dev->of_node,
 				   "rockchip,taskqueue-node", &taskqueue_node);
-	if (taskqueue_node >= mpp->srv->taskqueue_cnt) {
+	if (ret) {
+		dev_err(dev, "failed to get taskqueue-node\n");
+		goto err_put_pdev;
+	} else if (taskqueue_node >= mpp->srv->taskqueue_cnt) {
 		dev_err(dev, "taskqueue-node %d must less than %d\n",
 			taskqueue_node, mpp->srv->taskqueue_cnt);
 		ret = -ENODEV;
 		goto err_put_pdev;
 	}
-
-	if (ret) {
-		/* if device not set, then alloc one */
-		queue = mpp_taskqueue_init(dev);
-		if (!queue)
-			goto err_put_pdev;
-	} else {
-		/* set taskqueue according dtsi */
-		queue = mpp->srv->task_queues[taskqueue_node];
-		if (!queue) {
-			dev_err(dev, "taskqueue attach to invalid node %d\n",
-				taskqueue_node);
-			ret = -ENODEV;
-			goto err_put_pdev;
-		}
+	/* set taskqueue according dtsi */
+	queue = mpp->srv->task_queues[taskqueue_node];
+	if (!queue) {
+		dev_err(dev, "taskqueue attach to invalid node %d\n",
+			taskqueue_node);
+		ret = -ENODEV;
+		goto err_put_pdev;
 	}
 	mpp_attach_workqueue(mpp, queue);
 
@@ -1818,10 +1814,6 @@ int mpp_dev_probe(struct mpp_dev *mpp,
 	/* Get disable auto frequent flag from dtsi */
 	mpp->auto_freq_en = !device_property_read_bool(dev, "rockchip,disable-auto-freq");
 
-	kthread_init_worker(&mpp->worker);
-	mpp->kworker_task = kthread_run(kthread_worker_fn, &mpp->worker,
-					"%s", np->name);
-
 	/* Get and attach to service */
 	ret = mpp_attach_service(mpp, dev);
 	if (ret) {
@@ -1848,8 +1840,7 @@ int mpp_dev_probe(struct mpp_dev *mpp,
 		/* do not setup autosuspend on multi task device */
 	}
 
-	kthread_init_work(&mpp->work, mpp->dev_ops->task_worker ?
-			  mpp->dev_ops->task_worker : mpp_task_try_run);
+	kthread_init_work(&mpp->work, mpp_task_worker_default);
 
 	atomic_set(&mpp->reset_request, 0);
 	atomic_set(&mpp->session_index, 0);
@@ -1911,7 +1902,7 @@ int mpp_dev_probe(struct mpp_dev *mpp,
 		if (mpp->hw_ops->clk_on)
 			mpp->hw_ops->clk_on(mpp);
 
-		hw_info->hw_id = mpp_read(mpp, hw_info->reg_id);
+		hw_info->hw_id = mpp_read(mpp, hw_info->reg_id * sizeof(u32));
 		if (mpp->hw_ops->clk_off)
 			mpp->hw_ops->clk_off(mpp);
 	}
@@ -1922,11 +1913,6 @@ int mpp_dev_probe(struct mpp_dev *mpp,
 failed_init:
 	pm_runtime_put_sync(dev);
 failed:
-	if (mpp->kworker_task) {
-		kthread_flush_worker(&mpp->worker);
-		kthread_stop(mpp->kworker_task);
-		mpp->kworker_task = NULL;
-	}
 	mpp_detach_workqueue(mpp);
 	device_init_wakeup(dev, false);
 	pm_runtime_disable(dev);
@@ -1941,13 +1927,6 @@ int mpp_dev_remove(struct mpp_dev *mpp)
 
 	mpp_iommu_remove(mpp->iommu_info);
 	platform_device_put(mpp->pdev_srv);
-
-	if (mpp->kworker_task) {
-		kthread_flush_worker(&mpp->worker);
-		kthread_stop(mpp->kworker_task);
-		mpp->kworker_task = NULL;
-	}
-
 	mpp_detach_workqueue(mpp);
 	device_init_wakeup(mpp->dev, false);
 	pm_runtime_disable(mpp->dev);

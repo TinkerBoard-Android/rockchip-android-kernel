@@ -21,7 +21,7 @@
 #include "../../../devfreq/governor.h"
 #endif
 
-#define WAIT_TIMEOUT_MS		(500)
+#define WAIT_TIMEOUT_MS		(2000)
 
 #define RKVDEC_MAX_WRITE_PART	6
 #define RKVDEC_MAX_READ_PART	2
@@ -33,6 +33,12 @@ struct rkvdec_link_part {
 	u32 reg_start;
 	/* number of task register */
 	u32 reg_num;
+};
+
+struct rkvdec_link_status {
+	u32 dec_num_mask;
+	u32 err_flag_base;
+	u32 err_flag_bit;
 };
 
 struct rkvdec_link_info {
@@ -53,9 +59,11 @@ struct rkvdec_link_info {
 
 	/* interrupt read back in table buffer */
 	u32 tb_reg_int;
+	bool hack_setup;
+	struct rkvdec_link_status reg_status;
 };
 
-static struct rkvdec_link_info rkvdec_link_v2_hw_info = {
+struct rkvdec_link_info rkvdec_link_rk3568_hw_info = {
 	.tb_reg_num = 202,
 	.tb_reg_next = 0,
 	.tb_reg_r = 1,
@@ -104,6 +112,70 @@ static struct rkvdec_link_info rkvdec_link_v2_hw_info = {
 		.reg_num = 28,
 	},
 	.tb_reg_int = 164,
+	.hack_setup = 1,
+	.reg_status = {
+		.dec_num_mask = 0x3fffffff,
+		.err_flag_base = 0x010,
+		.err_flag_bit = BIT(31),
+	},
+};
+
+/* vdpu382 link hw info */
+struct rkvdec_link_info rkvdec_link_v2_hw_info = {
+	.tb_reg_num = 218,
+	.tb_reg_next = 0,
+	.tb_reg_r = 1,
+	.tb_reg_second_en = 8,
+
+	.part_w_num = 6,
+	.part_r_num = 2,
+	.part_w[0] = {
+		.tb_reg_off = 4,
+		.reg_start = 8,
+		.reg_num = 28,
+	},
+	.part_w[1] = {
+		.tb_reg_off = 32,
+		.reg_start = 64,
+		.reg_num = 52,
+	},
+	.part_w[2] = {
+		.tb_reg_off = 84,
+		.reg_start = 128,
+		.reg_num = 16,
+	},
+	.part_w[3] = {
+		.tb_reg_off = 100,
+		.reg_start = 160,
+		.reg_num = 48,
+	},
+	.part_w[4] = {
+		.tb_reg_off = 148,
+		.reg_start = 224,
+		.reg_num = 16,
+	},
+	.part_w[5] = {
+		.tb_reg_off = 164,
+		.reg_start = 256,
+		.reg_num = 16,
+	},
+	.part_r[0] = {
+		.tb_reg_off = 180,
+		.reg_start = 224,
+		.reg_num = 10,
+	},
+	.part_r[1] = {
+		.tb_reg_off = 190,
+		.reg_start = 258,
+		.reg_num = 28,
+	},
+	.tb_reg_int = 180,
+	.hack_setup = 0,
+	.reg_status = {
+		.dec_num_mask = 0x000fffff,
+		.err_flag_base = 0x024,
+		.err_flag_bit = BIT(8),
+	},
 };
 
 static void rkvdec_link_status_update(struct rkvdec_link_dev *dev)
@@ -113,9 +185,12 @@ static void rkvdec_link_status_update(struct rkvdec_link_dev *dev)
 	u32 enable_ff0, enable_ff1;
 	u32 loop_count = 10;
 	u32 val;
+	struct rkvdec_link_info *link_info = dev->info;
+	u32 dec_num_mask = link_info->reg_status.dec_num_mask;
+	u32 err_flag_base = link_info->reg_status.err_flag_base;
+	u32 err_flag_bit = link_info->reg_status.err_flag_bit;
 
-	error_ff1 = (readl(reg_base + RKVDEC_LINK_DEC_NUM_BASE) &
-		    RKVDEC_LINK_BIT_DEC_ERROR) ? 1 : 0;
+	error_ff1 = (readl(reg_base + err_flag_base) & err_flag_bit) ? 1 : 0;
 	enable_ff1 = readl(reg_base + RKVDEC_LINK_EN_BASE);
 
 	dev->irq_status = readl(reg_base + RKVDEC_LINK_IRQ_BASE);
@@ -126,7 +201,7 @@ static void rkvdec_link_status_update(struct rkvdec_link_dev *dev)
 
 	do {
 		val = readl(reg_base + RKVDEC_LINK_DEC_NUM_BASE);
-		error_ff0 = (val & RKVDEC_LINK_BIT_DEC_ERROR) ? 1 : 0;
+		error_ff0 = (readl(reg_base + err_flag_base) & err_flag_bit) ? 1 : 0;
 		enable_ff0 = readl(reg_base + RKVDEC_LINK_EN_BASE);
 
 		if (error_ff0 == error_ff1 && enable_ff0 == enable_ff1)
@@ -138,7 +213,7 @@ static void rkvdec_link_status_update(struct rkvdec_link_dev *dev)
 
 	dev->error = error_ff0;
 	dev->decoded_status = val;
-	dev->decoded = RKVDEC_LINK_GET_DEC_NUM(val);
+	dev->decoded = val & dec_num_mask;
 	dev->enabled = enable_ff0;
 
 	if (!loop_count)
@@ -728,6 +803,7 @@ static int rkvdec2_link_isr(struct mpp_dev *mpp)
 {
 	struct rkvdec2_dev *dec = to_rkvdec2_dev(mpp);
 	struct rkvdec_link_dev *link_dec = dec->link_dec;
+	struct rkvdec_link_info *link_info = link_dec->info;
 	/* keep irq_status */
 	u32 irq_status = link_dec->irq_status;
 	u32 prev_dec_num;
@@ -750,7 +826,8 @@ static int rkvdec2_link_isr(struct mpp_dev *mpp)
 			rkvdec_link_reg_dump("timeout", link_dec);
 
 		val = mpp_read(mpp, 224 * 4);
-		if (!(val & BIT(2))) {
+		if (link_info->hack_setup && !(val & BIT(2))) {
+			/* only for rk356x */
 			dev_info(mpp->dev, "frame not complete\n");
 			link_dec->decoded++;
 		}
@@ -918,7 +995,7 @@ int rkvdec2_link_init(struct platform_device *pdev, struct rkvdec2_dev *dec)
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "link");
 	if (res)
-		link_dec->info = &rkvdec_link_v2_hw_info;
+		link_dec->info = mpp->var->hw_info->link_info;
 	else {
 		dev_err(dev, "link mode resource not found\n");
 		ret = -ENOMEM;
@@ -937,7 +1014,8 @@ int rkvdec2_link_init(struct platform_device *pdev, struct rkvdec2_dev *dec)
 	if (ret)
 		goto done;
 
-	rkvdec2_link_hack_data_setup(dec->fix);
+	if (link_dec->info->hack_setup)
+		rkvdec2_link_hack_data_setup(dec->fix);
 
 	link_dec->mpp = mpp;
 	link_dec->dev = dev;
@@ -999,7 +1077,7 @@ static void rkvdec2_link_free_task(struct kref *ref)
 
 static void rkvdec2_link_trigger_work(struct mpp_dev *mpp)
 {
-	kthread_queue_work(&mpp->worker, &mpp->work);
+	kthread_queue_work(&mpp->queue->worker, &mpp->work);
 }
 
 static void rkvdec2_link_trigger_timeout(struct mpp_dev *mpp)
@@ -1306,6 +1384,7 @@ int rkvdec2_link_process_task(struct mpp_session *session,
 	struct rkvdec2_task *dec_task = NULL;
 	struct mpp_dev *mpp = session->mpp;
 	u32 fmt;
+	struct rkvdec_link_info *link_info = mpp->var->hw_info->link_info;
 
 	task = rkvdec2_alloc_task(session, msgs);
 	if (!task) {
@@ -1313,21 +1392,17 @@ int rkvdec2_link_process_task(struct mpp_session *session,
 		return -ENOMEM;
 	}
 
-	dec_task = to_rkvdec2_task(task);
-	fmt = RKVDEC_GET_FORMAT(dec_task->reg[RKVDEC_REG_FORMAT_INDEX]);
-	dec_task->need_hack = (fmt == RKVDEC_FMT_H264D);
+	if (link_info->hack_setup) {
+		dec_task = to_rkvdec2_task(task);
+		fmt = RKVDEC_GET_FORMAT(dec_task->reg[RKVDEC_REG_FORMAT_INDEX]);
+		dec_task->need_hack = (fmt == RKVDEC_FMT_H264D);
+	}
 
 	kref_init(&task->ref);
 	atomic_set(&task->abort_request, 0);
 	task->task_index = atomic_fetch_inc(&mpp->task_index);
 	INIT_DELAYED_WORK(&task->timeout_work, rkvdec2_link_timeout_proc);
 
-	/*
-	 * Push task to session should be in front of push task to queue.
-	 * Otherwise, when mpp_task_finish finish and worker_thread call
-	 * mpp_task_try_run, it may be get a task who has push in queue but
-	 * not in session, cause some errors.
-	 */
 	atomic_inc(&session->task_count);
 
 	kref_get(&task->ref);
