@@ -18,6 +18,7 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include "rk817_codec.h"
+#include <linux/gpio.h>
 
 #ifdef CONFIG_SND_DEBUG
 #define DBG(args...) pr_info(args)
@@ -31,6 +32,8 @@
 #define RK817_CODEC_INCALL	4
 #define RK817_CODEC_ALL	(RK817_CODEC_PLAYBACK |\
 	RK817_CODEC_CAPTURE | RK817_CODEC_INCALL)
+
+#define SPK_EN 115
 
 /*
  * DDAC L/R volume setting
@@ -54,6 +57,30 @@
 
 #define CODEC_SET_SPK 1
 #define CODEC_SET_HP 2
+
+static int spk_enable_init(void)
+{
+	int ret = 0;
+	ret = gpio_request(SPK_EN, "spk_en");
+	if (ret){
+		pr_info("gpio %d request failed \n", SPK_EN);
+		goto err_gpio_spk;
+	}
+	ret = gpio_direction_output(SPK_EN, 0);
+	if (ret) {
+		pr_info("gpio %d unavaliable for output \n", SPK_EN);
+		goto err_free_gpio_spk;
+	}
+
+	pr_info("GPIO pin requested ok, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+	return 0;
+
+err_free_gpio_spk:
+	if (gpio_is_valid(SPK_EN))
+		gpio_free(SPK_EN);
+err_gpio_spk:
+	return ret;
+}
 
 struct rk817_codec_priv {
 	struct snd_soc_component *component;
@@ -1035,6 +1062,9 @@ static int rk817_digital_mute_dac(struct snd_soc_dai *dai, int mute, int stream)
 	DBG("%s %d\n", __func__, mute);
 
 	if (mute) {
+		gpio_set_value(SPK_EN, 0);
+		pr_info("rk817_digital_mute 1, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+		msleep(1);
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 0);
 
@@ -1086,6 +1116,9 @@ static int rk817_digital_mute_dac(struct snd_soc_dai *dai, int mute, int stream)
 					PWD_DACL_ON | PWD_DACR_ON);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 1);
+			msleep(2);
+			gpio_set_value(SPK_EN, 1);
+			pr_info("rk817_digital_mute 0, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
 			break;
 		case SPK_HP:
 		case RING_SPK_HP:
@@ -1238,6 +1271,7 @@ static int rk817_probe(struct snd_soc_component *component)
 	struct rk817_codec_priv *rk817 = snd_soc_component_get_drvdata(component);
 	int chip_name = 0;
 	int chip_ver = 0;
+	int ret = 0;
 
 	DBG("%s\n", __func__);
 
@@ -1246,6 +1280,11 @@ static int rk817_probe(struct snd_soc_component *component)
 			__func__);
 		return -EINVAL;
 	}
+
+	ret = spk_enable_init();
+	if (ret)
+                dev_err(component->dev, "Request SPK_EN Failed (%d)\n", ret);
+
 	snd_soc_component_init_regmap(component, rk817->regmap);
 	rk817->component = component;
 	rk817->playback_path = OFF;
