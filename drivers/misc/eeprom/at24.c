@@ -765,7 +765,8 @@ err_clients:
 	at24_remove_dummy_clients(at24);
 	pm_runtime_disable(dev);
 
-	return err;
+	//return err;
+	return -EPROBE_DEFER;
 }
 
 static int at24_remove(struct i2c_client *client)
