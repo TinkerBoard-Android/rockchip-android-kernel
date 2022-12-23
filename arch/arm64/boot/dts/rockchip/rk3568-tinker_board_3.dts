@@ -4,7 +4,7 @@
  *
  */
 
-#include "rk3568-evb1-ddr4-v10.dtsi"
+#include "rk3568-tinker_board_3.dtsi"
 
 / {
 	chosen: chosen {
