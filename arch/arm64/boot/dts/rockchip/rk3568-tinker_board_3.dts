@@ -16,6 +16,7 @@
 		mmc1 = &sdmmc1;
 		mmc2 = &sdhci;
 		mmc3 = &sdmmc2;
+                rtc0 = &rtc_isl1208;
 	};
 
 	fiq-debugger {
@@ -77,4 +78,27 @@
 
 &vop {
 	support-multi-area;
+};
+
+&pinctrl {
+        rtc {
+                pinctrl_externalrtc_reg: externalrtcreggrp {
+                        rockchip,pins = <0 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
+                };
+        };
+};
+
+&i2c3 {
+        pinctrl-0 = <&i2c3m1_xfer>;
+        status = "okay";
+
+        rtc_isl1208: rtc@6f {
+                compatible = "isil,isl1208";
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_externalrtc_reg>;
+                interrupt-names = "irq";
+                interrupts-extended = <&gpio0 RK_PD3 IRQ_TYPE_EDGE_FALLING>;
+                reg = <0x6f>;
+                status = "okay";
+        };
 };

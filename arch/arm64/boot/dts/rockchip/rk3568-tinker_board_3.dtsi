@@ -441,7 +441,7 @@
 	mmc-pwrseq = <&sdio_pwrseq>;
 	non-removable;
 	pinctrl-names = "default";
-	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_cmd &sdmmc2m0_clk>;
+	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_cmd>;
 	sd-uhs-sdr104;
 	status = "okay";
 };
