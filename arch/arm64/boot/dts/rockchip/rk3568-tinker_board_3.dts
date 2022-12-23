@@ -86,6 +86,12 @@
                         rockchip,pins = <0 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
                 };
         };
+
+        eeprom {
+                tb3_eeprom: tb3-eeprom {
+                        rockchip,pins = <1 RK_PB2 RK_FUNC_GPIO &pcfg_pull_down>;
+                };
+        };
 };
 
 &i2c3 {
@@ -101,4 +107,15 @@
                 reg = <0x6f>;
                 status = "okay";
         };
+};
+
+&i2c2 {
+	status = "okay";
+	m24c08@50 {
+		compatible = "atmel,24c08";
+		reg = <0x50>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&tb3_eeprom>;
+		status = "okay";
+	};
 };
