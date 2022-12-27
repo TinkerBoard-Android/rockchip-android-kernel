@@ -1258,6 +1258,8 @@ struct dwc3 {
 	unsigned		uwk_en:1;
 
 	u16			imod_interval;
+	struct gpio_desc	*gpio_hub_reset;
+	struct gpio_desc	*gpio_hub_vbus;
 };
 
 #define INCRX_BURST_MODE 0
