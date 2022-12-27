@@ -5433,7 +5433,8 @@ static void _tcpm_pd_vbus_off(struct tcpm_port *port)
 	case SRC_SEND_CAPABILITIES_TIMEOUT:
 	case SRC_NEGOTIATE_CAPABILITIES:
 	case SRC_TRANSITION_SUPPLY:
-	case SRC_READY:
+	// case SRC_READY:
+	// Do nothing if user space turn off vbus
 	case SRC_WAIT_NEW_CAPABILITIES:
 		/*
 		 * Force to unattached state to re-initiate connection.

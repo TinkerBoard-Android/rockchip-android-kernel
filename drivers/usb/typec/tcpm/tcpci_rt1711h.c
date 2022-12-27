@@ -296,7 +296,8 @@ static int rt1711h_probe(struct i2c_client *client,
         if (IS_ERR(chip->gpio_vbus_5v))
                 dev_warn(chip->dev,
                          "Could not get named GPIO for VBus5V!\n");
-        else
+
+	if (chip->gpio_vbus_5v)
                 gpiod_set_value(chip->gpio_vbus_5v, 0);
 
 	ret = rt1711h_sw_reset(chip);
@@ -309,7 +310,8 @@ static int rt1711h_probe(struct i2c_client *client,
 		return ret;
 
 	chip->data.init = rt1711h_init;
-	chip->data.set_vbus = rt1711h_set_vbus;
+	if (chip->gpio_vbus_5v)
+		chip->data.set_vbus = rt1711h_set_vbus;
 	chip->data.set_vconn = rt1711h_set_vconn;
 	chip->data.start_drp_toggling = rt1711h_start_drp_toggling;
 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);

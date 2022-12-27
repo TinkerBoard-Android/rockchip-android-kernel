@@ -1114,6 +1114,7 @@ struct dwc3 {
 	u32			desired_dr_role;
 	struct extcon_dev	*edev;
 	struct notifier_block	edev_nb;
+	struct notifier_block	vbus_nb;
 	enum usb_phy_interface	hsphy_mode;
 
 	u32			fladj;
@@ -1260,6 +1261,7 @@ struct dwc3 {
 	u16			imod_interval;
 	struct gpio_desc	*gpio_hub_reset;
 	struct gpio_desc	*gpio_hub_vbus;
+	struct work_struct	vbus_event_work;
 };
 
 #define INCRX_BURST_MODE 0

@@ -42,6 +42,8 @@
 
 #define DWC3_DEFAULT_AUTOSUSPEND_DELAY	5000 /* ms */
 
+extern int get_project_id(void);
+
 /**
  * dwc3_get_dr_mode - Validates and sets dr_mode
  * @dwc: pointer to our context structure
@@ -1723,19 +1725,26 @@ static int dwc3_probe(struct platform_device *pdev)
 		gpiod_set_value(dwc->gpio_hub_reset, 1);
 	}
 
-	dwc->gpio_hub_vbus = devm_gpiod_get_index_optional(dev, "hub-vbus", 0, GPIOD_OUT_HIGH);
+	if (of_device_is_compatible(dev->parent->of_node, "rockchip,rk3399-dwc3") &&
+	    (get_project_id() == 3 || get_project_id() == 4))
+		dwc->gpio_hub_vbus = devm_gpiod_get_index_optional(dev,
+					"hub-vbus", 1, GPIOD_OUT_LOW);
+	else
+		dwc->gpio_hub_vbus = devm_gpiod_get_index_optional(dev,
+					"hub-vbus", 0, GPIOD_OUT_LOW);
 	if (IS_ERR(dwc->gpio_hub_vbus)) {
 		dev_err(dev, "Could not get named GPIO for hub-vbus-gpios.\n");
 		dwc->gpio_hub_vbus = NULL;
 	}
-	if (dwc->gpio_hub_vbus)
-		gpiod_set_value(dwc->gpio_hub_vbus, 1);
 
 	dwc3_debugfs_init(dwc);
 
 	ret = dwc3_core_init_mode(dwc);
 	if (ret)
 		goto err5;
+
+	if (dwc->gpio_hub_vbus && dwc->dr_mode == USB_DR_MODE_HOST)
+			gpiod_set_value(dwc->gpio_hub_vbus, 1);
 
 	if (dwc->en_runtime)
 		async_schedule(dwc3_rockchip_async_probe, dwc);

@@ -11,6 +11,7 @@
 #include <linux/of_graph.h>
 #include <linux/platform_device.h>
 #include <linux/property.h>
+#include <linux/gpio.h>
 
 #include "debug.h"
 #include "core.h"
@@ -443,6 +444,27 @@ static int dwc3_drd_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static void vbus_event_work(struct work_struct *work)
+{
+	struct dwc3 *dwc = container_of(work, struct dwc3, vbus_event_work);
+	int vbus_5v = extcon_get_state(dwc->edev, EXTCON_USB_VBUS_EN);
+
+	if (dwc->gpio_hub_vbus) {
+		gpiod_set_value(dwc->gpio_hub_vbus, vbus_5v);
+		dev_info(dwc->dev, "set typec port vbus to %d\n", vbus_5v);
+	}
+}
+
+static int dwc3_vbus_notifier(struct notifier_block *nb,
+		unsigned long event, void *ptr)
+{
+	struct dwc3 *dwc = container_of(nb, struct dwc3, vbus_nb);
+
+	schedule_work(&dwc->vbus_event_work);
+
+	return NOTIFY_DONE;
+}
+
 static struct extcon_dev *dwc3_get_extcon(struct dwc3 *dwc)
 {
 	struct device *dev = dwc->dev;
@@ -451,7 +473,8 @@ static struct extcon_dev *dwc3_get_extcon(struct dwc3 *dwc)
 	const char *name;
 
 	if (device_property_read_bool(dev, "extcon")){
-		if (get_board_id() >= 3)
+		if (of_device_is_compatible(dev->parent->of_node, "rockchip,rk3399-dwc3") &&
+		    get_board_id() >= 3)
 			return extcon_get_edev_by_phandle(dev, 1);
 		else
 			return extcon_get_edev_by_phandle(dev, 0);
@@ -500,6 +523,19 @@ int dwc3_drd_init(struct dwc3 *dwc)
 		if (ret < 0) {
 			dev_err(dwc->dev, "couldn't register cable notifier\n");
 			return ret;
+		}
+
+		if (dwc->gpio_hub_vbus) {
+			/* dwc3 have vbus control gpio, register notifier for vbus */
+			dwc->vbus_nb.notifier_call = dwc3_vbus_notifier;
+			INIT_WORK(&dwc->vbus_event_work, vbus_event_work);
+			ret = extcon_register_notifier(dwc->edev,
+						       EXTCON_USB_VBUS_EN,
+					               &dwc->vbus_nb);
+			if (ret < 0)
+				dev_err(dwc->dev, "fail to register notifier for vbus\n");
+			else
+				schedule_work(&dwc->vbus_event_work);
 		}
 
 		dwc3_drd_update(dwc);

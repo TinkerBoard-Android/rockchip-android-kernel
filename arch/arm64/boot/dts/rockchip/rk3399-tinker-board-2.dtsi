@@ -325,17 +325,6 @@
 		vin-supply = <&dc_12v>;
 	};
 
-	vcc5v0_host: vcc5v0-host-regulator {
-		compatible = "regulator-fixed";
-		enable-active-high;
-		gpio = <&gpio4 RK_PD1 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_host_en>;
-		regulator-name = "vcc5v0_host";
-		regulator-always-on;
-		vin-supply = <&vcc_sys>;
-	};
-
 	vcc5v0_sys: vcc5v0-sys {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc5v0_sys";
@@ -920,7 +909,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&fusb0_int>;
 		int-n-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
-		vbus-5v-gpios = <&gpio2 0 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
@@ -932,7 +920,6 @@
 		pinctrl-0 = <&fusb0_int>;
 		interrupt-parent = <&gpio1>;
 		interrupts = <2 IRQ_TYPE_LEVEL_LOW>;
-		vbus-5v-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
 		usb_con: connector {
 			compatible = "usb-c-connector";
 			label = "USB-C";
@@ -1506,7 +1493,6 @@
 	};
 
 	u2phy0_host: host-port {
-		phy-supply = <&vcc5v0_host>;
 		status = "okay";
 	};
 };
@@ -1519,7 +1505,6 @@
 	};
 
 	u2phy1_host: host-port {
-		phy-supply = <&vcc5v0_host>;
 		status = "okay";
 	};
 };
@@ -1547,6 +1532,10 @@
 &usbdrd_dwc3_0 {
 	status = "okay";
 	dr_mode = "otg";
+	pinctrl-names = "default";
+	pinctrl-0 = <&typec_vbus_gpio>;
+	hub-vbus-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>,
+			 <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
 	extcon = <&fusb0>, <&rtusb0>;
 };
 
@@ -1557,6 +1546,10 @@
 &usbdrd_dwc3_1 {
 	status = "okay";
 	dr_mode = "host";
+	pinctrl-names = "default";
+	pinctrl-0 = <&hub_vbus_gpio>;
+	hub-vbus-gpios = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>,
+			 <&gpio2 RK_PB4 GPIO_ACTIVE_LOW>;
 };
 
 &vopb_mmu {
@@ -2312,10 +2305,15 @@
 		};
 	};
 
-	usb2 {
-		vcc5v0_host_en: vcc5v0-host-en {
+	usb_hub {
+		typec_vbus_gpio: tpyec-vbus-gpio {
 			rockchip,pins =
-				<4 RK_PD1 RK_FUNC_GPIO &pcfg_pull_none>;
+				<RK_GPIO1 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		hub_vbus_gpio: hub-vbus-gpio {
+			rockchip,pins =
+				<RK_GPIO2 RK_PB4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
