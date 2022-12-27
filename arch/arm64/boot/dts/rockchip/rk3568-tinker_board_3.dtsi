@@ -156,7 +156,7 @@
  * when dsi0 is enabled
  */
 &dsi0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi0_in_vp0 {
