@@ -18,6 +18,7 @@
 
 #include <linux/hwmon.h>
 #include <linux/hwmon-sysfs.h>
+#include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/mutex.h>
 #include <linux/of.h>
@@ -25,18 +26,57 @@
 #include <linux/pwm.h>
 #include <linux/sysfs.h>
 #include <linux/thermal.h>
+#include <linux/timer.h>
 
 #define MAX_PWM 255
 
 struct pwm_fan_ctx {
 	struct mutex lock;
 	struct pwm_device *pwm;
+
+	int irq;
+	atomic_t pulses;
+	unsigned int rpm;
+	u8 pulses_per_revolution;
+	ktime_t sample_start;
+	struct timer_list rpm_timer;
+
 	unsigned int pwm_value;
 	unsigned int pwm_fan_state;
 	unsigned int pwm_fan_max_state;
 	unsigned int *pwm_fan_cooling_levels;
 	struct thermal_cooling_device *cdev;
 };
+
+/* This handler assumes self resetting edge triggered interrupt. */
+static irqreturn_t pulse_handler(int irq, void *dev_id)
+{
+	struct pwm_fan_ctx *ctx = dev_id;
+
+	atomic_inc(&ctx->pulses);
+
+	return IRQ_HANDLED;
+}
+
+static void sample_timer(struct timer_list *t)
+{
+	struct pwm_fan_ctx *ctx = from_timer(ctx, t, rpm_timer);
+	unsigned int delta = ktime_ms_delta(ktime_get(), ctx->sample_start);
+	int pulses;
+
+	if (delta) {
+		pulses = atomic_read(&ctx->pulses);
+
+		atomic_sub(pulses, &ctx->pulses);
+
+		ctx->rpm = (unsigned int)(pulses * 1000 * 60) /
+			(ctx->pulses_per_revolution * delta);
+
+		ctx->sample_start = ktime_get();
+	}
+
+	mod_timer(&ctx->rpm_timer, jiffies + HZ);
+}
 
 static int  __set_pwm(struct pwm_fan_ctx *ctx, unsigned long pwm)
 {
@@ -98,11 +138,20 @@ static ssize_t show_pwm(struct device *dev,
 	return sprintf(buf, "%u\n", ctx->pwm_value);
 }
 
+static ssize_t show_rpm(struct device *dev,
+			struct device_attribute *attr, char *buf)
+{
+	struct pwm_fan_ctx *ctx = dev_get_drvdata(dev);
 
-static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR, show_pwm, set_pwm, 0);
+	return sprintf(buf, "%u\n", ctx->rpm);
+}
+
+static SENSOR_DEVICE_ATTR(pwm1, S_IRUGO | S_IWUSR | S_IWGRP, show_pwm, set_pwm, 0);
+static SENSOR_DEVICE_ATTR(fan1_input, S_IRUGO, show_rpm, NULL, 0);
 
 static struct attribute *pwm_fan_attrs[] = {
 	&sensor_dev_attr_pwm1.dev_attr.attr,
+	&sensor_dev_attr_fan1_input.dev_attr.attr,
 	NULL,
 };
 
@@ -205,13 +254,24 @@ static int pwm_fan_of_get_cooling_data(struct device *dev,
 	return 0;
 }
 
+static void pwm_fan_pwm_disable(void *__ctx)
+{
+	struct pwm_fan_ctx *ctx = __ctx;
+	pwm_disable(ctx->pwm);
+	del_timer_sync(&ctx->rpm_timer);
+}
+
 static int pwm_fan_probe(struct platform_device *pdev)
 {
 	struct thermal_cooling_device *cdev;
+	struct device *dev = &pdev->dev;
 	struct pwm_fan_ctx *ctx;
 	struct device *hwmon;
 	int ret;
 	struct pwm_state state = { };
+	u32 ppr = 2;
+
+	dev_info(&pdev->dev, "%s +++\n", __FUNCTION__);
 
 	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
 	if (!ctx)
@@ -231,10 +291,24 @@ static int pwm_fan_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ctx);
 
+	ctx->irq = platform_get_irq(pdev, 0);
+	if (ctx->irq == -EPROBE_DEFER)
+		return ctx->irq;
+
 	ctx->pwm_value = MAX_PWM;
 
 	/* Set duty cycle to maximum allowed and enable PWM output */
 	pwm_init_state(ctx->pwm, &state);
+
+	/*
+	 * __set_pwm assumes that MAX_PWM * (period - 1) fits into an unsigned
+	 * long. Check this here to prevent the fan running at a too low
+	 * frequency.
+	 */
+	if (state.period > ULONG_MAX / MAX_PWM + 1) {
+		dev_err(&pdev->dev, "Configured period too big\n");
+		return -EINVAL;
+	}
 	state.duty_cycle = ctx->pwm->args.period - 1;
 	state.enabled = true;
 
@@ -242,6 +316,28 @@ static int pwm_fan_probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to configure PWM\n");
 		return ret;
+	}
+
+	timer_setup(&ctx->rpm_timer, sample_timer, 0);
+	ret = devm_add_action_or_reset(&pdev->dev, pwm_fan_pwm_disable, ctx);
+	if (ret)
+		return ret;
+
+	of_property_read_u32(dev->of_node, "pulses-per-revolution", &ppr);
+	ctx->pulses_per_revolution = ppr;
+	if (!ctx->pulses_per_revolution) {
+		dev_err(&pdev->dev, "pulses-per-revolution can't be zero.\n");
+		return -EINVAL;
+	}
+
+	if (ctx->irq > 0) {
+		ret = devm_request_irq(&pdev->dev, ctx->irq, pulse_handler, 0, pdev->name, ctx);
+		if (ret) {
+			dev_err(&pdev->dev, "Failed to request interrupt: %d\n", ret);
+			return ret;
+		}
+		ctx->sample_start = ktime_get();
+		mod_timer(&ctx->rpm_timer, jiffies + HZ);
 	}
 
 	hwmon = devm_hwmon_device_register_with_groups(&pdev->dev, "pwmfan",
@@ -271,6 +367,7 @@ static int pwm_fan_probe(struct platform_device *pdev)
 		thermal_cdev_update(cdev);
 	}
 
+	dev_info(&pdev->dev, "%s ---\n", __FUNCTION__);
 	return 0;
 
 err_pwm_disable:
@@ -280,18 +377,7 @@ err_pwm_disable:
 	return ret;
 }
 
-static int pwm_fan_remove(struct platform_device *pdev)
-{
-	struct pwm_fan_ctx *ctx = platform_get_drvdata(pdev);
-
-	thermal_cooling_device_unregister(ctx->cdev);
-	if (ctx->pwm_value)
-		pwm_disable(ctx->pwm);
-	return 0;
-}
-
-#ifdef CONFIG_PM_SLEEP
-static int pwm_fan_suspend(struct device *dev)
+static int pwm_fan_disable(struct device *dev)
 {
 	struct pwm_fan_ctx *ctx = dev_get_drvdata(dev);
 	struct pwm_args args;
@@ -308,6 +394,19 @@ static int pwm_fan_suspend(struct device *dev)
 	}
 
 	return 0;
+}
+
+static void pwm_fan_shutdown(struct platform_device *pdev)
+{
+	dev_info(&pdev->dev, "%s +++\n", __FUNCTION__);
+	pwm_fan_disable(&pdev->dev);
+	dev_info(&pdev->dev, "%s ---\n", __FUNCTION__);
+}
+
+#ifdef CONFIG_PM_SLEEP
+static int pwm_fan_suspend(struct device *dev)
+{
+	return pwm_fan_disable(dev);
 }
 
 static int pwm_fan_resume(struct device *dev)
@@ -339,7 +438,7 @@ MODULE_DEVICE_TABLE(of, of_pwm_fan_match);
 
 static struct platform_driver pwm_fan_driver = {
 	.probe		= pwm_fan_probe,
-	.remove		= pwm_fan_remove,
+	.shutdown	= pwm_fan_shutdown,
 	.driver	= {
 		.name		= "pwm-fan",
 		.pm		= &pwm_fan_pm,

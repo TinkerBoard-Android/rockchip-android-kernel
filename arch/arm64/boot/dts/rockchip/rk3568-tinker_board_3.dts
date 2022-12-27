@@ -47,6 +47,15 @@
 			<0x0 0xfd90e000 0x0 0x1000>,
 			<0x0 0xfd90f000 0x0 0x1000>;
 	};
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		#cooling-cells = <2>;
+		pwms = <&pwm0 0 40000 0>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PC3 IRQ_TYPE_EDGE_FALLING>;
+		pulses-per-revolution = <2>;
+	};
 };
 
 &reserved_memory {
@@ -118,4 +127,12 @@
                 pinctrl-0 = <&tb3_eeprom>;
 		status = "okay";
 	};
+};
+
+&pwm0 {
+	status = "okay";
+};
+
+&pwm4 {
+	status = "disabled";
 };
