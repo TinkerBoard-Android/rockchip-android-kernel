@@ -724,7 +724,7 @@ static int at24_probe(struct i2c_client *client)
 	 * Perform a one-byte test read to verify that the
 	 * chip is functional.
 	 */
-	err = at24_read(at24, 0, &test_byte, 1);
+	//err = at24_read(at24, 0, &test_byte, 1);
 	pm_runtime_idle(dev);
 	if (err) {
 		err = -ENODEV;
@@ -765,8 +765,7 @@ err_clients:
 	at24_remove_dummy_clients(at24);
 	pm_runtime_disable(dev);
 
-	//return err;
-	return -EPROBE_DEFER;
+	return err;
 }
 
 static int at24_remove(struct i2c_client *client)
