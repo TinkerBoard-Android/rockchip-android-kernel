@@ -176,6 +176,7 @@ struct panel_simple {
 	struct i2c_adapter *ddc;
 
 	struct gpio_desc *enable_gpio;
+	struct gpio_desc *bl_sys_en_gpio;
 	struct gpio_desc *reset_gpio;
 	int cmd_type;
 
@@ -681,6 +682,8 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 	gpiod_direction_output(p->reset_gpio, 1);
 
 	gpiod_direction_output(p->enable_gpio, 0);
+	if(p->bl_sys_en_gpio)
+		gpiod_direction_output(p->bl_sys_en_gpio, 0);
 
 	panel_simple_regulator_disable(p);
 
@@ -725,6 +728,8 @@ static int panel_simple_prepare(struct drm_panel *panel)
 #endif
 
 	gpiod_direction_output(p->enable_gpio, 1);
+	if(p->bl_sys_en_gpio)
+		gpiod_direction_output(p->bl_sys_en_gpio, 1);
 
 	if (p->desc->delay.prepare)
 		panel_simple_sleep(p->desc->delay.prepare);
@@ -910,6 +915,14 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		err = PTR_ERR(panel->enable_gpio);
 		if (err != -EPROBE_DEFER)
 			dev_err(dev, "failed to get enable GPIO: %d\n", err);
+		return err;
+	}
+
+	panel->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+	if (IS_ERR(panel->bl_sys_en_gpio)) {
+		err = PTR_ERR(panel->bl_sys_en_gpio);
+		if (err != -EPROBE_DEFER)
+			dev_err(dev, "failed to get bl_sys_en GPIO: %d\n", err);
 		return err;
 	}
 
