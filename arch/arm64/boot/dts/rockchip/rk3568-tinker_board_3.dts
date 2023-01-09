@@ -57,6 +57,39 @@
 		interrupts = <RK_PC3 IRQ_TYPE_EDGE_FALLING>;
 		pulses-per-revolution = <2>;
 	};
+
+	board_info: board-info {
+		compatible = "board-info";
+
+		model = "rk3568";
+
+		emmc0-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_HIGH>;
+		emmc1-gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+	};
+
+	ADC1-PCBID {
+		compatible = "ADC1-PCBID";
+		io-channels = <&saradc 1>;
+		io-channel-names = "ADC1-PCBID";
+	};
+
+	ADC3-RAMID {
+		compatible = "ADC3-RAMID";
+		io-channels = <&saradc 3>;
+		io-channel-names = "ADC3-RAMID";
+	};
+
+	ADC4-ODMID {
+		compatible = "ADC4-ODMID";
+		io-channels = <&saradc 4>;
+		io-channel-names = "ADC4-ODMID";
+	};
+
+	ADC5-PRJID {
+		compatible = "ADC5-PRJID";
+		io-channels = <&saradc 5>;
+		io-channel-names = "ADC5-PRJID";
+	};
 };
 
 &reserved_memory {

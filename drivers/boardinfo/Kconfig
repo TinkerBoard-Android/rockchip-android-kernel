@@ -5,6 +5,6 @@
 
 config BOARDINFO
 	tristate "tinker boardinfo"
-	default y
+	default n
 	help
 	  Driver to set board information.
