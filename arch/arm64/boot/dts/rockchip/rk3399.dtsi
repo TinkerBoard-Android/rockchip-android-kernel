@@ -2717,10 +2717,12 @@
 					<0 RK_PA3 1 &pcfg_pull_up>;
 			};
 
+			/*
 			sdio0_int: sdio0-int {
 				rockchip,pins =
 					<0 RK_PA4 1 &pcfg_pull_up>;
 			};
+			*/
 		};
 
 		sdmmc {
