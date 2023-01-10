@@ -203,10 +203,6 @@
 	status = "disabled";
 };
 
-&dmc {
-	status = "disabled";
-};
-
 &fusb0 {
 	status = "okay";
 };
