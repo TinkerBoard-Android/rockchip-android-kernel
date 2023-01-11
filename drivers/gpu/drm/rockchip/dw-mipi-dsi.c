@@ -1281,9 +1281,9 @@ static bool sn65dsi86_is_connected(void) { return false; }
 #endif
 
 #if defined(CONFIG_DRM_I2C_LT9211)
-extern bool lt9211_is_connected(void);
+extern int lt9211_is_connected(void);
 #else
-static bool lt9211_is_connected(void) { return false; }
+static int lt9211_is_connected(void) { return 0; }
 #endif
 
 static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
@@ -1565,6 +1565,9 @@ static int dw_mipi_dsi_dual_channel_probe(struct dw_mipi_dsi *dsi)
 #if defined(CONFIG_TINKER_MCU)
 extern int tinker_mcu_is_connected(int dsi_id);
 extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
+#else
+static int tinker_mcu_is_connected(int dsi_id){ return 0; }
+static int tinker_mcu_ili9881c_is_connected(int dsi_id){ return 0; }
 #endif
 
 static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
@@ -1576,18 +1579,16 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 	struct drm_connector *connector = &dsi->connector;
 	int ret;
 
-#if defined(CONFIG_TINKER_MCU)
 	if(!tinker_mcu_is_connected(dsi->id) &&
 		!tinker_mcu_ili9881c_is_connected(dsi->id) &&
 		!sn65dsi84_is_connected() &&
 		!sn65dsi86_is_connected() &&
 		!lt9211_is_connected()) {
-		pr_info("dsi-%d panel and sn65dsi8x and lt9211 aren't connected\n", dsi->id);
+		pr_info("dsi-%d panel and sn65dsi8x aren't connected\n", dsi->id);
 		return 0;
 	} else {
-		pr_info("dsi-%d panel  or sn65dsi8x or lt9211 is connected\n", dsi->id);
+		pr_info("dsi-%d panel or sn65dsi8x is connected\n", dsi->id);
 	}
-#endif
 
 	ret = dw_mipi_dsi_dual_channel_probe(dsi);
 	if (ret)

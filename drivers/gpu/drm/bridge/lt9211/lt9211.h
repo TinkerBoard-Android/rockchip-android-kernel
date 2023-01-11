@@ -36,6 +36,7 @@ struct lt9211_data {
 	bool status;
 	bool init;
 	bool uboot;
+	bool is_tinker3;
 
 	bool powered;
 
@@ -43,6 +44,7 @@ struct lt9211_data {
 	struct gpio_desc *lt9211_en_gpio;
 	struct gpio_desc *lvds_hdmi_sel_gpio;
 	struct gpio_desc *pwr_source_gpio;
+	struct gpio_desc *bl_sys_en_gpio;
 
 	//enum drm_connector_status status;
 	//struct drm_connector connector;

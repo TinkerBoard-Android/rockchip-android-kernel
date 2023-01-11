@@ -32,16 +32,6 @@
 		vin-supply = <&vcc3v3_sys>;
 	};
 
-	vcc3v3_vga: vcc3v3-vga {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_vga";
-		regulator-always-on;
-		regulator-boot-on;
-		gpio = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
-		enable-active-high;
-		vin-supply = <&vcc3v3_sys>;
-	};
-
 	pcie30_avdd0v9: pcie30-avdd0v9 {
 		compatible = "regulator-fixed";
 		regulator-name = "pcie30_avdd0v9";
@@ -215,11 +205,7 @@
 };
 
 &dsi0_in_vp1 {
-	status = "okay";
-};
-
-&dsi0_panel {
-	power-supply = <&vcc3v3_lcd0_n>;
+	status = "disabled";
 };
 
 /*
@@ -341,7 +327,7 @@
 	status = "okay";
 	gc8034: gc8034@37 {
 		compatible = "galaxycore,gc8034";
-		status = "okay";
+		status = "disabled";
 		reg = <0x37>;
 		clocks = <&cru CLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -362,8 +348,10 @@
 			};
 		};
 	};
+
 	os04a10: os04a10@36 {
 		compatible = "ovti,os04a10";
+		status = "disabled";
 		reg = <0x36>;
 		clocks = <&cru CLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -384,8 +372,8 @@
 		};
 	};
 	ov5695: ov5695@36 {
-		status = "okay";
 		compatible = "ovti,ov5695";
+		status = "disabled";
 		reg = <0x36>;
 		clocks = <&cru CLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -404,6 +392,36 @@
 				data-lanes = <1 2>;
 			};
 		};
+	};
+	dsi_lvds_bridge2: lt9211@2d {
+		compatible = "lt9211";
+		status = "disabled";
+		reg = <0x2d>;
+
+		lvds-format = <2>;//VESA
+		lvds-bpp = <24>;///RGB888
+		dsi-lanes = <4>;//u-boot
+		de-mode;
+		//dual-link;
+		//uboot-logo;
+		//test-pattern;
+		Tinker3;
+
+		t1=<1>;//VCC on to start lvds signal
+		t2=<500>;//t2-t6: LVDS signal(start) to turn Backlihgt on or Backlight sys Enable
+		t3=<200>;//Backlight sys Disable or Backlihgt(off) to stop lvds signal
+		t4=<1>;//LVDS signal to turn VCC off
+		t5=<1000>;//VCC off to turn VCC on
+		t6=<0>;//Backlight sys Enable to turn Backlight on
+		t7=<0>;//Backlight off to Backlight sys Disable
+		//t1 -> t2-t6 -> t6 -> t3 -> t7 -> t4 -> t5
+
+		pinctrl-names = "default";
+		pinctrl-0 =  <&pinctrl_lt9211_en &pinctrl_vdd_en &pinctrl_bl_sys_en>;
+
+		EN-gpios = <&gpio0 RK_PD5 GPIO_ACTIVE_HIGH>;
+		lvds_vdd_en-gpios = <&gpio1 RK_PB0 GPIO_ACTIVE_HIGH>;
+		bl_sys_en-gpios = <&gpio1 RK_PA4 GPIO_ACTIVE_HIGH>;
 	};
 };
 
@@ -490,6 +508,10 @@
 
 		pinctrl_bl_en: bl_en {
 			rockchip,pins = <3 RK_PA3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pinctrl_lt9211_en: lt9211_en {
+			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
     };
 };

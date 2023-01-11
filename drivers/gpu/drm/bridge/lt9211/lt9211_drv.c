@@ -31,6 +31,16 @@ static bool connect_lt9211 = false;
 
 //int display_debug_timing[8]= {0};
 
+bool lt9211_is_tinker3(void)
+{
+	if (!g_lt9211) {
+		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
+		return false;
+	}
+	return g_lt9211->is_tinker3;
+}
+EXPORT_SYMBOL_GPL(lt9211_is_tinker3);
+
 bool lt9211_is_connected(void)
 {
 	printk(KERN_INFO "%s  lt9211 connect = %d\n", __func__, connect_lt9211);
@@ -68,6 +78,33 @@ void lt9211_lvds_power_off(void)
 	return;
 }
 EXPORT_SYMBOL_GPL(lt9211_lvds_power_off);
+
+void lt9211_backlight_sys_enable(void)
+{
+	if (!g_lt9211) {
+		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
+		return;
+	}
+	printk(KERN_INFO "%s \n", __func__);
+	if (g_lt9211->bl_sys_en_gpio) {
+		gpiod_set_value_cansleep(g_lt9211->bl_sys_en_gpio, 1);
+		msleep(10);
+	}
+}
+EXPORT_SYMBOL_GPL(lt9211_backlight_sys_enable);
+
+void lt9211_backlight_sys_disable(void)
+{
+	if (!g_lt9211) {
+		printk(KERN_INFO "%s g_lt9211 is null!\n", __func__);
+		return;
+	}
+	printk(KERN_INFO "%s \n", __func__);
+	if (g_lt9211->bl_sys_en_gpio) {
+		gpiod_set_value_cansleep(g_lt9211->bl_sys_en_gpio, 0);
+	}
+}
+EXPORT_SYMBOL_GPL(lt9211_backlight_sys_disable);
 
 uint8_t lt9211_read(struct i2c_client *client, int reg)
 {
@@ -1028,6 +1065,8 @@ static int lt9211_parse_dt(struct device_node *np,
 
 	data->test_pattern_en = of_property_read_bool(np, "test-pattern");
 
+	data->is_tinker3 = of_property_read_bool(np, "Tinker3");
+
 	data->uboot = of_property_read_bool(np, "uboot-logo");
 
 	printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
@@ -1036,11 +1075,19 @@ static int lt9211_parse_dt(struct device_node *np,
 	if(data->uboot) {
 		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_HIGH);
 		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_HIGH);
-		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+		if(!data->is_tinker3) {
+			data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+		} else {
+			data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+		}
 	} else {
 		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
 		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
-		data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+		if(!data->is_tinker3) {
+			data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+		} else {
+			data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+		}
 
 	}
 
@@ -1052,9 +1099,14 @@ static int lt9211_parse_dt(struct device_node *np,
 		printk(KERN_INFO "lt9211_parse_dt: failed to get lvds_vdd_en_gpio\n");
 	}
 
-	if (IS_ERR(data->pwr_source_gpio)) {
-		printk(KERN_INFO "lt9211_parse_dt: failed to get  pwr_source gpio\n");
+	if(!data->is_tinker3) {
+		if (IS_ERR(data->pwr_source_gpio))
+			printk(KERN_INFO "lt9211_parse_dt: failed to get  pwr_source gpio\n");
+	} else {
+		if (IS_ERR(data->bl_sys_en_gpio))
+			printk(KERN_INFO "lt9211_parse_dt: failed to get  bl_sys_en_gpio\n");
 	}
+
 
 	printk(KERN_INFO "%s -\n", __func__);
 
@@ -1087,7 +1139,8 @@ static int lt9211_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	ret = lt9211_parse_dt(dev->of_node, lt9211);
 	if (ret)
 		return ret;
-	ConvertBoard_power_on(lt9211);
+	if(!lt9211->is_tinker3)
+		ConvertBoard_power_on(lt9211);
 	lt9211_chip_enable(lt9211);
 	lt9211_detect(lt9211);
 
@@ -1123,8 +1176,8 @@ static void  lt9211_shutdown(struct i2c_client *i2c)
 	printk(KERN_INFO "%s\n", __func__);
 
 	lt9211_bridge_disable();
-
-	ConvertBoard_power_off(lt9211);
+	if(!lt9211->is_tinker3)
+		ConvertBoard_power_off(lt9211);
 
 	return;
 }
