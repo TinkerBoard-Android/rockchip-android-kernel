@@ -1859,7 +1859,6 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 	const char *strings = NULL;
 	int value;
 
-	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 	int tx_delay_r201a = 0x21, rx_delay_r201a = 0x15;
 	int tx_delay_r201b = 0x15, rx_delay_r201b = 0x1c;
 	int tx_delay_rtl8211e_rk3399 = 0x27, rx_delay_rtl8211e_rk3399 = 0x1f;
@@ -1926,7 +1925,7 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 		bsp_priv->rx_delay = value;
 	}
 
-	if (is_rk3288) {
+	if (get_board_model() == 3288) {
 		if (is_r201a || is_r20) {
 			bsp_priv->tx_delay = tx_delay_r201a;
 			bsp_priv->rx_delay = rx_delay_r201a;
@@ -1934,7 +1933,7 @@ static struct rk_priv_data *rk_gmac_setup(struct platform_device *pdev,
 			bsp_priv->tx_delay = tx_delay_r201b;
 			bsp_priv->rx_delay = rx_delay_r201b;
 		}
-	} else {
+	} else if (get_board_model() == 3399) {
 		if (is_rtl8211e_rk3399) {
 			bsp_priv->tx_delay = tx_delay_rtl8211e_rk3399;
 			bsp_priv->rx_delay = rx_delay_rtl8211e_rk3399;

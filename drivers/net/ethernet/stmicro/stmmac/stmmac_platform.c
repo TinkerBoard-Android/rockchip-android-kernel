@@ -395,9 +395,8 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	enum of_gpio_flags flags;
 	const char *wakeup_enable;
 	int rc;
-	int wolirq_gpio_rtl8211e = 106;
-	int wolirq_gpio_rtl8211f = 112;
-	bool is_rk3288 = get_board_model() == 3288 ? true: false;
+	int wolirq_gpio_rtl8211e_rk3399 = 106;
+	int wolirq_gpio_rtl8211f_rk3399 = 112;
 
 	plat = devm_kzalloc(&pdev->dev, sizeof(*plat), GFP_KERNEL);
 	if (!plat)
@@ -406,15 +405,17 @@ stmmac_probe_config_dt(struct platform_device *pdev, const char **mac)
 	*mac = of_get_mac_address(np);
 	plat->interface = of_get_phy_mode(np);
 	plat->wolirq_io = of_get_named_gpio_flags(np, "wolirq-gpio", 0, &flags);
-	if (!is_rk3288)
-		plat->wolirq_io = get_board_id() >= 3 ? wolirq_gpio_rtl8211e: wolirq_gpio_rtl8211f;
+	if (get_board_model() == 3399)
+		plat->wolirq_io = get_board_id() >= 3 ? wolirq_gpio_rtl8211e_rk3399: wolirq_gpio_rtl8211f_rk3399;
+
+	pr_info("[WOL] wolirq_gpio = %d\n", plat->wolirq_io);
 
 	/* Get wakeup_enable */
 	if (of_property_read_string(np, "wakeup-enable", &wakeup_enable)) {
-		printk("[WOL] Fail to read wakeup-enable");
+		printk("[WOL] Fail to read wakeup-enable\n");
 		plat->wakeup_enable = 0;
 	} else {
-		printk("[WOL] wakeup_enable = %s", wakeup_enable);
+		printk("[WOL] wakeup_enable = %s\n", wakeup_enable);
 		if (!strcmp(wakeup_enable, "1"))
 			plat->wakeup_enable = 1;
 		else

@@ -898,12 +898,11 @@ void adjust_rgmii_driving(struct phy_device *phydev)
 extern int get_board_model(void);
 extern int get_board_id(void);
 void setConfiguration(struct phy_device *phydev) {
-	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 	bool is_rtl8211f;
 
 	printk("%s: #### board_model = %d, board_id = %d\n", __func__, get_board_model(), get_board_id());
 
-	if (is_rk3288)
+	if (get_board_model() == 3288)
 		is_rtl8211f = get_board_id() >= 5 ? true: false;
 	else
 		is_rtl8211f = get_board_id() < 3 ? true: false;
@@ -4816,7 +4815,6 @@ int stmmac_suspend(struct device *dev)
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct phy_device *phydev = ndev->phydev;
 	u32 chan;
-	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 
 	if (!ndev || !netif_running(ndev))
 		return 0;
@@ -4848,7 +4846,7 @@ int stmmac_suspend(struct device *dev)
 	if (device_may_wakeup(priv->device)) {
 		stmmac_pmt(priv, priv->hw, priv->wolopts);
 		//priv->irq_wake = 1;
-		if (is_rk3288) {
+		if (get_board_model() == 3288) {
 			if (get_board_id() < 5) {
 				// RTL8211E
 				set_rtl8211e_wol_enable(phydev);
@@ -4925,7 +4923,6 @@ int stmmac_resume(struct device *dev)
 	struct net_device *ndev = dev_get_drvdata(dev);
 	struct stmmac_priv *priv = netdev_priv(ndev);
 	struct phy_device *phydev = ndev->phydev;
-	bool is_rk3288 = get_board_model() == 3288 ? true: false;
 
 	if (!phydev)
 		return 0;
@@ -4942,7 +4939,7 @@ int stmmac_resume(struct device *dev)
 	if (device_may_wakeup(priv->device)) {
 		mutex_lock(&priv->lock);
 		stmmac_pmt(priv, priv->hw, 0);
-		if (is_rk3288) {
+		if (get_board_model() == 3288) {
 			if (get_board_id() < 5) {
 				// RTL8211E
 				set_rtl8211e_wol_disable(phydev);
