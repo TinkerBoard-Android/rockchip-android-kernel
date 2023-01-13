@@ -26,6 +26,7 @@ static int board_info_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	const char *compatible;
+	int ret;
 
 	if (device_property_read_string(dev, "compatible", &compatible)) {
 		printk("[boardinfo] Failed to read compatible");
@@ -38,14 +39,17 @@ static int board_info_probe(struct platform_device *pdev)
 			model = "unknow";
 
 		if (!strcmp(model, "rk3288"))
-			tb_gpios(dev, &hwid, &pid);
+			ret = tb_gpios(dev, &hwid, &pid);
 		else if (!strcmp(model, "rk3399"))
-			tb2_gpios(dev, &hwid, &pid);
+			ret = tb2_gpios(dev, &hwid, &pid);
 		else if (!strcmp(model, "rk3568"))
-			tb3_gpios(dev);
+			ret = tb3_gpios(dev);
 	} else {
-		tb3_adcs(dev, compatible, &hwid, &pid, &odmid);
+		ret = tb3_adcs(dev, compatible, &hwid, &pid, &odmid);
 	}
+
+	if (ret < 0)
+		return -EPROBE_DEFER;
 
 	return 0;
 }
