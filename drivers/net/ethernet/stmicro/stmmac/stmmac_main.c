@@ -849,7 +849,7 @@ void set_led_configuration_e(struct phy_device *phydev) {
 	phy_write(phydev, 31, 0);
 }
 
-void set_led_configuration_f(struct phy_device *phydev) {
+void set_led_configuration_f_cg(struct phy_device *phydev) {
 	// To switch Page0xd04
 	phy_write(phydev, 31, 0x0d04);
 
@@ -863,6 +863,21 @@ void set_led_configuration_f(struct phy_device *phydev) {
 
 	//switch to PHY`s Page0
 	phy_write(phydev, 31, 0);
+}
+
+void set_led_configuration_f_vd_cg(struct phy_device *phydev) {
+	// To switch Page0xd04
+	phy_write(phydev, 31, 0x0d04);
+
+	//Disable EEELCR mode
+	phy_write(phydev, 17, 0x0000);
+
+	printk("%s: #### before setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
+	phy_write(phydev, 16, 0x8b68);
+	printk("%s: #### after setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
+
+	//switch to Page0
+	phy_write(phydev, 31, 0x0000);
 }
 
 /**
@@ -904,14 +919,19 @@ void setConfiguration(struct phy_device *phydev) {
 
 	if (get_board_model() == 3288)
 		is_rtl8211f = get_board_id() >= 5 ? true: false;
-	else
+	else if (get_board_model() == 3399)
 		is_rtl8211f = get_board_id() < 3 ? true: false;
+	else
+		is_rtl8211f = true;
 
 	printk("%s: #### hwid = %d, PYH is %s \n", __func__, get_board_id(), is_rtl8211f ? "RTL8211F" : "RTL8211E");
 
 	if (is_rtl8211f) {
 		// RTL8211F
-		set_led_configuration_f(phydev);
+		if (get_board_model() == 3568)
+			set_led_configuration_f_vd_cg(phydev);
+		else
+			set_led_configuration_f_cg(phydev);
 	} else {
 		// RTL8211E
 		set_led_configuration_e(phydev);
