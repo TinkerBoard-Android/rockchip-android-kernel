@@ -147,6 +147,7 @@ struct rk_pcie {
 	unsigned int			clk_cnt;
 	struct reset_bulk_data		*rsts;
 	struct gpio_desc		*rst_gpio;
+	struct gpio_desc		*pwr_gpio;
 	phys_addr_t			mem_start;
 	size_t				mem_size;
 	struct pcie_port		pp;
@@ -168,6 +169,16 @@ struct rk_pcie_of_data {
 };
 
 #define to_rk_pcie(x)	dev_get_drvdata((x)->dev)
+
+#ifdef CONFIG_BOARDINFO
+extern int get_board_id(void);
+extern int get_project_id(void);
+extern int get_odm_id(void);
+#define BOARD_ID_SR			18
+#define PRJ_ID_TB3_SKU3 		12
+#define ODM_ID_TB3			18
+#endif
+
 static const struct dev_pm_ops rockchip_dw_pcie_pm_ops;
 
 static int rk_pcie_read(void __iomem *addr, int size, u32 *val)
@@ -461,6 +472,11 @@ static int rk_pcie_establish_link(struct dw_pcie *pci)
 		return 0;
 	}
 
+	/* Rest the device */
+	gpiod_set_value_cansleep(rk_pcie->rst_gpio, 0);
+	if (!IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
+		gpiod_set_value_cansleep(rk_pcie->pwr_gpio, 0);
+
 	rk_pcie_disable_ltssm(rk_pcie);
 	rk_pcie_link_status_clear(rk_pcie);
 	rk_pcie_enable_debug(rk_pcie);
@@ -478,8 +494,11 @@ static int rk_pcie_establish_link(struct dw_pcie *pci)
 	 * Card Electromechanical Specification 3.0. So 100ms in total is the min
 	 * requuirement here. We add a 1s for sake of hoping everthings work fine.
 	 */
+	dev_info(pci->dev, "power on!");
 	msleep(1000);
 	gpiod_set_value_cansleep(rk_pcie->rst_gpio, 1);
+	if (!IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
+		gpiod_set_value_cansleep(rk_pcie->pwr_gpio, 1);
 
 	for (retries = 0; retries < 10; retries++) {
 		if (dw_pcie_link_up(pci)) {
@@ -861,6 +880,12 @@ static int rk_pcie_resource_get(struct platform_device *pdev,
 		dev_err(&pdev->dev, "invalid reset-gpios property in node\n");
 		return PTR_ERR(rk_pcie->rst_gpio);
 	}
+
+	dev_info(&pdev->dev, "set m2b_pwr_off_n");
+	rk_pcie->pwr_gpio = devm_gpiod_get_optional(
+			&pdev->dev, "m2b-pwr-off-n", GPIOD_OUT_HIGH);
+	if (IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
+		dev_err(&pdev->dev, "m2b_pwr_off_n init fail\n");
 
 	return 0;
 }
