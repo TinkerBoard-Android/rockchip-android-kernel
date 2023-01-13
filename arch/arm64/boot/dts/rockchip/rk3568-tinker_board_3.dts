@@ -90,6 +90,20 @@
 		io-channels = <&saradc 5>;
 		io-channel-names = "ADC5-PRJID";
 	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		act-led {
+			gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="mmc0";
+		};
+
+		rsv-led {
+			gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="none";
+		};
+	};
 };
 
 &reserved_memory {
