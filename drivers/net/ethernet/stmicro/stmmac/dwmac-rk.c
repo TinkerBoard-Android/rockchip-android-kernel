@@ -2229,6 +2229,9 @@ static int rk_gmac_probe(struct platform_device *pdev)
 		goto err_remove_config_dt;
 
 	ret = stmmac_dvr_probe(&pdev->dev, plat_dat, &stmmac_res);
+	if (ret == -EPROBE_DEFER)
+		return -EPROBE_DEFER;
+
 	if (ret)
 		goto err_gmac_powerdown;
 

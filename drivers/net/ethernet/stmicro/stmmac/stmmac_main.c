@@ -64,6 +64,10 @@
 
 /* Module parameters */
 #define TX_TIMEO	5000
+
+int gmac_num = -1, retry_times = 0;
+bool gmac0_status = false;
+
 static int watchdog = TX_TIMEO;
 module_param(watchdog, int, 0644);
 MODULE_PARM_DESC(watchdog, "Transmit timeout in milliseconds (default 5s)");
@@ -2291,7 +2295,7 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 			 priv->dev->dev_addr);
 	}
 */
-	eth_mac_eeprom(priv->dev->dev_addr);
+	eth_mac_eeprom(priv->dev->dev_addr, gmac_num);
 	if (likely(priv->plat->get_eth_addr))
 		priv->plat->get_eth_addr(priv->plat->bsp_priv,
 			priv->dev->dev_addr);
@@ -4538,7 +4542,30 @@ int stmmac_dvr_probe(struct device *device,
 	if (ret)
 		goto error_hw_init;
 
+
+	if (get_board_model() == 3568) {
+		if (!strcmp(dev_name(device), "fe2a0000.ethernet"))
+			gmac_num = 0;
+		else if (!strcmp(dev_name(device), "fe010000.ethernet"))
+			gmac_num = 1;
+		else {
+			pr_info("Ethernet : devices not found for rk3568\n");
+			gmac_num = 0;
+		}
+	}
+	else
+		gmac_num = 0;
+
 	stmmac_check_ether_addr(priv);
+
+	if (gmac_num == 0)
+		gmac0_status = true;
+
+	if ((gmac_num == 1) && (gmac0_status == false) && (retry_times < 4)) {
+		/* Wait for GMAC0 Ready */
+		retry_times++;
+		return -EPROBE_DEFER;
+	}
 
 	/* Configure real RX and TX queues */
 	netif_set_real_num_rx_queues(ndev, priv->plat->rx_queues_to_use);

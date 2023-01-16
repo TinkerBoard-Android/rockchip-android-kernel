@@ -8,5 +8,5 @@
  *  This file is placed under the LGPL.
  *
  */
-int eth_mac_eeprom(u8 *eth_mac);
+int eth_mac_eeprom(u8 *eth_mac, int gmac_num);
 #endif /* _ETH_MAC_TINKER_H_ */

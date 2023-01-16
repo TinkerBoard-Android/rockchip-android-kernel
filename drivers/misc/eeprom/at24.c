@@ -426,8 +426,12 @@ void at24_read_eeprom(char *buf, loff_t off, size_t count)
 {
 	struct at24_data *at24;
 
-	at24 = dev_get_drvdata(container_of(eeprom_kobj, struct device, kobj));
-	at24_read(at24, off, buf, count);
+	if (eeprom_kobj != NULL) {
+		at24 = dev_get_drvdata(container_of(eeprom_kobj, struct device, kobj));
+		at24_read(at24, off, buf, count);
+	}
+	else
+		pr_info("at24 read eeprom fail\n");
 }
 
 static int at24_write(void *priv, unsigned int off, void *val, size_t count)

@@ -26,18 +26,24 @@
 #define DBG(x...)
 #endif
 
-#define VERSION "0.1"
+#define VERSION "0.2"
 #define WLAN_MAC_FILE "/data/misc/wifi/wlan_mac"
 
-int eth_mac_eeprom(u8 *eth_mac)
+int eth_mac_eeprom(u8 *eth_mac, int gmac_num)
 {
 	int i;
+
 	memset(eth_mac, 0, 6);
-	printk("Read the Ethernet MAC address from EEPROM:");
-	at24_read_eeprom(eth_mac, 0, 6);
+	pr_info("GMAC%d Read the Ethernet MAC address from EEPROM:", gmac_num);
+
+	if (gmac_num == 1)
+		at24_read_eeprom(eth_mac, 6, 6);
+	else
+		at24_read_eeprom(eth_mac, 0, 6);
+
 	for(i=0; i<5; i++)
-		printk("%2.2x:", eth_mac[i]);
-	printk("%2.2x\n", eth_mac[i]);
+		pr_info("%2.2x:", eth_mac[i]);
+	pr_info("%2.2x\n", eth_mac[i]);
 
 	return 0;
 }
