@@ -1074,7 +1074,7 @@
 };
 
 &i2c5 {
-	status = "okay";
+	status = "disabled";
 
 	mxc6655xa: mxc6655xa@15 {
 		status = "okay";
@@ -1508,4 +1508,58 @@
 
 &vop_mmu {
 	status = "okay";
+};
+
+&uart9 {
+	pinctrl-0 = <&uart9m1_xfer>;
+	status = "disabled";
+};
+
+&uart4 {
+	pinctrl-0 = <&uart4m1_xfer>;
+	status = "disabled";
+};
+
+&i2s3_2ch {
+	pinctrl-0 = <&i2s3m1_lrck &i2s3m1_mclk 
+		&i2s3m1_sclk &i2s3m1_sdi &i2s3m1_sdo>;
+	status = "disabled";
+};
+&spi3 {
+	pinctrl-0 = <&spi3m1_pins &spi3m1_cs0>;
+	pinctrl-1 = <&spi3m1_pins_hs &spi3m1_cs0>;
+	cs-gpios = <0>, <&gpio4 RK_PC4 0>;
+	status = "disabled";
+	spidev@0 {
+		compatible = "rockchip,spidev";
+		reg = <0>;
+		spi-max-frequency = <50000000>;
+		status = "okay";
+	};
+	spidev@1 {
+                compatible = "rockchip,spidev";
+                reg = <1>;
+                spi-max-frequency = <50000000>;
+                status = "okay";
+        };
+};
+&pwm12 {
+	pinctrl-0 = <&pwm12m1_pins>;
+	status = "disabled";
+};
+&pwm13 {
+	pinctrl-0 = <&pwm13m1_pins>;
+	status = "disabled";
+};
+&pwm14 {
+	pinctrl-0 = <&pwm14m1_pins>;
+	status = "disabled";
+};
+&pwm15 {
+	pinctrl-0 = <&pwm15m1_pins>;
+	status = "disabled";
+};
+&spdif_8ch {
+	pinctrl-0 = <&spdifm2_tx>;
+	status = "disabled";
 };
