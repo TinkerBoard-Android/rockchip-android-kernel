@@ -1264,8 +1264,8 @@ static int rk817_codec_parse_dt_property(struct device *dev,
 		    __func__);
 		rk817->hp_volume = OUT_VOLUME;
 	}
-	if (rk817->hp_volume < 3)
-		rk817->hp_volume = 3;
+	if (rk817->hp_volume < 1)
+		rk817->hp_volume = 1;
 
 	ret = of_property_read_u32(node, "capture-volume",
 				   &rk817->capture_volume);
