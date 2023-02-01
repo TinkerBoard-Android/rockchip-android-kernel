@@ -233,7 +233,7 @@
 	force-hpd;
 	//pinctrl-0 =  <&pinctrl_hpd>;
 	//hpd-gpios = <&gpio0 RK_PC2 GPIO_ACTIVE_HIGH>;
-	status = "okay";
+	status = "disabled";
 
 	ports{
 		port@1{
@@ -250,7 +250,7 @@
 };
 
 &edp_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &edp_in_vp0 {
@@ -258,7 +258,7 @@
 };
 
 &edp_in_vp1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &gmac0 {
