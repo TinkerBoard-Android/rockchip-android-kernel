@@ -196,3 +196,45 @@
 &pwm4 {
 	status = "disabled";
 };
+
+&uart0_enable {
+	gpio = <&gpio2 RK_PD2 GPIO_ACTIVE_HIGH>;
+	enable-active-high;
+	regulator-always-on;
+};
+
+&uart0 {
+	power-supply = <&uart0_enable>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_xfer &uart0_rtsn &uart0_ctsn>;
+
+	uart0_en: uart0-en {
+		rockchip,pins =
+			<2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_up>;
+	};
+};
+
+&uart3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart3m1_xfer>;
+};
+
+&uart8_enable {
+	gpio = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;
+	enable-active-high;
+	regulator-always-on;
+};
+
+&uart8 {
+	power-supply = <&uart8_enable>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart8m0_xfer &uart8m0_rtsn &uart8m0_ctsn>;
+
+	uart8_en: uart8-en {
+		rockchip,pins =
+			<3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
+	};
+};
