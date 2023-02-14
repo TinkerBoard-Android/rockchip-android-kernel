@@ -552,7 +552,7 @@
 &spdif_8ch {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&spdifm1_tx>;
+	pinctrl-0 = <&spdifm2_tx>;
 };
 
 &uart8 {
