@@ -1530,19 +1530,25 @@ static int rk_pcie_really_probe(void *p)
 	int irq;
 
 	match = of_match_device(rk_pcie_of_match, dev);
-	if (!match)
-		return -EINVAL;
+	if (!match) {
+		ret = -EINVAL;
+		goto release_driver;
+	}
 
 	data = (struct rk_pcie_of_data *)match->data;
 	mode = (enum rk_pcie_device_mode)data->mode;
 
 	rk_pcie = devm_kzalloc(dev, sizeof(*rk_pcie), GFP_KERNEL);
-	if (!rk_pcie)
-		return -ENOMEM;
+	if (!rk_pcie) {
+		ret = -ENOMEM;
+		goto release_driver;
+	}
 
 	pci = devm_kzalloc(dev, sizeof(*pci), GFP_KERNEL);
-	if (!pci)
-		return -ENOMEM;
+	if (!pci) {
+		ret = -ENOMEM;
+		goto release_driver;
+	}
 
 	pci->dev = dev;
 	pci->ops = &dw_pcie_ops;
@@ -1710,20 +1716,28 @@ deinit_clk:
 	rk_pcie_clk_deinit(rk_pcie);
 disable_vpcie3v3:
 	rk_pcie_disable_power(rk_pcie);
+release_driver:
+	if (IS_ENABLED(CONFIG_PCIE_RK_THREADED_INIT))
+		device_release_driver(dev);
 
 	return ret;
 }
 
 static int rk_pcie_probe(struct platform_device *pdev)
 {
-	struct task_struct *tsk;
+	if (IS_ENABLED(CONFIG_PCIE_RK_THREADED_INIT)) {
+		struct task_struct *tsk;
 
-	tsk = kthread_run(rk_pcie_really_probe, pdev, "rk-pcie");
-	if (IS_ERR(tsk)) {
-		dev_err(&pdev->dev, "start rk-pcie thread failed\n");
-		return PTR_ERR(tsk);
+		tsk = kthread_run(rk_pcie_really_probe, pdev, "rk-pcie");
+		if (IS_ERR(tsk)) {
+			dev_err(&pdev->dev, "start rk-pcie thread failed\n");
+			return PTR_ERR(tsk);
+		}
+
+		return 0;
 	}
-	return 0;
+
+	return rk_pcie_really_probe(pdev);
 }
 
 static int __maybe_unused rockchip_dw_pcie_suspend(struct device *dev)
@@ -1747,6 +1761,7 @@ static int __maybe_unused rockchip_dw_pcie_suspend(struct device *dev)
 	gpiod_set_value_cansleep(rk_pcie->rst_gpio, 0);
 	ret = rk_pcie_disable_power(rk_pcie);
 
+	dev_info(dev, "suspend!");
 	return ret;
 }
 
