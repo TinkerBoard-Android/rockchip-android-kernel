@@ -76,6 +76,14 @@
 		vin-supply = <&dc_12v>;
 	};
 
+        clkgen_pcie3: clkcgen-pcie3 {
+                compatible = "regulator-fixed";
+                regulator-name = "clkgen_pcie3";
+                gpio = <&gpio4 RK_PB4 GPIO_ACTIVE_LOW>;
+                regulator-boot-on;
+                regulator-always-on;
+        };
+
 	vcc3v3_bu: vcc3v3-bu {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc3v3_bu";
