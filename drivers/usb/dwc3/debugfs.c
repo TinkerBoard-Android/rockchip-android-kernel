@@ -944,6 +944,46 @@ static const struct file_operations dwc3_hub_vbus_fops = {
 	.release		= single_release,
 };
 
+static int dwc3_connector_vbus_show(struct seq_file *s, void *unused)
+{
+	struct dwc3		*dwc = s->private;
+
+	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_connector_vbus)? "on":"off");
+	return 0;
+}
+
+static int dwc3_connector_vbus_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, dwc3_connector_vbus_show, inode->i_private);
+}
+
+static ssize_t dwc3_connector_vbus_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file		*s = file->private_data;
+	struct dwc3		*dwc = s->private;
+	char			buf[32];
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if (!strncmp(buf, "on", 2) || !strncmp(buf, "1", 1))
+		gpiod_set_value(dwc->gpio_connector_vbus, 1);
+
+	if (!strncmp(buf, "off", 3) || !strncmp(buf, "0", 1))
+		gpiod_set_value(dwc->gpio_connector_vbus, 0);
+
+	return count;
+}
+
+static const struct file_operations dwc3_connector_vbus_fops = {
+	.open			= dwc3_connector_vbus_open,
+	.write			= dwc3_connector_vbus_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
 static void dwc3_debugfs_create_endpoint_files(struct dwc3_ep *dep,
 		struct dentry *parent)
 {
@@ -1008,6 +1048,11 @@ void dwc3_debugfs_init(struct dwc3 *dwc)
 	if (dwc->gpio_hub_vbus) {
 		debugfs_create_file("hub_vbus", S_IRUGO | S_IWUSR, root,
 				dwc, &dwc3_hub_vbus_fops);
+	}
+
+	if (dwc->gpio_connector_vbus) {
+		debugfs_create_file("connector_vbus", S_IRUGO | S_IWUSR, root,
+				dwc, &dwc3_connector_vbus_fops);
 	}
 }
 

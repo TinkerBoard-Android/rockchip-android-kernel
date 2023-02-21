@@ -1737,6 +1737,12 @@ static int dwc3_probe(struct platform_device *pdev)
 		dwc->gpio_hub_vbus = NULL;
 	}
 
+	dwc->gpio_connector_vbus = devm_gpiod_get_index_optional(dev, "connector-vbus", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(dwc->gpio_connector_vbus)) {
+		dev_err(dev, "Could not get named GPIO for connrctor-vbus-gpios.\n");
+		dwc->gpio_connector_vbus = NULL;
+	}
+
 	dwc3_debugfs_init(dwc);
 
 	ret = dwc3_core_init_mode(dwc);
@@ -1745,6 +1751,9 @@ static int dwc3_probe(struct platform_device *pdev)
 
 	if (dwc->gpio_hub_vbus && dwc->dr_mode == USB_DR_MODE_HOST)
 			gpiod_set_value(dwc->gpio_hub_vbus, 1);
+
+	if (dwc->gpio_connector_vbus && dwc->dr_mode == USB_DR_MODE_HOST)
+		gpiod_set_value(dwc->gpio_connector_vbus, 1);
 
 	if (dwc->en_runtime)
 		async_schedule(dwc3_rockchip_async_probe, dwc);
@@ -1801,6 +1810,9 @@ static int dwc3_remove(struct platform_device *pdev)
 
 	if (dwc->gpio_hub_vbus)
 		gpiod_set_value(dwc->gpio_hub_vbus, 0);
+
+	if (dwc->gpio_connector_vbus)
+		gpiod_set_value(dwc->gpio_connector_vbus, 0);
 
 	dwc3_core_exit_mode(dwc);
 	dwc3_debugfs_exit(dwc);

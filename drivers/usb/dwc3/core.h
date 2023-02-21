@@ -1261,6 +1261,7 @@ struct dwc3 {
 	u16			imod_interval;
 	struct gpio_desc	*gpio_hub_reset;
 	struct gpio_desc	*gpio_hub_vbus;
+	struct gpio_desc        *gpio_connector_vbus;
 	struct work_struct	vbus_event_work;
 };
 
