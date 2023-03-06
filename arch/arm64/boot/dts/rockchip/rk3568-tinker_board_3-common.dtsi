@@ -270,7 +270,7 @@
         rtc_wakeup_gpio: rtc-wakeup-gpio {
                 compatible = "regulator-fixed";
                 regulator-name = "rtc_wakeup_gpio";
-                gpio = <&gpio3 RK_PD3 GPIO_ACTIVE_HIGH>;
+                gpio = <&gpio2 RK_PD7 GPIO_ACTIVE_HIGH>;
                 enable-active-high;
                 regulator-always-on;
                 regulator-boot-on;
