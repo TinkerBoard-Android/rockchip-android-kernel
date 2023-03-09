@@ -558,7 +558,7 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&sdmmc2m0_bus4 &sdmmc2m0_cmd>;
 	sd-uhs-sdr104;
-	status = "okay";
+	status = "disabled";
 };
 
 &spdif_8ch {
