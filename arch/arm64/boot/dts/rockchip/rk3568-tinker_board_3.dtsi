@@ -78,14 +78,6 @@
 		vin-supply = <&dc_12v>;
 	};
 
-	m2b_reset: m2b-reset {
-                compatible = "regulator-fixed";
-                regulator-name = "m2b_reset";
-                gpio = <&gpio3 RK_PD0 GPIO_ACTIVE_LOW>;
-                regulator-boot-on;
-                regulator-always-on;
-        };
-
         clkgen_pcie3: clkcgen-pcie3 {
                 compatible = "regulator-fixed";
                 regulator-name = "clkgen_pcie3";
@@ -467,13 +459,20 @@
 };
 
 &pcie3x2 {
+        pinctrl-names = "default";
+        pinctrl-0 = <&m2b_reset>;
 	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
-	m2b-pwr-off-n-gpios = <&gpio3 RK_PC6 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie>;
 	status = "okay";
 };
 
 &pinctrl {
+        pcie3gpio {
+                m2b_reset: m2b-reset {
+                        rockchip,pins = <3 RK_PD0 RK_FUNC_GPIO &pcfg_pull_down>;
+                };
+        };
+
 	headphone {
 		hp_det: hp-det {
 			rockchip,pins = <3 RK_PC2 RK_FUNC_GPIO &pcfg_pull_down>;

@@ -171,12 +171,10 @@ struct rk_pcie_of_data {
 #define to_rk_pcie(x)	dev_get_drvdata((x)->dev)
 
 #ifdef CONFIG_BOARDINFO
-extern int get_board_id(void);
-extern int get_project_id(void);
-extern int get_odm_id(void);
-#define BOARD_ID_SR			18
-#define PRJ_ID_TB3_SKU3 		12
-#define ODM_ID_TB3			18
+extern int get_board_model(void);
+#define M2B_PWR_OFF_N			118
+#define M2B_RESET                       120
+#define BOARD_MODEL_TB3			3568
 #endif
 
 static const struct dev_pm_ops rockchip_dw_pcie_pm_ops;
@@ -881,11 +879,23 @@ static int rk_pcie_resource_get(struct platform_device *pdev,
 		return PTR_ERR(rk_pcie->rst_gpio);
 	}
 
-	dev_info(&pdev->dev, "set m2b_pwr_off_n");
-	rk_pcie->pwr_gpio = devm_gpiod_get_optional(
-			&pdev->dev, "m2b-pwr-off-n", GPIOD_OUT_HIGH);
-	if (IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
-		dev_err(&pdev->dev, "m2b_pwr_off_n init fail\n");
+	#ifdef CONFIG_BOARDINFO
+	dev_info(&pdev->dev, "board_model=%d", get_board_model());
+	if (get_board_model() == BOARD_MODEL_TB3) {
+		if (!strcmp(dev_name(&pdev->dev), "3c0800000.pcie")) {
+                        dev_info(&pdev->dev, "set m2b_reset");
+                        gpio_request(M2B_RESET,"m2b_reset");
+                        gpio_direction_output(M2B_RESET, 0);
+			mdelay(50);
+			dev_info(&pdev->dev, "set m2b_pwr_off_n");
+			gpio_request(M2B_PWR_OFF_N,"m2b_pwr_off_n");
+			gpio_direction_output(M2B_PWR_OFF_N, 1);
+			rk_pcie->pwr_gpio = gpio_to_desc(M2B_PWR_OFF_N);
+			if (IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
+				dev_err(&pdev->dev, "m2b_pwr_off_n init fail\n");
+		}
+	}
+	#endif
 
 	return 0;
 }
