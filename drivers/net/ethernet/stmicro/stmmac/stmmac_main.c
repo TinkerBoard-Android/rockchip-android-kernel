@@ -4901,7 +4901,7 @@ int stmmac_suspend(struct device *dev)
 				// RTL8211F
 				set_rtl8211f_wol_enable(phydev);
 			}
-		} else {
+		} else if (get_board_model() == 3399) {
 			if (get_board_id() >= 3) {
 				// RTL8211E
 				set_rtl8211e_wol_enable(phydev);
@@ -4909,6 +4909,8 @@ int stmmac_suspend(struct device *dev)
 				// RTL8211F
 				set_rtl8211f_wol_enable(phydev);
 			}
+		} else {
+			set_rtl8211f_wol_enable(phydev);
 		}
 	} else {
 		if (priv->plat->integrated_phy_power)
@@ -4994,7 +4996,7 @@ int stmmac_resume(struct device *dev)
 				// RTL8211F
 				set_rtl8211f_wol_disable(phydev);
 			}
-		} else {
+		} else if (get_board_model() == 3399) {
 			if (get_board_id() >= 3) {
 				// RTL8211E
 				set_rtl8211e_wol_disable(phydev);
@@ -5002,6 +5004,8 @@ int stmmac_resume(struct device *dev)
 				// RTL8211F
 				set_rtl8211f_wol_disable(phydev);
 			}
+		} else {
+			set_rtl8211f_wol_disable(phydev);
 		}
 		mutex_unlock(&priv->lock);
 		//priv->irq_wake = 0;

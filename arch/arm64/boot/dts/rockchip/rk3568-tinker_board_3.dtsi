@@ -267,6 +267,8 @@
 	clock_in_out = "output";
 
 	snps,reset-gpio = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
+	wolirq-gpio = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
+	wakeup-enable = "1";
 	snps,reset-active-low;
 	/* Reset time is 20ms, 100ms for rtl8211f */
 	snps,reset-delays-us = <0 20000 100000>;
@@ -282,8 +284,8 @@
 		     &gmac0_rgmii_clk
 		     &gmac0_rgmii_bus>;
 
-	tx_delay = <0x38>;
-	rx_delay = <0x28>;
+	tx_delay = <0x3e>;
+	rx_delay = <0x2d>;
 
 	phy-handle = <&rgmii_phy0>;
 	status = "okay";
@@ -294,6 +296,8 @@
 	clock_in_out = "output";
 
 	snps,reset-gpio = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
+	wolirq-gpio = <&gpio3 RK_PA7 GPIO_ACTIVE_LOW>;
+	wakeup-enable = "1";
 	snps,reset-active-low;
 	/* Reset time is 20ms, 100ms for rtl8211f */
 	snps,reset-delays-us = <0 20000 100000>;
@@ -309,8 +313,8 @@
 		     &gmac1m1_rgmii_clk
 		     &gmac1m1_rgmii_bus>;
 
-	tx_delay = <0x43>;
-	rx_delay = <0x24>;
+	tx_delay = <0x4b>;
+	rx_delay = <0x29>;
 
 	phy-handle = <&rgmii_phy1>;
 	status = "okay";
