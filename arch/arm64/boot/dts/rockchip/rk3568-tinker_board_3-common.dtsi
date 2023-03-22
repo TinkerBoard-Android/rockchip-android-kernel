@@ -319,8 +319,8 @@
 	assigned-clocks = <&cru CLK_CAN0>;
 	assigned-clock-rates = <150000000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&can0m1_pins>;
-	status = "disabled";
+	pinctrl-0 = <&can0m0_pins>;
+	status = "okay";
 };
 
 &can1 {
@@ -1071,7 +1071,7 @@
 };
 
 &i2c1 {
-	status = "okay";
+	status = "disabled";
 
 	gt1x: gt1x@14 {
 		compatible = "goodix,gt1x";
