@@ -9,7 +9,7 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3568.dtsi"
-#include "rk3568-tinker_board_3-common.dtsi"
+#include "rk3568-tinker_board_3n-common.dtsi"
 
 / {
 	model = "Rockchip RK3568 EVB1 DDR4 V10 Board";

@@ -397,7 +397,7 @@ int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, in
 
 		switch(odmid) {
 			case 18:
-				odm = "Tinker Board 3";
+				odm = "Tinker Board 3N";
 				break;
 			case 15:
 				odm = "Sanden";
@@ -427,13 +427,13 @@ int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, in
 				if (odmid == 15)
 					boardinfo = "Sanden - SKU1";
 				else
-					boardinfo = "Tinker Board 3 - SKU1";
+					boardinfo = "Tinker Board 3N - SKU1";
 				break;
 			case 15:
-				boardinfo = "Tinker Board 3 - SKU2";
+				boardinfo = "Tinker Board 3N - SKU2";
 				break;
 			case 12:
-				boardinfo = "Tinker Board 3 - SKU3";
+				boardinfo = "Tinker Board 3N - SKU3";
 				break;
 			case 9:
 			case 6:

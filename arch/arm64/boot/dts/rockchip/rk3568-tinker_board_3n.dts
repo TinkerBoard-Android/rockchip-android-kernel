@@ -4,7 +4,7 @@
  *
  */
 
-#include "rk3568-tinker_board_3.dtsi"
+#include "rk3568-tinker_board_3n.dtsi"
 #include <dt-bindings/display/rockchip_vop.h>
 
 / {
