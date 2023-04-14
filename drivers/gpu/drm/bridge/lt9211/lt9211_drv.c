@@ -1015,98 +1015,104 @@ static int lt9211_parse_dt(struct device_node *np,
 			   struct lt9211_data *data)
 {
 	struct device *dev = data->dev;
-	int ret;
+	int ret = 0;
 	data->lvds_output = 0;
+	data->enable_lt9211 = true;
 	printk(KERN_INFO "%s +\n", __func__);
 
-	ret = of_property_read_u32(np, "dsi-lanes", &data->mipi_lanes);
-	if(data->mipi_lanes == 1) {
-		data->lvds_output |= OUTPUT_MIPI_1_LANE;
-	} else if(data->mipi_lanes == 2) {
-		data->lvds_output |= OUTPUT_MIPI_2_LANE;
-	} else if(data->mipi_lanes == 3) {
-		data->lvds_output |= OUTPUT_MIPI_3_LANE;
-	} else if(data->mipi_lanes == 4) {
-		data->lvds_output |= OUTPUT_MIPI_4_LANE;
-	} else {
-		dev_err(dev, "Invalid dsi-lanes: %d\n", data->mipi_lanes);
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(np, "lvds-format", &data->lvds_format);
-	if(data->lvds_format == 1) {
-		data->lvds_output |= OUTPUT_FORMAT_JEIDA;
-	} else if(data->lvds_format == 2) {
-		data->lvds_output |= OUTPUT_FORMAT_VESA;
-	} else {
-		dev_err(dev, "Invalid lvds-format: %d\n", data->lvds_format);
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32(np, "lvds-bpp", &data->lvds_bpp);
-	if(data->lvds_bpp == 24) {
-		data->lvds_output |= OUTPUT_BITDEPTH_888;
-	} else {
-		data->lvds_output |= OUTPUT_BITDEPTH_666;
-	}
-
-	data->dual_link = of_property_read_bool(np, "dual-link");
-	if(data->dual_link) {
-		data->lvds_output |= OUTPUT_LVDS_2_PORT;
-	} else {
-		data->lvds_output |= OUTPUT_LVDS_1_PORT;
-	}
-
-	if(of_property_read_bool(np, "de-mode")) {
-		data->lvds_output |= OUTPUT_DE_MODE;
-	} else {
-		data->lvds_output |= OUTPUT_SYNC_MODE;
-	}
-
-	data->test_pattern_en = of_property_read_bool(np, "test-pattern");
-
-	data->is_tinker3 = of_property_read_bool(np, "Tinker3");
-
-	data->uboot = of_property_read_bool(np, "uboot-logo");
-
-	printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
-
-
-	if(data->uboot) {
-		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_HIGH);
-		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_HIGH);
-		if(!data->is_tinker3) {
-			data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
-		} else {
-			data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
-		}
-	} else {
+	if(!of_property_read_bool(np, "enable-overlay")) {
+		printk(KERN_INFO "lt9211 is not enabled\n");
 		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
-		data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
-		if(!data->is_tinker3) {
-			data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+		data->enable_lt9211 = false;
+	} else {
+		ret = of_property_read_u32(np, "dsi-lanes", &data->mipi_lanes);
+		if(data->mipi_lanes == 1) {
+			data->lvds_output |= OUTPUT_MIPI_1_LANE;
+		} else if(data->mipi_lanes == 2) {
+			data->lvds_output |= OUTPUT_MIPI_2_LANE;
+		} else if(data->mipi_lanes == 3) {
+			data->lvds_output |= OUTPUT_MIPI_3_LANE;
+		} else if(data->mipi_lanes == 4) {
+			data->lvds_output |= OUTPUT_MIPI_4_LANE;
 		} else {
-			data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+			dev_err(dev, "Invalid dsi-lanes: %d\n", data->mipi_lanes);
+			return -EINVAL;
 		}
 
-	}
+		ret = of_property_read_u32(np, "lvds-format", &data->lvds_format);
+		if(data->lvds_format == 1) {
+			data->lvds_output |= OUTPUT_FORMAT_JEIDA;
+		} else if(data->lvds_format == 2) {
+			data->lvds_output |= OUTPUT_FORMAT_VESA;
+		} else {
+			dev_err(dev, "Invalid lvds-format: %d\n", data->lvds_format);
+			return -EINVAL;
+		}
 
-	if (IS_ERR(data->lt9211_en_gpio)) {
-		printk(KERN_INFO "lt9211_parse_dt: failed to get EN GPIO \n");
-	}
+		ret = of_property_read_u32(np, "lvds-bpp", &data->lvds_bpp);
+		if(data->lvds_bpp == 24) {
+			data->lvds_output |= OUTPUT_BITDEPTH_888;
+		} else {
+			data->lvds_output |= OUTPUT_BITDEPTH_666;
+		}
 
-	if (IS_ERR(data->lvds_vdd_en_gpio)) {
-		printk(KERN_INFO "lt9211_parse_dt: failed to get lvds_vdd_en_gpio\n");
-	}
+		data->dual_link = of_property_read_bool(np, "dual-link");
+		if(data->dual_link) {
+			data->lvds_output |= OUTPUT_LVDS_2_PORT;
+		} else {
+			data->lvds_output |= OUTPUT_LVDS_1_PORT;
+		}
 
-	if(!data->is_tinker3) {
-		if (IS_ERR(data->pwr_source_gpio))
-			printk(KERN_INFO "lt9211_parse_dt: failed to get  pwr_source gpio\n");
-	} else {
-		if (IS_ERR(data->bl_sys_en_gpio))
-			printk(KERN_INFO "lt9211_parse_dt: failed to get  bl_sys_en_gpio\n");
-	}
+		if(of_property_read_bool(np, "de-mode")) {
+			data->lvds_output |= OUTPUT_DE_MODE;
+		} else {
+			data->lvds_output |= OUTPUT_SYNC_MODE;
+		}
 
+		data->test_pattern_en = of_property_read_bool(np, "test-pattern");
+
+		data->is_tinker3 = of_property_read_bool(np, "Tinker3");
+
+		data->uboot = of_property_read_bool(np, "uboot-logo");
+
+		printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
+
+
+		if(data->uboot) {
+			data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_HIGH);
+			data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_HIGH);
+			if(!data->is_tinker3) {
+				data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_HIGH);
+			} else {
+				data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+			}
+		} else {
+			data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
+			data->lvds_vdd_en_gpio = devm_gpiod_get_optional(dev, "lvds_vdd_en", GPIOD_OUT_LOW);
+			if(!data->is_tinker3) {
+				data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
+			} else {
+				data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+			}
+
+		}
+
+		if (IS_ERR(data->lt9211_en_gpio)) {
+			printk(KERN_INFO "lt9211_parse_dt: failed to get EN GPIO \n");
+		}
+
+		if (IS_ERR(data->lvds_vdd_en_gpio)) {
+			printk(KERN_INFO "lt9211_parse_dt: failed to get lvds_vdd_en_gpio\n");
+		}
+
+		if(!data->is_tinker3) {
+			if (IS_ERR(data->pwr_source_gpio))
+				printk(KERN_INFO "lt9211_parse_dt: failed to get  pwr_source gpio\n");
+		} else {
+			if (IS_ERR(data->bl_sys_en_gpio))
+				printk(KERN_INFO "lt9211_parse_dt: failed to get  bl_sys_en_gpio\n");
+		}
+	}
 
 	printk(KERN_INFO "%s -\n", __func__);
 
@@ -1139,24 +1145,28 @@ static int lt9211_probe(struct i2c_client *i2c, const struct i2c_device_id *id)
 	ret = lt9211_parse_dt(dev->of_node, lt9211);
 	if (ret)
 		return ret;
-	if(!lt9211->is_tinker3)
-		ConvertBoard_power_on(lt9211);
-	lt9211_chip_enable(lt9211);
-	lt9211_detect(lt9211);
 
-	if (lt9211->status) {
-		printk(KERN_INFO "%s : lt9211 is connected!\n", __func__);
-		connect_lt9211 = true;
-	} else {
-		printk(KERN_INFO "%s : lt9211 is disconnected!\n", __func__);
-		connect_lt9211 = false;
-		ret = -ENODEV;
-		return ret;
+	if(lt9211->enable_lt9211) {
+		if(!lt9211->is_tinker3)
+			ConvertBoard_power_on(lt9211);
+		lt9211_chip_enable(lt9211);
+		lt9211_detect(lt9211);
+
+		if (lt9211->status) {
+			printk(KERN_INFO "%s : lt9211 is connected!\n", __func__);
+			connect_lt9211 = true;
+		} else {
+			printk(KERN_INFO "%s : lt9211 is disconnected!\n", __func__);
+			connect_lt9211 = false;
+			ret = -ENODEV;
+			return ret;
+		}
 	}
 
 	i2c_set_clientdata(i2c, lt9211);
 
-	g_lt9211 = lt9211;
+	if(lt9211->enable_lt9211)
+		g_lt9211 = lt9211;
 	printk(KERN_INFO "%s -\n", __func__);
 
 	return 0;

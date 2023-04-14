@@ -37,6 +37,7 @@ struct lt9211_data {
 	bool init;
 	bool uboot;
 	bool is_tinker3;
+	bool enable_lt9211;
 
 	bool powered;
 

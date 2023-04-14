@@ -98,6 +98,7 @@
 
 	panel_edp: panel-edp {
 		compatible = "simple-panel";
+		status = "disabled";
 		width-mm = <344>;
 		height-mm = <193>;
 		bus-format = <0x100a>;//<MEDIA_BUS_FMT_RGB888_1X24>;
@@ -400,7 +401,7 @@
 	};
 	dsi_lvds_bridge2: lt9211@2d {
 		compatible = "lt9211";
-		status = "disabled";
+		status = "okay";
 		reg = <0x2d>;
 
 		lvds-format = <2>;//VESA
@@ -410,6 +411,7 @@
 		//dual-link;
 		//uboot-logo;
 		//test-pattern;
+		//enable-overlay;
 		Tinker3;
 
 		t1=<1>;//VCC on to start lvds signal
