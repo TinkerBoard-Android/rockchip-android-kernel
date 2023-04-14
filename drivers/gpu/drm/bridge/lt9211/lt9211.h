@@ -78,7 +78,7 @@ struct lt9211_data {
 #define OUTPUT_MIPI_2_LANE		(1 << 9)
 #define OUTPUT_MIPI_3_LANE		(1 << 10)
 #define OUTPUT_MIPI_4_LANE		(1 << 11)
-#define MIPI_SETTLE_VALUE 0x05
+#define MIPI_SETTLE_VALUE 0x08
 #define PCR_M_VALUE 0x17
 #define Debug 0
 
