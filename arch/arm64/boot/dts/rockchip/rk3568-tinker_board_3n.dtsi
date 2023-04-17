@@ -466,17 +466,37 @@
 
 &pcie3x2 {
         pinctrl-names = "default";
-        pinctrl-0 = <&m2b_reset>;
+        pinctrl-0 = <&m2b_reset
+		     &m2b_w_dis1_n
+		     &m2b_w_dis2_n
+		     &wake_on_wan_n
+		     &pcie30_2_waken_m1>;
 	reset-gpios = <&gpio2 RK_PD6 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie>;
 	status = "okay";
 };
 
 &pinctrl {
-        pcie3gpio {
-                m2b_reset: m2b-reset {
-                        rockchip,pins = <3 RK_PD0 RK_FUNC_GPIO &pcfg_pull_down>;
-                };
+	pcie3gpio {
+		m2b_reset: m2b-reset {
+			rockchip,pins = <3 RK_PD0 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+
+		m2b_w_dis1_n: m2b-w-dis1-n {
+			rockchip,pins = <2 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		m2b_w_dis2_n: m2b-w-dis2-n {
+			rockchip,pins = <3 RK_PC7 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		wake_on_wan_n: wake-on-wan-n {
+			rockchip,pins = <3 RK_PD1 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		pcie30_2_waken_m1: pcie30-2-waken-m1 {
+			rockchip,pins = <2 RK_PD5 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
         };
 
 	headphone {
