@@ -518,6 +518,18 @@
 			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
     };
+    
+	uart3 {
+		uart3_rs232: uart3-rs232 {
+			rockchip,pins =
+				/* COM3_R_DIS */
+				<0 RK_PA6 RK_FUNC_GPIO &pcfg_output_high>,
+				/* COM3_MODE0 */
+				<1 RK_PA0 RK_FUNC_GPIO &pcfg_output_low>,
+				/* COM3_MODE1 */
+				<1 RK_PA1 RK_FUNC_GPIO &pcfg_output_low>;
+		};
+	};
 };
 
 &rkisp {
