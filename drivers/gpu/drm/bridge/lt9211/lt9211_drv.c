@@ -1019,8 +1019,9 @@ static int lt9211_parse_dt(struct device_node *np,
 	data->lvds_output = 0;
 	data->enable_lt9211 = true;
 	printk(KERN_INFO "%s +\n", __func__);
+	data->is_tinker3 = of_property_read_bool(np, "Tinker3");
 
-	if(!of_property_read_bool(np, "enable-overlay")) {
+	if(!of_property_read_bool(np, "enable-overlay") && data->is_tinker3) {
 		printk(KERN_INFO "lt9211 is not enabled\n");
 		data->lt9211_en_gpio = devm_gpiod_get_optional(dev, "EN",  GPIOD_OUT_LOW);
 		data->enable_lt9211 = false;
@@ -1070,8 +1071,6 @@ static int lt9211_parse_dt(struct device_node *np,
 		}
 
 		data->test_pattern_en = of_property_read_bool(np, "test-pattern");
-
-		data->is_tinker3 = of_property_read_bool(np, "Tinker3");
 
 		data->uboot = of_property_read_bool(np, "uboot-logo");
 
