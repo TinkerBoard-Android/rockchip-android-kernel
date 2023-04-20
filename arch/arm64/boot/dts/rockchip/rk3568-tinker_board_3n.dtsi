@@ -407,7 +407,7 @@
 		lvds-format = <2>;//VESA
 		lvds-bpp = <24>;///RGB888
 		dsi-lanes = <4>;//u-boot
-		de-mode;
+		//de-mode;
 		//dual-link;
 		//uboot-logo;
 		//test-pattern;
