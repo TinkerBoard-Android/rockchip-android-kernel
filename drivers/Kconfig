@@ -233,4 +233,6 @@ source "drivers/rknpu/Kconfig"
 
 source "drivers/boardinfo/Kconfig"
 
+source "drivers/pcie_mhi/Kconfig"
+
 endmenu

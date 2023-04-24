@@ -1,0 +1,5 @@
+config QUECTEL_PCIE
+	tristate "Support Quectel's pcie module"
+	default n
+	help
+	  Driver for Quectel's module in pcie mode.
