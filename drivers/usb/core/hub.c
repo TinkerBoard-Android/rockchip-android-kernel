@@ -5320,8 +5320,11 @@ static void port_event(struct usb_hub *hub, int port1)
 		msleep(100);	/* Cool down */
 		hub_power_on(hub, true);
 		hub_port_status(hub, port1, &status, &unused);
-		if (status & USB_PORT_STAT_OVERCURRENT)
+		if (status & USB_PORT_STAT_OVERCURRENT) {
 			dev_err(&port_dev->dev, "over-current condition\n");
+			usb_hub_set_port_power(hdev, hub, port1, false);
+		} else
+			usb_hub_set_port_power(hdev, hub, port1, true);
 	}
 
 	if (portchange & USB_PORT_STAT_C_RESET) {
