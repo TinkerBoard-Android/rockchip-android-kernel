@@ -202,7 +202,7 @@
 /*
  * Define for using dma_alloc_coherent/dma_free_coherent DMA API for PCIe Tx/Rx
  */
-#define CONFIG_PCIE_DMA_COHERENT
+/*#define CONFIG_PCIE_DMA_COHERENT*/
 
 #ifdef CONFIG_SECURITY_MEM
 #ifndef CONFIG_PCIE_DMA_COHERENT
