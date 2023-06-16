@@ -3896,6 +3896,7 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
 #endif
+#if defined(CONFIG_DRM_I2C_LT9211)
 	if (sn65dsi84_is_connected()) {
 		err = panel_simple_dsi_of_get_desc_data(dev, d);
 		if (err) {
@@ -3919,19 +3920,20 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
             return err;
         }
         lt9211_setup_desc(d);
-	} else {
-		if (!id->data) {
-			d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
-			if (!d)
-				return -ENOMEM;
+	}
+#else
+	if (!id->data) {
+		d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
+		if (!d)
+			return -ENOMEM;
 
-			err = panel_simple_dsi_of_get_desc_data(dev, d);
-			if (err) {
-				dev_err(dev, "failed to get desc data: %d\n", err);
-				return err;
-			}
+		err = panel_simple_dsi_of_get_desc_data(dev, d);
+		if (err) {
+			dev_err(dev, "failed to get desc data: %d\n", err);
+			return err;
 		}
 	}
+#endif
 
 	desc = id->data ? id->data : d;
 
