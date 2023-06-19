@@ -68,6 +68,10 @@ extern void rk2928_codec_set_spk(bool on);
 extern int wm8994_set_status(void);
 #endif
 
+#ifdef CONFIG_SND_SOC_RK817
+int jack_connection_status;
+#endif
+
 /* headset private data */
 struct headset_priv {
 	struct input_dev *input_dev;
@@ -210,12 +214,20 @@ static void headsetobserve_work(struct work_struct *work)
 			irq_set_irq_type(headset_info->irq[HEADSET],
 					 IRQF_TRIGGER_FALLING);
 	}
-	if (headset_info->cur_headset_status)
-		extcon_set_state_sync(headset_info->edev, EXTCON_JACK_HEADPHONE,
-				      true);
-	else
-		extcon_set_state_sync(headset_info->edev, EXTCON_JACK_HEADPHONE,
-				      false);
+	if (headset_info->cur_headset_status) {
+#ifdef CONFIG_SND_SOC_RK817
+		jack_connection_status = 1;
+		printk("headset jack_connection_status = %d\n", jack_connection_status);
+#endif
+		extcon_set_state_sync(headset_info->edev, EXTCON_JACK_HEADPHONE, true);
+	}
+	else {
+#ifdef CONFIG_SND_SOC_RK817
+		jack_connection_status = 0;
+		printk("headset jack_connection_status = %d\n", jack_connection_status);
+#endif
+		extcon_set_state_sync(headset_info->edev, EXTCON_JACK_HEADPHONE, false);
+	}
 	DBG("headset_info->cur_headset_status = %d\n",
 	    headset_info->cur_headset_status);
 out:

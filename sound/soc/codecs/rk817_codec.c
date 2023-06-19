@@ -65,6 +65,8 @@
 #define CODEC_SET_SPK 1
 #define CODEC_SET_HP 2
 
+extern int jack_connection_status;
+
 static int spk_enable_init(void)
 {
 	int ret = 0;
@@ -980,9 +982,11 @@ static int rk817_digital_mute(struct snd_soc_dai *dai, int mute)
 	DBG("%s %d\n", __func__, mute);
 
 	if (mute) {
-		gpio_set_value(SPK_EN, 0);
-		pr_info("rk817_digital_mute 1, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
-		msleep(1);
+		if(jack_connection_status == 0 || gpio_get_value(SPK_EN)) {
+			gpio_set_value(SPK_EN, 0);
+			pr_info("rk817_digital_mute mute, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+			msleep(1);
+		}
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 0);
 
@@ -1030,9 +1034,11 @@ static int rk817_digital_mute(struct snd_soc_dai *dai, int mute)
 					PWD_DACL_ON | PWD_DACR_ON);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 1);
-			msleep(2);
-			gpio_set_value(SPK_EN, 1);
-			pr_info("rk817_digital_mute 0, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+			if(jack_connection_status == 0) {
+				msleep(2);
+				gpio_set_value(SPK_EN, 1);
+				pr_info("rk817_digital_mute unmute, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+			}
 			break;
 		case SPK_HP:
 		case RING_SPK_HP:
