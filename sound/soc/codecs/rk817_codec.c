@@ -58,6 +58,10 @@
 #define CODEC_SET_SPK 1
 #define CODEC_SET_HP 2
 
+#ifdef CONFIG_RK3568_TB3N
+extern int jack_connection_status;
+#endif
+
 static int spk_enable_init(void)
 {
 	int ret = 0;
@@ -1062,9 +1066,13 @@ static int rk817_digital_mute_dac(struct snd_soc_dai *dai, int mute, int stream)
 	DBG("%s %d\n", __func__, mute);
 
 	if (mute) {
-		gpio_set_value(SPK_EN, 0);
-		pr_info("rk817_digital_mute 1, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
-		msleep(1);
+#ifdef CONFIG_RK3568_TB3N
+		if(jack_connection_status == 0 || gpio_get_value(SPK_EN)) {
+			gpio_set_value(SPK_EN, 0);
+			pr_info("rk817_digital_mute mute, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+			msleep(1);
+		}
+#endif
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 		rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 0);
 
@@ -1116,9 +1124,13 @@ static int rk817_digital_mute_dac(struct snd_soc_dai *dai, int mute, int stream)
 					PWD_DACL_ON | PWD_DACR_ON);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_SPK, 0);
 			rk817_codec_ctl_gpio(rk817, CODEC_SET_HP, 1);
-			msleep(2);
-			gpio_set_value(SPK_EN, 1);
-			pr_info("rk817_digital_mute 0, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+#ifdef CONFIG_RK3568_TB3N
+			if(jack_connection_status == 0) {
+				msleep(2);
+				gpio_set_value(SPK_EN, 1);
+				pr_info("rk817_digital_mute unmute, SPK_EN = %s\n", gpio_get_value(SPK_EN)? "H":"L");
+			}
+#endif
 			break;
 		case SPK_HP:
 		case RING_SPK_HP:
@@ -1280,11 +1292,12 @@ static int rk817_probe(struct snd_soc_component *component)
 			__func__);
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_RK3568_TB3N
 	ret = spk_enable_init();
+	dev_warn(component->dev, "=====spk_enable_init======)\n");
 	if (ret)
                 dev_err(component->dev, "Request SPK_EN Failed (%d)\n", ret);
-
+#endif
 	snd_soc_component_init_regmap(component, rk817->regmap);
 	rk817->component = component;
 	rk817->playback_path = OFF;
