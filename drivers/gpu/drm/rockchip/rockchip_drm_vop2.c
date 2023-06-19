@@ -4458,6 +4458,9 @@ vop2_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 	int request_clock = mode->clock;
 	int clock;
 
+	if (mode->flags & DRM_MODE_FLAG_INTERLACE)
+		return MODE_BAD;
+
 	if (mode->hdisplay > vp_data->max_output.width)
 		return MODE_BAD_HVALUE;
 
