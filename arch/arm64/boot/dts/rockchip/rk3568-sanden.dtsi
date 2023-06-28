@@ -136,6 +136,27 @@
 			};
 		};
 	};
+
+	gpio_keys: gpio-keys {
+		compatible = "gpio-keys";
+		autorepeat;
+		pinctrl-names = "default";
+		pinctrl-0 = <&home_btn &switch_btn>;
+
+		home {
+			debounce-interval = <100>;
+			gpios = <&gpio4 RK_PC2 GPIO_ACTIVE_LOW>;
+			label = "GPIO HOME KEY";
+			linux,code = <KEY_HOMEPAGE>;
+		};
+
+		switch {
+			debounce-interval = <100>;
+			gpios = <&gpio4 RK_PC3 GPIO_ACTIVE_LOW>;
+			label = "GPIO SWITCH KEY";
+			linux,code = <KEY_CHAT>;
+		};
+	};
 };
 
 &combphy0_us {
@@ -478,6 +499,16 @@
 };
 
 &pinctrl {
+	gpiokeys {
+		home_btn: home-btn {
+			rockchip,pins = <4 RK_PC2 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+
+		switch_btn: switch-btn {
+			rockchip,pins = <4 RK_PC3 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
 	pcie3gpio {
 		m2b_reset: m2b-reset {
 			rockchip,pins = <3 RK_PD0 RK_FUNC_GPIO &pcfg_pull_down>;
