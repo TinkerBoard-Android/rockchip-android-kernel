@@ -61,6 +61,9 @@ struct lt9211_data {
 	unsigned int format;
 	unsigned int mode_flags;
 	unsigned int t1;
+
+	uint8_t register_33;
+	uint8_t register_35;
 };
 
 //////////////////////LT9211 Config////////////////////////////////

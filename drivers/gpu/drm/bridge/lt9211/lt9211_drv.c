@@ -445,6 +445,65 @@ void lt9211_txpll(struct lt9211_data *lt9211)
 	printk(KERN_INFO "%s - system success\n", __func__);
 }
 
+
+void lt9211_txpll_ssc(struct lt9211_data *lt9211)
+{
+	uint8_t loopx;
+
+	if( (lt9211->lvds_output & OUTPUT_LVDS_1_PORT ) || (lt9211->lvds_output & OUTPUT_LVDS_2_PORT) )
+	{
+		lt9211_write(lt9211->client, 0xff, 0x82);
+		lt9211_write(lt9211->client, 0x36, 0x01); //b7:txpll_pd
+
+		if( lt9211->lvds_output & OUTPUT_LVDS_1_PORT ) {
+			lt9211_write(lt9211->client, 0x37, 0x29);
+		} else {
+			lt9211_write(lt9211->client, 0x37, 0x2a);
+		}
+		lt9211_write(lt9211->client, 0x38, 0x06);
+		lt9211_write(lt9211->client, 0x39, 0x30);
+		lt9211_write(lt9211->client, 0x3a, 0x0e);
+
+		lt9211_write(lt9211->client, 0xFF, 0x81);
+		lt9211_write(lt9211->client, 0x20, 0xF7);// LVDS Txpll soft reset
+		lt9211_write(lt9211->client, 0x20, 0xFF);
+
+		lt9211_write(lt9211->client, 0xff, 0x87);
+		lt9211_write(lt9211->client, 0x37, 0x0e);
+		lt9211_write(lt9211->client, 0x13, 0x00);
+		lt9211_write(lt9211->client, 0x13, 0x80);
+
+        lt9211_write(lt9211->client, 0x2f, 0x06);
+		lt9211_write(lt9211->client, 0x30, 0x03);
+		lt9211_write(lt9211->client, 0x31, 0x41);
+        lt9211_write(lt9211->client, 0x32, 0x00);
+		lt9211_write(lt9211->client, 0x33, lt9211->register_33);//调整展频
+		lt9211_write(lt9211->client, 0x34, 0x00);
+		lt9211_write(lt9211->client, 0x35, lt9211->register_35);//调整展频
+
+		msleep(100);
+		for(loopx = 0; loopx < 10; loopx++)
+        {  //Check Tx PLL cal
+
+			lt9211_write(lt9211->client, 0xff, 0x87);
+			if((lt9211_read(lt9211->client, 0x1f)) & 0x80) {
+				if((lt9211_read(lt9211->client, 0x20)) & 0x80) {
+					printk(KERN_INFO "%s - pll lock\n", __func__);
+				} else {
+					printk(KERN_INFO "%s - pll unlocked\n", __func__);
+				}
+				printk(KERN_INFO "%s - pll cal done\n", __func__);
+				break;
+			} else {
+				printk(KERN_INFO "%s - pll unlocked\n", __func__);
+			}
+		}
+        lt9211_write(lt9211->client, 0xff, 0x87);
+        lt9211_write(lt9211->client, 0x2f, 0x16);
+	}
+	printk(KERN_INFO "%s - system success\n", __func__);
+}
+
 void lt9211_txphy(struct lt9211_data *lt9211)
 {
 	if(g_lt9211->test_pattern_en) {
@@ -860,7 +919,10 @@ static void lt9211_init_seq(struct lt9211_data *lt9211)
 		
 	lt9211_mipipcr(lt9211);
 	msleep(10);
-	lt9211_txpll(lt9211);
+	if((lt9211->register_33 == 0) && (lt9211->register_35 == 0))
+		lt9211_txpll(lt9211);
+	else
+		lt9211_txpll_ssc(lt9211);
 	lt9211_lvds_power_on();
 	msleep(lt9211->t1 + 20);
 	lt9211_txphy(lt9211);
@@ -890,7 +952,10 @@ void lt9211_lvds_pattern_config(void)
 		lt9211_write(g_lt9211->client, 0xff, 0x81);
 		lt9211_write(g_lt9211->client, 0xff, 0x81);//ADD 3.3 LVDS TX LOGIC RESET 
 		//msleep(10);
-		lt9211_txpll(g_lt9211);
+		if((g_lt9211->register_33 == 0) && (g_lt9211->register_35 == 0))
+			lt9211_txpll(g_lt9211);
+		else
+			lt9211_txpll_ssc(g_lt9211);
 		lt9211_lvds_power_on();
 		msleep(g_lt9211->t1 + 20);
 		lt9211_txphy(g_lt9211);
@@ -1020,6 +1085,8 @@ static int lt9211_parse_dt(struct device_node *np,
 	data->enable_lt9211 = true;
 	printk(KERN_INFO "%s +\n", __func__);
 	data->is_tinker3 = of_property_read_bool(np, "Tinker3");
+	data->register_33 = 0;
+	data->register_35 = 0;
 
 	if(!of_property_read_bool(np, "enable-overlay") && data->is_tinker3) {
 		printk(KERN_INFO "lt9211 is not enabled\n");
@@ -1073,6 +1140,11 @@ static int lt9211_parse_dt(struct device_node *np,
 		data->test_pattern_en = of_property_read_bool(np, "test-pattern");
 
 		data->uboot = of_property_read_bool(np, "uboot-logo");
+
+		of_property_read_u8(np, "reg33", &data->register_33);
+		of_property_read_u8(np, "reg35", &data->register_35);
+
+		printk(KERN_INFO "lt9211_parse_dt reg33=0x%02x reg35=0x%02x\n", data->register_33, data->register_35);
 
 		printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
 
