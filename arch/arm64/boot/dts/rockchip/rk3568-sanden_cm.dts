@@ -4,7 +4,7 @@
  *
  */
 
-#include "rk3568-sanden.dtsi"
+#include "rk3568-sanden_cm.dtsi"
 #include <dt-bindings/display/rockchip_vop.h>
 
 / {

@@ -1,0 +1,273 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * Copyright (c) 2020 Rockchip Electronics Co., Ltd.
+ *
+ */
+
+#include "rk3568-sanden_vm.dtsi"
+#include <dt-bindings/display/rockchip_vop.h>
+
+/ {
+	chosen: chosen {
+		bootargs = "earlycon=uart8250,mmio32,0xfe660000 console=ttyFIQ0";
+	};
+
+	aliases {
+		mmc0 = &sdmmc0;
+		mmc1 = &sdmmc1;
+		mmc2 = &sdhci;
+		mmc3 = &sdmmc2;
+	};
+
+	fiq-debugger {
+		compatible = "rockchip,fiq-debugger";
+		rockchip,serial-id = <2>;
+		rockchip,wake-irq = <0>;
+		/* If enable uart uses irq instead of fiq */
+		rockchip,irq-mode-enable = <1>;
+		rockchip,baudrate = <1500000>;  /* Only 115200 and 1500000 */
+		interrupts = <GIC_SPI 252 IRQ_TYPE_LEVEL_LOW>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart2m0_xfer>;
+		status = "okay";
+	};
+
+	debug: debug@fd904000 {
+		compatible = "rockchip,debug";
+		reg = <0x0 0xfd904000 0x0 0x1000>,
+			<0x0 0xfd905000 0x0 0x1000>,
+			<0x0 0xfd906000 0x0 0x1000>,
+			<0x0 0xfd907000 0x0 0x1000>;
+	};
+
+	cspmu: cspmu@fd90c000 {
+		compatible = "rockchip,cspmu";
+		reg = <0x0 0xfd90c000 0x0 0x1000>,
+			<0x0 0xfd90d000 0x0 0x1000>,
+			<0x0 0xfd90e000 0x0 0x1000>,
+			<0x0 0xfd90f000 0x0 0x1000>;
+	};
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		#cooling-cells = <2>;
+		pwms = <&pwm0 0 40000 0>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PC3 IRQ_TYPE_EDGE_FALLING>;
+		pulses-per-revolution = <2>;
+	};
+
+	board_info: board-info {
+		compatible = "board-info";
+
+		model = "rk3568";
+
+		emmc0-gpios = <&gpio3 RK_PD5 GPIO_ACTIVE_HIGH>;
+		emmc1-gpios = <&gpio0 RK_PA0 GPIO_ACTIVE_HIGH>;
+	};
+
+	ADC1-PCBID {
+		compatible = "ADC1-PCBID";
+		io-channels = <&saradc 1>;
+		io-channel-names = "ADC1-PCBID";
+	};
+
+	ADC3-RAMID {
+		compatible = "ADC3-RAMID";
+		io-channels = <&saradc 3>;
+		io-channel-names = "ADC3-RAMID";
+	};
+
+	ADC4-ODMID {
+		compatible = "ADC4-ODMID";
+		io-channels = <&saradc 4>;
+		io-channel-names = "ADC4-ODMID";
+	};
+
+	ADC5-PRJID {
+		compatible = "ADC5-PRJID";
+		io-channels = <&saradc 5>;
+		io-channel-names = "ADC5-PRJID";
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		act-led {
+			gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="mmc0";
+		};
+
+		rsv-led {
+			gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="none";
+		};
+	};
+};
+
+&reserved_memory {
+	cma {
+		compatible = "shared-dma-pool";
+		inactive;
+		reusable;
+		reg = <0x0 0x10000000 0x0 0x00800000>;
+		linux,cma-default;
+	};
+
+	ramoops: ramoops@110000 {
+		compatible = "ramoops";
+		reg = <0x0 0x110000 0x0 0xf0000>;
+		record-size = <0x20000>;
+		console-size = <0x80000>;
+		ftrace-size = <0x00000>;
+		pmsg-size = <0x50000>;
+	};
+};
+
+&rng {
+	status = "okay";
+};
+
+&rockchip_suspend {
+	status = "okay";
+
+	rockchip,sleep-mode-config = <
+                (0
+                | RKPM_SLP_CENTER_OFF
+                | RKPM_SLP_HW_PLLS_OFF
+                | RKPM_SLP_PMUALIVE_32K
+                | RKPM_SLP_32K_PVTM
+                | RKPM_SLP_PMIC_LP
+                )
+                >;
+	rockchip,wakeup-config = <
+		(0
+		| RKPM_GPIO_WKUP_EN
+		| RKPM_USB_WKUP_EN
+		| RKPM_CPU0_WKUP_EN
+		| RKPM_CPU3_WKUP_EN
+		)
+		>;
+};
+
+&vop {
+	support-multi-area;
+};
+
+&vp0 {
+	rockchip,plane-mask = <(1 << ROCKCHIP_VOP2_CLUSTER0 | 1 << ROCKCHIP_VOP2_SMART0 | 1 << ROCKCHIP_VOP2_ESMART0)>;
+	rockchip,primary-plane = <ROCKCHIP_VOP2_SMART0>;
+	cursor-win-id = <ROCKCHIP_VOP2_CLUSTER0>;
+};
+
+&vp1 {
+	rockchip,plane-mask = <(1 << ROCKCHIP_VOP2_CLUSTER1 | 1 << ROCKCHIP_VOP2_SMART1 | 1 << ROCKCHIP_VOP2_ESMART1)>;
+	rockchip,primary-plane = <ROCKCHIP_VOP2_SMART1>;
+	cursor-win-id = <ROCKCHIP_VOP2_CLUSTER1>;
+};
+
+&pinctrl {
+        rtc {
+                pinctrl_externalrtc_reg: externalrtcreggrp {
+                        rockchip,pins = <0 RK_PD3 RK_FUNC_GPIO &pcfg_pull_up>;
+                };
+        };
+
+        eeprom {
+                tb3_eeprom: tb3-eeprom {
+                        rockchip,pins = <1 RK_PB2 RK_FUNC_GPIO &pcfg_pull_up>;
+                };
+        };
+};
+
+&i2c3 {
+        pinctrl-0 = <&i2c3m1_xfer>;
+        status = "okay";
+
+        rtc3_isl1208: rtc3@6f {
+                compatible = "isil,isl1208";
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_externalrtc_reg>;
+                interrupt-names = "irq";
+                interrupts-extended = <&gpio0 RK_PD3 IRQ_TYPE_EDGE_FALLING>;
+                reg = <0x6f>;
+                status = "okay";
+        };
+};
+
+&i2c2 {
+	status = "okay";
+	m24c08@50 {
+		compatible = "atmel,24c08";
+		reg = <0x50>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&tb3_eeprom>;
+		status = "okay";
+	};
+
+        clock-generator@6a {
+                compatible = "renesas,9fgv0441tb3";
+                reg = <0x6a>;
+                status = "okay";
+        };
+
+        rtc2_isl1208: rtc2@6f {
+                compatible = "isil,isl1208";
+                pinctrl-names = "default";
+                pinctrl-0 = <&pinctrl_externalrtc_reg>;
+                interrupt-names = "irq";
+                interrupts-extended = <&gpio0 RK_PD3 IRQ_TYPE_EDGE_FALLING>;
+                reg = <0x6f>;
+                status = "okay";
+        };
+};
+
+&pwm0 {
+	status = "okay";
+};
+
+&pwm4 {
+	status = "disabled";
+};
+
+&uart0_enable {
+	gpio = <&gpio2 RK_PD2 GPIO_ACTIVE_HIGH>;
+	enable-active-high;
+	regulator-always-on;
+};
+
+&uart0 {
+	power-supply = <&uart0_enable>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart0_xfer &uart0_rtsn &uart0_ctsn>;
+
+	uart0_en: uart0-en {
+		rockchip,pins =
+			<2 RK_PD2 RK_FUNC_GPIO &pcfg_pull_up>;
+	};
+};
+
+&uart3 {
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart3m1_xfer &uart3_rs232>;
+};
+
+&uart8_enable {
+	gpio = <&gpio3 RK_PA4 GPIO_ACTIVE_HIGH>;
+	enable-active-high;
+	regulator-always-on;
+};
+
+&uart8 {
+	power-supply = <&uart8_enable>;
+	status = "okay";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart8m0_xfer &uart8m0_rtsn &uart8m0_ctsn>;
+
+	uart8_en: uart8-en {
+		rockchip,pins =
+			<3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_up>;
+	};
+};

@@ -9,10 +9,10 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/rockchip.h>
 #include "rk3568.dtsi"
-#include "rk3568-sanden-common.dtsi"
+#include "rk3568-sanden_cm-common.dtsi"
 
 / {
-	model = "ASUS Tinker Board 3N";
+	model = "Sanden CM";
 	compatible = "rockchip,rk3568-evb1-ddr4-v10", "rockchip,rk3568";
 
 	rk_headset: rk-headset {
