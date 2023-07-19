@@ -251,7 +251,7 @@
 &uart3 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&uart3m1_xfer &uart3_rs232>;
+	pinctrl-0 = <&uart3m1_xfer &uart3_rs485>;
 };
 
 &uart8_enable {
