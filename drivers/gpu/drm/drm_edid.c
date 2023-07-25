@@ -1588,6 +1588,10 @@ static const u8 ada_vgg804826_edid[] = {
 	0x04, 0x81, 0x04, 0x00
 };
 
+static const u8 ha_101zieb0hh1_a_dgw_edid[] = {
+	0x12, 0xe9, 0x02, 0x2c
+};
+
 /**
  * drm_edid_header_is_valid - sanity check the header of the base EDID block
  * @raw_edid: pointer to raw base EDID block
@@ -1652,6 +1656,21 @@ bool drm_dect_ada_vgg804826_edid(struct edid *edid)
 		return false;
 }
 EXPORT_SYMBOL(drm_dect_ada_vgg804826_edid);
+
+bool drm_dect_ha_101zieb0hh1_a_dgw_edid(struct edid *edid)
+{
+	int i, score = 0;
+	u8 *raw_edid = (u8 *)edid;
+	for (i = 0; i < sizeof(ha_101zieb0hh1_a_dgw_edid); i++) {
+		if (raw_edid[8+i] == ha_101zieb0hh1_a_dgw_edid[i])
+			score++;
+	}
+	if (score == 4)
+		return true;
+	else
+		return false;
+}
+EXPORT_SYMBOL(drm_dect_ha_101zieb0hh1_a_dgw_edid);
 
 static int edid_fixup __read_mostly = 6;
 module_param_named(edid_fixup, edid_fixup, int, 0400);

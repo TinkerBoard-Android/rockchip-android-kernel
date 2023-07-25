@@ -82,6 +82,8 @@ extern bool drm_dect_dwe2100_edid(struct edid *edid);
 extern bool detect_dwe2100_panel(void);
 extern bool drm_dect_ada_vgg804826_edid(struct edid *edid);
 extern bool detect_ada_vgg804826_panel(void);
+extern bool drm_dect_ha_101zieb0hh1_a_dgw_edid(struct edid *edid);
+extern bool detect_ha_101zieb0hh1_a_dgw_panel(void);
 /**
  * struct drm_crtc_state - mutable CRTC state
  *

@@ -2648,10 +2648,12 @@ vop_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 	bool eve_vgg804838_panel = false;
 	bool dwe2100_panel = false;
 	bool ada_vgg804826_panel = false;
+	bool ha_101zieb0hh1_a_dgw_panel = false;
 
 	eve_vgg804838_panel = detect_eve_vgg804838_panel();
 	dwe2100_panel = detect_dwe2100_panel();
 	ada_vgg804826_panel = detect_ada_vgg804826_panel();
+	ha_101zieb0hh1_a_dgw_panel = detect_ha_101zieb0hh1_a_dgw_panel();
 
 	//MAJOR = 3, MINOR = 0 for rk3288-C
 	//MAJOR = 3, MINOR = 1 for rk3288-CGW
@@ -2678,7 +2680,7 @@ vop_crtc_mode_valid(struct drm_crtc *crtc, const struct drm_display_mode *mode,
 			//MAJOR = 3, MINOR = 1 for rk3288-CGW
 			if (((VOP_MAJOR(vop->version) == 3) && (VOP_MINOR(vop->version) == 0 || VOP_MINOR(vop->version) == 1))) {
 				if((request_clock == 33260 && eve_vgg804838_panel) || (request_clock == 33900 && dwe2100_panel)
-					|| (request_clock == 32000 && ada_vgg804826_panel)) {
+					|| (request_clock == 32000 && ada_vgg804826_panel) || (request_clock == 71000 && ha_101zieb0hh1_a_dgw_panel)) {
 					pr_err("%s: don't block pixel clock %d KHz", __func__, request_clock);
 					return MODE_OK;
 				}
