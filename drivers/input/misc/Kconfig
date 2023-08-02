@@ -851,4 +851,10 @@ config INPUT_SC27XX_VIBRA
 	  To compile this driver as a module, choose M here. The module will
 	  be called sc27xx_vibra.
 
+config INPUT_CAPELLA_CM32183
+	tristate "CM32183 light sensor"
+	depends on I2C
+	help
+	  Say Y here to enable the CM32183 Ambient Light Sensor.
+
 endif

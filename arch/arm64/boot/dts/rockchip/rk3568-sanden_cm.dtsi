@@ -453,6 +453,15 @@
 	};
 };
 
+&i2c5 {
+	status = "okay";
+	cm32183: cm32183@29 {
+		compatible = "capella,cm32183";
+		reg = <0x29>;
+		status = "okay";
+        };
+};
+
 &mdio0 {
 	rgmii_phy0: phy@0 {
 		compatible = "ethernet-phy-ieee802.3-c22";
