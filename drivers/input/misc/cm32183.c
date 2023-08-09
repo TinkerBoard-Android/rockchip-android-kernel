@@ -608,6 +608,12 @@ static int cm32183_probe(struct i2c_client *client,
 
 	D("[CM32183] %s\n", __func__);
 
+	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+		printk(KERN_ERR "Check I2C functionality failed.\n");
+		ret = -EIO;
+		goto err_i2c_func;
+        }
+
 	lpi = kzalloc(sizeof(struct cm32183_info), GFP_KERNEL);
 	if (!lpi)
 		return -ENOMEM;
@@ -651,7 +657,6 @@ static int cm32183_probe(struct i2c_client *client,
 		lpi->cm32183_class = NULL;
 		goto err_create_class;
 	}
-
 	lpi->ls_dev = device_create(lpi->cm32183_class,
 				NULL, 0, "%s", "lightsensor");
 	if (unlikely(IS_ERR(lpi->ls_dev))) {
@@ -663,8 +668,6 @@ static int cm32183_probe(struct i2c_client *client,
 	/* register the attributes */
         ret = sysfs_create_group(&lpi->i2c_client->dev.kobj,
 	&light_attribute_group);
-        ret = sysfs_create_group(&lpi->ls_input_dev->dev.kobj,
-        &light_attribute_group);
 	if (ret) {
 		pr_err("[LS][CM32183 error]%s: could not create sysfs group\n", __func__);
 		goto err_sysfs_create_group_light;
@@ -688,10 +691,11 @@ err_cm32183_setup:
 	input_unregister_device(lpi->ls_input_dev);
 	input_free_device(lpi->ls_input_dev);
 err_create_singlethread_workqueue:
-	misc_deregister(&lightsensor_misc);
+	//misc_deregister(&lightsensor_misc);
 err_lightsensor_setup:
 //err_platform_data_null:
 	kfree(lpi);
+err_i2c_func:
 	return ret;
 }
 
