@@ -1163,7 +1163,7 @@ static int lt9211_parse_dt(struct device_node *np,
 			if(!data->is_tinker3) {
 				data->pwr_source_gpio = devm_gpiod_get_optional(dev, "pwr_source", GPIOD_OUT_LOW);
 			} else {
-				data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+				data->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_LOW);
 			}
 
 		}
