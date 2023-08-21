@@ -125,6 +125,7 @@ struct rockchip_chg_det_reg {
 /**
  * struct rockchip_usb2phy_port_cfg - usb-phy port configuration.
  * @phy_sus: phy suspend register.
+ * @phy_sus_host_port: phy suspend register for u2 port of u3 interface.
  * @pipe_phystatus: select pipe phystatus from grf or phy.
  * @bvalid_det_en: vbus valid rise detection enable register.
  * @bvalid_det_st: vbus valid rise detection status register.
@@ -166,6 +167,7 @@ struct rockchip_chg_det_reg {
  */
 struct rockchip_usb2phy_port_cfg {
 	struct usb2phy_reg	phy_sus;
+	struct usb2phy_reg	phy_sus_host_port;
 	struct usb2phy_reg	pipe_phystatus;
 	struct usb2phy_reg	bvalid_det_en;
 	struct usb2phy_reg	bvalid_det_st;
@@ -3089,6 +3091,7 @@ static int rockchip_usb2phy_pm_suspend(struct device *dev)
 	unsigned int index;
 	int ret = 0;
 	bool wakeup_enable = false;
+	struct regmap *base = get_reg_base(rphy);
 
 	if (device_may_wakeup(rphy->dev))
 		wakeup_enable = true;
@@ -3136,8 +3139,27 @@ static int rockchip_usb2phy_pm_suspend(struct device *dev)
 		    rport->bvalid_irq > 0)
 			enable_irq_wake(rport->bvalid_irq);
 
-		/* activate the linestate to detect the next interrupt. */
 		mutex_lock(&rport->mutex);
+
+		/*
+		 * For the USB2 port of USB3 Host interface on RK3566 and
+		 * RK3568, it select suspend control from controller by
+		 * default. When system enter deep sleep , the control from
+		 * controller is invalid, use grf suspend control instead
+		 * of the controller.
+		 */
+		if ((soc_is_rk3566() || soc_is_rk3568()) &&
+		    (rphy->phy_cfg->reg == 0xfe8a0000) &&
+		    (rport->port_id == USB2PHY_PORT_HOST)) {
+			ret = property_enable(base, &rport->port_cfg->phy_sus_host_port, true);
+			dev_info(rphy->dev, "suspend host port\n");
+			if (ret) {
+				dev_err(rphy->dev, "failed to suspend host port\n");
+				return ret;
+			}
+		}
+
+		/* activate the linestate to detect the next interrupt. */
 		ret = rockchip_usb2phy_enable_line_irq(rphy, rport, true);
 		mutex_unlock(&rport->mutex);
 		if (ret) {
@@ -3949,7 +3971,8 @@ static const struct rockchip_usb2phy_cfg rk3568_phy_cfgs[] = {
 			},
 			[USB2PHY_PORT_HOST] = {
 				/* Select suspend control from controller */
-				.phy_sus	= { 0x0004, 8, 0, 0x1d2, 0x1d2 },
+				.phy_sus        = { 0x0004, 8, 0, 0x1d2, 0x1d2 },
+				.phy_sus_host_port = { 0x0004, 8, 0, 0x1d2, 0x1d1 },
 				.ls_det_en	= { 0x0080, 1, 1, 0, 1 },
 				.ls_det_st	= { 0x0084, 1, 1, 0, 1 },
 				.ls_det_clr	= { 0x0088, 1, 1, 0, 1 },
