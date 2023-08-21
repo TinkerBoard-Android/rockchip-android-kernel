@@ -631,11 +631,17 @@ static int cm32183_probe(struct i2c_client *client,
 	mutex_init(&als_disable_mutex);
 	mutex_init(&als_get_adc_mutex);
 
+	ret = cm32183_setup(lpi);
+	if (ret < 0) {
+		pr_err("[ERR][CM32183 error]%s: cm32183_setup error!\n", __func__);
+		goto err_cm32183_setup;
+	}
+
 	ret = lightsensor_setup(lpi);
 	if (ret < 0) {
 		pr_err("[LS][CM32183 error]%s: lightsensor_setup error!!\n",
 			__func__);
-		goto err_lightsensor_setup;
+		goto err_cm32183_setup;
 	}
 
 	lpi->lp_wq = create_singlethread_workqueue("cm32183_wq");
@@ -643,12 +649,6 @@ static int cm32183_probe(struct i2c_client *client,
 		pr_err("[CM32183 error]%s: can't create workqueue\n", __func__);
 		ret = -ENOMEM;
 		goto err_create_singlethread_workqueue;
-	}
-
-	ret = cm32183_setup(lpi);
-	if (ret < 0) {
-		pr_err("[ERR][CM32183 error]%s: cm32183_setup error!\n", __func__);
-		goto err_cm32183_setup;
 	}
 
 	lpi->cm32183_class = class_create(THIS_MODULE, "optical_sensors");
@@ -683,17 +683,16 @@ err_sysfs_create_group_light:
 err_create_ls_device:
 	class_destroy(lpi->cm32183_class);
 err_create_class:
-err_cm32183_setup:
 	destroy_workqueue(lpi->lp_wq);
+err_create_singlethread_workqueue:
+	//misc_deregister(&lightsensor_misc);
+	input_unregister_device(lpi->ls_input_dev);
+	if (lpi->ls_input_dev)
+		input_free_device(lpi->ls_input_dev);
+err_cm32183_setup:
 	mutex_destroy(&als_enable_mutex);
 	mutex_destroy(&als_disable_mutex);
 	mutex_destroy(&als_get_adc_mutex);
-	input_unregister_device(lpi->ls_input_dev);
-	input_free_device(lpi->ls_input_dev);
-err_create_singlethread_workqueue:
-	//misc_deregister(&lightsensor_misc);
-err_lightsensor_setup:
-//err_platform_data_null:
 	kfree(lpi);
 err_i2c_func:
 	return ret;
