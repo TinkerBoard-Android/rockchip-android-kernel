@@ -64,6 +64,8 @@ struct lt9211_data {
 
 	uint8_t register_33;
 	uint8_t register_35;
+	uint8_t register_3f;
+	uint8_t register_40;
 };
 
 //////////////////////LT9211 Config////////////////////////////////

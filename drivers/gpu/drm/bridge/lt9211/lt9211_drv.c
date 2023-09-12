@@ -555,8 +555,19 @@ void lt9211_txphy(struct lt9211_data *lt9211)
 				}
 		}
 		lt9211_write(lt9211->client, 0x3e, 0x92);
-		lt9211_write(lt9211->client, 0x3f, 0x48);
-		lt9211_write(lt9211->client, 0x40, 0x31);	
+		if(lt9211->register_3f == 0) {
+			lt9211_write(lt9211->client, 0x3f, 0x48);
+		} else {
+			lt9211_write(lt9211->client, 0x3f, lt9211->register_3f);
+		}
+		printk(KERN_INFO "%s - LT9211 reg3f modified value =%x\n", __func__, lt9211_read(lt9211->client, 0x3f));
+
+		if(lt9211->register_40 == 0) {
+			lt9211_write(lt9211->client, 0x40, 0x31);
+		} else {
+			lt9211_write(lt9211->client, 0x40, lt9211->register_40);
+		}
+		printk(KERN_INFO "%s - LT9211 reg40 modified value =%x\n", __func__, lt9211_read(lt9211->client, 0x40));
 		lt9211_write(lt9211->client, 0x43, 0x80); 		
 		lt9211_write(lt9211->client, 0x44, 0x00);
 		lt9211_write(lt9211->client, 0x45, 0x00); 		
@@ -1087,6 +1098,8 @@ static int lt9211_parse_dt(struct device_node *np,
 	data->is_tinker3 = of_property_read_bool(np, "Tinker3");
 	data->register_33 = 0;
 	data->register_35 = 0;
+	data->register_3f = 0;
+	data->register_40 = 0;
 
 	if(!of_property_read_bool(np, "enable-overlay") && data->is_tinker3) {
 		printk(KERN_INFO "lt9211 is not enabled\n");
@@ -1143,8 +1156,10 @@ static int lt9211_parse_dt(struct device_node *np,
 
 		of_property_read_u8(np, "reg33", &data->register_33);
 		of_property_read_u8(np, "reg35", &data->register_35);
+		of_property_read_u8(np, "reg3f", &data->register_3f);
+		of_property_read_u8(np, "reg40", &data->register_40);
 
-		printk(KERN_INFO "lt9211_parse_dt reg33=0x%02x reg35=0x%02x\n", data->register_33, data->register_35);
+		printk(KERN_INFO "lt9211_parse_dt reg33=0x%02x reg35=0x%02x reg3f=0x%02x reg40=0x%02x\n", data->register_33, data->register_35, data->register_3f, data->register_40);
 
 		printk(KERN_INFO "lt9211_parse_dt lvds-format=%u lvds-bpp=%u test-pattern=%s uboot-logo=%s\n", data->lvds_format, data->lvds_bpp, data->test_pattern_en? "true" : "false", data->uboot? "true" : "false");
 
