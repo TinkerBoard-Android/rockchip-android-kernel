@@ -36,7 +36,7 @@
 #include <linux/suspend.h>
 
 #define CONFIG_BLUEDROID        1 /* bleuz 0, bluedroid 1 */
-//#define CONFIG_SCO_OVER_HCI
+#define CONFIG_SCO_OVER_HCI
 
 #ifdef CONFIG_SCO_OVER_HCI
 #include <linux/usb/audio.h>
