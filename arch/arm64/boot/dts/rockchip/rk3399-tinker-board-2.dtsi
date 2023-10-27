@@ -1553,6 +1553,8 @@
 	hub-vbus-gpios = <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>,
 			 <&gpio1 RK_PA3 GPIO_ACTIVE_HIGH>;
 	extcon = <&fusb0>, <&rtusb0>;
+	snps,parkmode-disable-hs-quirk;
+	snps,parkmode-disable-ss-quirk;
 };
 
 &usbdrd3_1 {
@@ -1566,6 +1568,8 @@
 	pinctrl-0 = <&hub_vbus_gpio>;
 	hub-vbus-gpios = <&gpio2 RK_PB4 GPIO_ACTIVE_HIGH>,
 			 <&gpio2 RK_PB4 GPIO_ACTIVE_LOW>;
+	snps,parkmode-disable-hs-quirk;
+	snps,parkmode-disable-ss-quirk;
 };
 
 &vopb_mmu {
