@@ -148,6 +148,7 @@ struct rk_pcie {
 	struct reset_bulk_data		*rsts;
 	struct gpio_desc		*rst_gpio;
 	struct gpio_desc		*pwr_gpio;
+	u32				perst_inactive_ms;
 	phys_addr_t			mem_start;
 	size_t				mem_size;
 	struct pcie_port		pp;
@@ -490,15 +491,22 @@ static int rk_pcie_establish_link(struct dw_pcie *pci)
 	 * PERST and T_PVPERL (Power stable to PERST# inactive) should be a
 	 * minimum of 100ms.  See table 2-4 in section 2.6.2 AC, the PCI Express
 	 * Card Electromechanical Specification 3.0. So 100ms in total is the min
-	 * requuirement here. We add a 1s for sake of hoping everthings work fine.
+	 * requuirement here. We add a 200ms by default for sake of hoping everthings
+	 * work fine. If it doesn't, please add more in DT node by add rockchip,perst-inactive-ms.
 	 */
 	dev_info(pci->dev, "power on!");
-	msleep(1000);
+	msleep(rk_pcie->perst_inactive_ms);
 	gpiod_set_value_cansleep(rk_pcie->rst_gpio, 1);
 	if (!IS_ERR_OR_NULL(rk_pcie->pwr_gpio))
 		gpiod_set_value_cansleep(rk_pcie->pwr_gpio, 1);
 
-	for (retries = 0; retries < 10; retries++) {
+	/*
+	 * Add this 1ms delay because we observe link is always up stably after it and
+	 * could help us save 20ms for scanning devices.
+	 */
+	usleep_range(1000, 1100);
+
+	for (retries = 0; retries < 100; retries++) {
 		if (dw_pcie_link_up(pci)) {
 			/*
 			 * We may be here in case of L0 in Gen1. But if EP is capable
@@ -507,17 +515,20 @@ static int rk_pcie_establish_link(struct dw_pcie *pci)
 			 * that LTSSM max timeout is 24ms per period, we can wait a bit
 			 * more for Gen switch.
 			 */
-			msleep(100);
-			dev_info(pci->dev, "PCIe Link up, LTSSM is 0x%x\n",
-				 rk_pcie_readl_apb(rk_pcie, PCIE_CLIENT_LTSSM_STATUS));
-			rk_pcie_debug_dump(rk_pcie);
-			return 0;
+			msleep(50);
+			/* In case link drop after linkup, double check it */
+			if (dw_pcie_link_up(pci)) {
+				dev_info(pci->dev, "PCIe Link up, LTSSM is 0x%x\n",
+					 rk_pcie_readl_apb(rk_pcie, PCIE_CLIENT_LTSSM_STATUS));
+				rk_pcie_debug_dump(rk_pcie);
+				return 0;
+			}
 		}
 
 		dev_info_ratelimited(pci->dev, "PCIe Linking... LTSSM is 0x%x\n",
 				     rk_pcie_readl_apb(rk_pcie, PCIE_CLIENT_LTSSM_STATUS));
 		rk_pcie_debug_dump(rk_pcie);
-		msleep(1000);
+		msleep(20);
 	}
 
 	dev_err(pci->dev, "PCIe Link Fail\n");
@@ -897,6 +908,9 @@ static int rk_pcie_resource_get(struct platform_device *pdev,
 	}
 	#endif
 
+	if (device_property_read_u32(&pdev->dev, "rockchip,perst-inactive-ms",
+				     &rk_pcie->perst_inactive_ms))
+		rk_pcie->perst_inactive_ms = 200;
 	return 0;
 }
 
