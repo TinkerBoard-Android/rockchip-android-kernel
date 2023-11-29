@@ -246,7 +246,7 @@ static int en_i2c = 1;
 module_param(en_i2c, int, S_IRUGO);
 MODULE_PARM_DESC(en_i2c, "Enable I2C function PIN");
 
-static int en_spi = 1;
+static int en_spi = 0;
 module_param(en_spi, int, S_IRUGO);
 MODULE_PARM_DESC(en_spi, "Enable SPI function PIN");
 
