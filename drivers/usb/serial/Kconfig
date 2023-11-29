@@ -664,4 +664,13 @@ config USB_SERIAL_DEBUG
 	  To compile this driver as a module, choose M here: the
 	  module will be called usb-debug.
 
+config USB_SERIAL_F75115
+        tristate "USB Fintek bridge driver for F75115"
+        help
+          Say Y here if you want to use the Fintek F75115
+          serial driver.
+
+          To compile this driver as a module, choose M here: the
+          module will be called f75115.
+
 endif # USB_SERIAL

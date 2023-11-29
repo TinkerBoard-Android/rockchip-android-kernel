@@ -17,6 +17,7 @@
 		mmc1 = &sdmmc1;
 		mmc2 = &sdhci;
 		mmc3 = &sdmmc2;
+                i2c7 = &i2c7;
 	};
 
 	fiq-debugger {
@@ -103,6 +104,12 @@
 			linux,default-trigger="none";
 		};
 	};
+
+        i2c7: i2c@f751150 {
+                #address-cells = <1>;
+                #size-cells = <0>;
+        };
+
 };
 
 &reserved_memory {
