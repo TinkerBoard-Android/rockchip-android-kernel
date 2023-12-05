@@ -37,7 +37,7 @@
 //#include <linux/spi/spi_bitbang.h>
 //#include "spi_gpio.h"
 
-#define DRIVER_VER		"v1.02-20231115a1"
+#define DRIVER_VER "v1.02-20231123a1"
 
 #include <linux/platform_device.h>
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 17, 0)
@@ -56,187 +56,238 @@
 #define __dynamic_dev_dbg(...)
 
 #undef dev_err
-#define dev_err(dev, text, arg...) \
-	printk(KERN_INFO "%s %s: "#text, \
-			dev_driver_string(dev), \
-			__func__, \
-			## arg)
+#define dev_err(dev, text, arg...)                                          \
+	printk(KERN_INFO "%s %s: " #text, dev_driver_string(dev), __func__, \
+	       ##arg)
 
 #undef dev_warn
-#define dev_warn(dev, text, arg...) \
-	printk(KERN_INFO "%s %s: "#text, \
-			dev_driver_string(dev), \
-			__func__, \
-			## arg)
+#define dev_warn(dev, text, arg...)                                         \
+	printk(KERN_INFO "%s %s: " #text, dev_driver_string(dev), __func__, \
+	       ##arg)
 
 #undef dev_info
-#define dev_info(dev, text, arg...) \
-	printk(KERN_INFO "%s %s: "#text, \
-			dev_driver_string(dev), \
-			__func__, \
-			## arg)
+#define dev_info(dev, text, arg...)                                         \
+	printk(KERN_INFO "%s %s: " #text, dev_driver_string(dev), __func__, \
+	       ##arg)
 #endif
 
 #define VERSION "$Rev: 19 $"
 #define GPIO_OUTPUT_FAST_MODE
 
 /* Serial Port register Address */
-#define SERIAL_BASE_ADDRESS		0x1200
-#define RECEIVE_BUFFER_REGISTER		(0x00 + SERIAL_BASE_ADDRESS)
-#define TRANSMIT_HOLDING_REGISTER	(0x00 + SERIAL_BASE_ADDRESS)
-#define DIVISOR_LATCH_LSB		(0x00 + SERIAL_BASE_ADDRESS)
-#define INTERRUPT_ENABLE_REGISTER	(0x01 + SERIAL_BASE_ADDRESS)
-#define DIVISOR_LATCH_MSB		(0x01 + SERIAL_BASE_ADDRESS)
-#define INTERRUPT_IDENT_REGISTER	(0x02 + SERIAL_BASE_ADDRESS)
-#define FIFO_CONTROL_REGISTER		(0x02 + SERIAL_BASE_ADDRESS)
-#define LINE_CONTROL_REGISTER		(0x03 + SERIAL_BASE_ADDRESS)
-#define MODEM_CONTROL_REGISTER		(0x04 + SERIAL_BASE_ADDRESS)
-#define LINE_STATUS_REGISTER		(0x05 + SERIAL_BASE_ADDRESS)
-#define MODEM_STATUS_REGISTER		(0x06 + SERIAL_BASE_ADDRESS)
-#define CLK_SEL_REGISTER		(0x08 + SERIAL_BASE_ADDRESS)
-#define CONFIG1_REGISTER		(0x09 + SERIAL_BASE_ADDRESS)
-#define SADDRESS_REGISTER		(0x0a + SERIAL_BASE_ADDRESS)
-#define SADEN_REGISTER			(0x0b + SERIAL_BASE_ADDRESS)
+#define SERIAL_BASE_ADDRESS 0x1200
+#define RECEIVE_BUFFER_REGISTER (0x00 + SERIAL_BASE_ADDRESS)
+#define TRANSMIT_HOLDING_REGISTER (0x00 + SERIAL_BASE_ADDRESS)
+#define DIVISOR_LATCH_LSB (0x00 + SERIAL_BASE_ADDRESS)
+#define INTERRUPT_ENABLE_REGISTER (0x01 + SERIAL_BASE_ADDRESS)
+#define DIVISOR_LATCH_MSB (0x01 + SERIAL_BASE_ADDRESS)
+#define INTERRUPT_IDENT_REGISTER (0x02 + SERIAL_BASE_ADDRESS)
+#define FIFO_CONTROL_REGISTER (0x02 + SERIAL_BASE_ADDRESS)
+#define LINE_CONTROL_REGISTER (0x03 + SERIAL_BASE_ADDRESS)
+#define MODEM_CONTROL_REGISTER (0x04 + SERIAL_BASE_ADDRESS)
+#define LINE_STATUS_REGISTER (0x05 + SERIAL_BASE_ADDRESS)
+#define MODEM_STATUS_REGISTER (0x06 + SERIAL_BASE_ADDRESS)
+#define CLK_SEL_REGISTER (0x08 + SERIAL_BASE_ADDRESS)
+#define CONFIG1_REGISTER (0x09 + SERIAL_BASE_ADDRESS)
+#define SADDRESS_REGISTER (0x0a + SERIAL_BASE_ADDRESS)
+#define SADEN_REGISTER (0x0b + SERIAL_BASE_ADDRESS)
 
-#define IER_DMA_TX_EN			BIT(7)
-#define IER_DMA_RX_EN			BIT(6)
+#define IER_DMA_TX_EN BIT(7)
+#define IER_DMA_RX_EN BIT(6)
 
-#define F75115_DEF_CONF_ADDRESS_START	0x3000
-#define F75115_DEF_CONF_SIZE		12
+#define F75115_DEF_CONF_ADDRESS_START 0x3000
+#define F75115_DEF_CONF_SIZE 12
 
-#define F75115_CUSTOM_ADDRESS_START	0x2f00
-#define F75115_CUSTOM_TOTAL_SIZE	0x10
-#define F75115_CUSTOM_DATA_SIZE		0x10
+#define F75115_CUSTOM_ADDRESS_START 0x2f00
+#define F75115_CUSTOM_TOTAL_SIZE 0x10
+#define F75115_CUSTOM_DATA_SIZE 0x10
 #define F75115_CUSTOM_MAX_IDX \
-		(F75115_CUSTOM_TOTAL_SIZE/F75115_CUSTOM_DATA_SIZE)
-#define F75115_CUSTOM_NO_CUSTOM_DATA	(-1)
-#define F75115_CUSTOM_VALID_TOKEN	0xf0
-#define F75115_CONF_OFFSET		1
-#define F75115_CONF_SIZE		8
+	(F75115_CUSTOM_TOTAL_SIZE / F75115_CUSTOM_DATA_SIZE)
+#define F75115_CUSTOM_NO_CUSTOM_DATA (-1)
+#define F75115_CUSTOM_VALID_TOKEN 0xf0
+#define F75115_CONF_OFFSET 1
+#define F75115_CONF_SIZE 8
 
-#define F75115_MAX_DATA_BLOCK		64
-#define F75115_MAX_BUS_RETRY		2000
+#define F75115_MAX_DATA_BLOCK 64
+#define F75115_MAX_BUS_RETRY 2000
 
 /* default URB timeout for usb operations */
-#define F75115_USB_MAX_RETRY		10
-#define F75115_USB_TIMEOUT		1000
-#define F75115_CONTROL_BYTE		0x1B
-#define F75115_SET_GET_REGISTER		0xA0
+#define F75115_USB_MAX_RETRY 10
+#define F75115_USB_TIMEOUT 1000
+#define F75115_CONTROL_BYTE 0x1B
+#define F75115_SET_GET_REGISTER 0xA0
 
-#define F75115_NUM_PORT			4
-#define F75115_UNUSED_PORT		0xff
-#define F75115_WRITE_BUFFER_SIZE	512
-#define F75115_MAX_RECEIVE_BLOCK_SIZE	512
+#define F75115_NUM_PORT 4
+#define F75115_UNUSED_PORT 0xff
+#define F75115_WRITE_BUFFER_SIZE 512
+#define F75115_MAX_RECEIVE_BLOCK_SIZE 512
 
-#define IC_NAME				"f75115"
+#define IC_NAME "f75115"
 #define DRIVER_DESC \
 	"Fintek USB to Rasperberry pin coverter Driver(F75115-Evaluation Board)"
-#define FINTEK_VENDOR_ID_1		0x1934
-#define FINTEK_VENDOR_ID_2		0x2C42
-#define FINTEK_DEVICE_ID		0x1222	/* RS232 1 port */
-#define F75115_MAX_TX_SIZE		100
-#define F75115_FIFO_SIZE		128
-#define F75115_RECEIVE_BLOCK_SIZE	128
+#define FINTEK_VENDOR_ID_1 0x1934
+#define FINTEK_VENDOR_ID_2 0x2C42
+#define FINTEK_DEVICE_ID 0x1222 /* RS232 1 port */
+#define F75115_MAX_TX_SIZE 100
+#define F75115_FIFO_SIZE 128
+#define F75115_RECEIVE_BLOCK_SIZE 128
 
-#define F75115_TOKEN_RECEIVE		0x01
-#define F75115_TOKEN_WRITE		0x02
-#define F75115_TOKEN_TX_EMPTY		0x03
-#define F75115_TOKEN_MSR_CHANGE		0x04
+#define F75115_TOKEN_RECEIVE 0x01
+#define F75115_TOKEN_WRITE 0x02
+#define F75115_TOKEN_TX_EMPTY 0x03
+#define F75115_TOKEN_MSR_CHANGE 0x04
 
-#define F75115_BUS_BUSY			0x03
-#define F75115_BUS_IDLE			0x04
-#define F75115_BUS_READ_DATA		0x1004
-#define F75115_BUS_REG_STATUS		0x1003
-#define F75115_BUS_REG_START		0x1002
-#define F75115_BUS_REG_END		0x1001
+#define F75115_BUS_BUSY 0x03
+#define F75115_BUS_IDLE 0x04
+#define F75115_BUS_READ_DATA 0x1004
+#define F75115_BUS_REG_STATUS 0x1003
+#define F75115_BUS_REG_START 0x1002
+#define F75115_BUS_REG_END 0x1001
 
-#define F75115_CMD_READ			0x03
-#define F75115_CMD_ENABLE_WR		0x06
-#define F75115_CMD_PROGRAM		0x02
-#define F75115_CMD_ERASE		0x20
-#define F75115_CMD_READ_STATUS		0x05
+#define F75115_CMD_READ 0x03
+#define F75115_CMD_ENABLE_WR 0x06
+#define F75115_CMD_PROGRAM 0x02
+#define F75115_CMD_ERASE 0x20
+#define F75115_CMD_READ_STATUS 0x05
 
-#define F75115_MEDIA_BUSY_STATUS	0x03
+#define F75115_MEDIA_BUSY_STATUS 0x03
 
-#define F75115_1X_RXTRIGGER		0xc3
-#define F75115_8X_RXTRIGGER		0xcf
+#define F75115_1X_RXTRIGGER 0xc3
+#define F75115_8X_RXTRIGGER 0xcf
 
-#define F75115_DEFAULT_BAUD_RATE	9600
-#define F75115_MAX_BAUDRATE		115200
+#define F75115_DEFAULT_BAUD_RATE 9600
+#define F75115_MAX_BAUDRATE 115200
 
-#define F75115_DELAY_READ_MSR		10
+#define F75115_DELAY_READ_MSR 10
 
-#define F75115_MAX_PWM_DIV	(1024 - 1)
-#define F75115_MAX_PWN_CNT	4
+#define F75115_MAX_PWM_DIV (1024 - 1)
+#define F75115_MAX_PWN_CNT 4
 
 #ifdef SAVE_CONTROL
-#define PORT_NOSAVE			BIT(0)
+#define PORT_NOSAVE BIT(0)
 #endif
 
 #ifdef ENABLE_CUSTOM_IOCTLS
-#define FINTEK_MAGIC	'F'
+#define FINTEK_MAGIC 'F'
 
 #ifdef MULTIDROP_ENABLE
-#define FINTEK_SET_MULTI_DROP_MODE	_IOW(FINTEK_MAGIC, 0, int)
-#define FINTEK_GET_MULTI_DROP_MODE	_IOR(FINTEK_MAGIC, 1, int)
-#define FINTEK_GET_SM2_STATE		_IOR(FINTEK_MAGIC, 2, int)
+#define FINTEK_SET_MULTI_DROP_MODE _IOW(FINTEK_MAGIC, 0, int)
+#define FINTEK_GET_MULTI_DROP_MODE _IOR(FINTEK_MAGIC, 1, int)
+#define FINTEK_GET_SM2_STATE _IOR(FINTEK_MAGIC, 2, int)
 #endif
 
 #ifdef FLASH_RW_DRIVER
-#define FINTEK_GET_DATA		_IOR(FINTEK_MAGIC, 8, struct internal_data)
-#define FINTEK_SET_DATA		_IOW(FINTEK_MAGIC, 9, struct internal_data)
-#define FINTEK_ERASE_DATA_PAGE	_IOW(FINTEK_MAGIC, 10, struct internal_data)
+#define FINTEK_GET_DATA _IOR(FINTEK_MAGIC, 8, struct internal_data)
+#define FINTEK_SET_DATA _IOW(FINTEK_MAGIC, 9, struct internal_data)
+#define FINTEK_ERASE_DATA_PAGE _IOW(FINTEK_MAGIC, 10, struct internal_data)
 #endif
 
-#define FINTEK_GET_GPIO		_IOWR(FINTEK_MAGIC, 11, struct gpio_access)
-#define FINTEK_SET_GPIO		_IOW(FINTEK_MAGIC, 12, struct gpio_access)
+#define FINTEK_GET_GPIO _IOWR(FINTEK_MAGIC, 11, struct gpio_access)
+#define FINTEK_SET_GPIO _IOW(FINTEK_MAGIC, 12, struct gpio_access)
 #endif
 
-#define F75115_RS232_FLAG		0x00
-#define F75115_RS485_FLAG		0x03
-#define F75115_RS485_1_FLAG		0x01
-#define F75115_MODE_MASK		0x03
-#define F75115_PORT_CONF_RS485		BIT(0)
-#define F75115_PORT_CONF_RS485_INVERT	BIT(1)
-#define F75115_PORT_CONF_DISABLE_PORT	BIT(3)
-#define F75115_PORT_CONF_NOT_EXIST_PORT	BIT(7)
-#define F75115_PORT_UNAVAILABLE		\
+#define F75115_RS232_FLAG 0x00
+#define F75115_RS485_FLAG 0x03
+#define F75115_RS485_1_FLAG 0x01
+#define F75115_MODE_MASK 0x03
+#define F75115_PORT_CONF_RS485 BIT(0)
+#define F75115_PORT_CONF_RS485_INVERT BIT(1)
+#define F75115_PORT_CONF_DISABLE_PORT BIT(3)
+#define F75115_PORT_CONF_NOT_EXIST_PORT BIT(7)
+#define F75115_PORT_UNAVAILABLE \
 	(F75115_PORT_CONF_DISABLE_PORT | F75115_PORT_CONF_NOT_EXIST_PORT)
 
-#define F75115_RS485_MODE	BIT(4)
-#define F75115_RS485_INVERT	BIT(5)
+#define F75115_RS485_MODE BIT(4)
+#define F75115_RS485_INVERT BIT(5)
 
-#define F75115_PIN_SET_DEFAULT	0x01
-#define F75115_PIN_SET_MAX	0x07
-#define F75115_PIN_SET_MIN	0x00
+#define F75115_PIN_SET_DEFAULT 0x01
+#define F75115_PIN_SET_MAX 0x07
+#define F75115_PIN_SET_MIN 0x00
 
-#define F75115_SCL1_PIN		32
-#define F75115_SDA1_PIN		33
-#define F75115_SCL2_PIN		18
-#define F75115_SDA2_PIN		17
-#define F75115_MAX_I2C_SET	1
+#define F75115_SCL1_PIN 32
+#define F75115_SDA1_PIN 33
+#define F75115_SCL2_PIN 18
+#define F75115_SDA2_PIN 17
+#define F75115_MAX_I2C_SET 2
 
-#define F75115_SPI_MISO_PIN	14
-#define F75115_SPI_MOSI_PIN	13
-#define F75115_SPI_SCK_PIN	15
-#define F75115_SPI_CS0_PIN	12
-#define F75115_SPI_CS1_PIN	16
-#define F75115_SPI_MAX_CS_NUM	2
+#define F75115_SPI_MISO_PIN 14
+#define F75115_SPI_MOSI_PIN 13
+#define F75115_SPI_SCK_PIN 15
+#define F75115_SPI_CS0_PIN 12
+#define F75115_SPI_CS1_PIN 16
+#define F75115_SPI_MAX_CS_NUM 2
 
 /*
  * Clock rate selector, always or-ed with CLKSEL_ENABLE_UART to enable
  * UART functional.
  */
-#define CLKSEL_ENABLE_UART	BIT(0)
-#define CLKSEL_1DOT846_MHZ	CLKSEL_ENABLE_UART
-#define CLKSEL_18DOT46_MHZ	(BIT(1) | CLKSEL_ENABLE_UART)
-#define CLKSEL_24_MHZ		(BIT(2) | CLKSEL_ENABLE_UART)
-#define CLKSEL_14DOT77_MHZ	(BIT(1) | BIT(2) | CLKSEL_ENABLE_UART)
-#define CLKSEL_TX_DELAY_1BIT	BIT(3)
+#define CLKSEL_ENABLE_UART BIT(0)
+#define CLKSEL_1DOT846_MHZ CLKSEL_ENABLE_UART
+#define CLKSEL_18DOT46_MHZ (BIT(1) | CLKSEL_ENABLE_UART)
+#define CLKSEL_24_MHZ (BIT(2) | CLKSEL_ENABLE_UART)
+#define CLKSEL_14DOT77_MHZ (BIT(1) | BIT(2) | CLKSEL_ENABLE_UART)
+#define CLKSEL_TX_DELAY_1BIT BIT(3)
 
 #ifndef C_CMSPAR
-#define C_CMSPAR(tty)   _C_FLAG((tty), CMSPAR)
+#define C_CMSPAR(tty) _C_FLAG((tty), CMSPAR)
 #endif
+
+#define F75115_GPIO_BASE            0
+#define F75115_GPIO00   (F75115_GPIO_BASE + 0)
+#define F75115_GPIO01   (F75115_GPIO_BASE + 1)
+#define F75115_GPIO02   (F75115_GPIO_BASE + 2)
+#define F75115_GPIO03   (F75115_GPIO_BASE + 3)
+#define F75115_GPIO04   (F75115_GPIO_BASE + 4)
+#define F75115_GPIO05   (F75115_GPIO_BASE + 5)
+#define F75115_GPIO06   (F75115_GPIO_BASE + 6)
+#define F75115_GPIO07   (F75115_GPIO_BASE + 7)
+
+#define F75115_GPIO10   (F75115_GPIO_BASE + 1*8 + 0)
+#define F75115_GPIO11   (F75115_GPIO_BASE + 1*8 + 1)
+#define F75115_GPIO12   (F75115_GPIO_BASE + 1*8 + 2)
+#define F75115_GPIO13   (F75115_GPIO_BASE + 1*8 + 3)
+#define F75115_GPIO14   (F75115_GPIO_BASE + 1*8 + 4)
+#define F75115_GPIO15   (F75115_GPIO_BASE + 1*8 + 5)
+#define F75115_GPIO16   (F75115_GPIO_BASE + 1*8 + 6)
+#define F75115_GPIO17   (F75115_GPIO_BASE + 1*8 + 7)
+
+#define F75115_GPIO20   (F75115_GPIO_BASE + 2*8 + 0)
+#define F75115_GPIO21   (F75115_GPIO_BASE + 2*8 + 1)
+#define F75115_GPIO22   (F75115_GPIO_BASE + 2*8 + 2)
+#define F75115_GPIO23   (F75115_GPIO_BASE + 2*8 + 3)
+#define F75115_GPIO24   (F75115_GPIO_BASE + 2*8 + 4)
+#define F75115_GPIO25   (F75115_GPIO_BASE + 2*8 + 5)
+#define F75115_GPIO26   (F75115_GPIO_BASE + 2*8 + 6)
+#define F75115_GPIO27   (F75115_GPIO_BASE + 2*8 + 7)
+
+#define F75115_GPIO30   (F75115_GPIO_BASE + 3*8 + 0)
+#define F75115_GPIO31   (F75115_GPIO_BASE + 3*8 + 1)
+#define F75115_GPIO32   (F75115_GPIO_BASE + 3*8 + 2)
+#define F75115_GPIO33   (F75115_GPIO_BASE + 3*8 + 3)
+#define F75115_GPIO34   (F75115_GPIO_BASE + 3*8 + 4)
+#define F75115_GPIO35   (F75115_GPIO_BASE + 3*8 + 5)
+#define F75115_GPIO36   (F75115_GPIO_BASE + 3*8 + 6)
+#define F75115_GPIO37   (F75115_GPIO_BASE + 3*8 + 7)
+
+// For SDA0 and SCL0
+//#define F75115_GPIO40  (F75115_GPIO_BASE + 4*8 + 0)
+//#define F75115_GPIO41  (F75115_GPIO_BASE + 4*8 + 1)
+#define F75115_GPIO42   (F75115_GPIO_BASE + 4*8 + 2)
+#define F75115_GPIO43   (F75115_GPIO_BASE + 4*8 + 3)
+#define F75115_GPIO44   (F75115_GPIO_BASE + 4*8 + 4)
+#define F75115_GPIO45   (F75115_GPIO_BASE + 4*8 + 5)
+#define F75115_GPIO46   (F75115_GPIO_BASE + 4*8 + 6)
+#define F75115_GPIO47   (F75115_GPIO_BASE + 4*8 + 7)
+
+#define F75115_GPIO50   (F75115_GPIO_BASE + 5*8 + 0)
+#define F75115_GPIO51   (F75115_GPIO_BASE + 5*8 + 1)
+#define F75115_GPIO52   (F75115_GPIO_BASE + 5*8 + 2)
+#define F75115_GPIO53   (F75115_GPIO_BASE + 5*8 + 3)
+#define F75115_GPIO54   (F75115_GPIO_BASE + 5*8 + 4)
+#define F75115_GPIO55   (F75115_GPIO_BASE + 5*8 + 5)
+// For TXD and RXD
+//#define F75115_GPIO56   (F75115_GPIO_BASE + 5*8 + 6)
+//#define F75115_GPIO57   (F75115_GPIO_BASE + 5*8 + 7)
 
 static int full_uart = 0;
 module_param(full_uart, int, S_IRUGO);
@@ -244,7 +295,7 @@ MODULE_PARM_DESC(full_uart, "Full UART function PIN");
 
 static int en_i2c = 1;
 module_param(en_i2c, int, S_IRUGO);
-MODULE_PARM_DESC(en_i2c, "Enable I2C function PIN");
+MODULE_PARM_DESC(en_i2c, "Enable I2C function PIN (default 3, bitwise)");
 
 static int en_spi = 0;
 module_param(en_spi, int, S_IRUGO);
@@ -311,238 +362,634 @@ struct io_map_value {
 };
 
 static const struct io_map_value f75115_rs232_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_rs232,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_rs232,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 0},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 0},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 1},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 0},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 0},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 1},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 0},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 0},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 1},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 0},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 0},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 1},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 0 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 0 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 0 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 0 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 0 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 0 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 1 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs485_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_rs485,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_rs485,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 0},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 1},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 0},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 0},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 1},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 0},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 0},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 1},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 0},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 0},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 1},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 0},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 0 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 1 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 0 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 1 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 0 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 0 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 0 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs485_1_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_rs485_1,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_rs485_1,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 0},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 1},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 1},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 0},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 1},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 1},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 0},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 1},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 1},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 0},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 1},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 1},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 0 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 1 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 0 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 1 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 0 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 0 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 1 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs422_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_rs422,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_rs422,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 0},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 0},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 0},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 0},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 0},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 0},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 0},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 0},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 0},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 0},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 0},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 0},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 0 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 0 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 0 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 0 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 0 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 0 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 0 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_shutdown_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_shutdown,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_shutdown,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 1},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 1},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 1},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 1},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 1},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 1},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 1},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 1},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 1},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 1},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 1},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 1},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 1 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 1 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 1 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 1 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 1 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 1 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 1 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs422_term_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_shutdown,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_shutdown,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 1},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 0},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 0},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 1},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 0},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 0},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 1},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 0},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 0},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 1},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 0},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 0},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 1 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 0 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 1 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 0 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 1 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 1 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 0 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs232_coexist_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_shutdown,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_shutdown,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 1},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 0},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 1},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 1},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 0},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 1},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 1},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 0},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 1},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 1},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 0},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 1},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 1 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 0 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 1 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 0 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 1 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 1 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 1 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 0 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 1 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value f75115_rs485_1_term_control = {
-	FINTEK_DEVICE_ID, F75115_NUM_PORT, uart_mode_shutdown,
+	FINTEK_DEVICE_ID,
+	F75115_NUM_PORT,
+	uart_mode_shutdown,
 	{
-	 /* please reference f81439 io port */
-	 {
-	  {{0x2ad5, 4, 0}, {0x2ad4, 4, 1}, {0x2a90, 4, 1},},
-	  {{0x2ad5, 5, 0}, {0x2ad4, 5, 1}, {0x2a90, 5, 1},},
-	  {{0x2add, 7, 0}, {0x2adc, 7, 1}, {0x2ae8, 7, 0},},
-	  },
-	 {
-	  {{0x2add, 3, 0}, {0x2adc, 3, 1}, {0x2ae8, 3, 1},},
-	  {{0x2add, 0, 0}, {0x2adc, 0, 1}, {0x2ae8, 0, 1},},
-	  {{0x2add, 6, 0}, {0x2adc, 6, 1}, {0x2ae8, 6, 0},},
-	  },
-	 {
-	  {{0x2ad3, 6, 0}, {0x2ad2, 6, 1}, {0x2a80, 6, 1},},
-	  {{0x2add, 2, 0}, {0x2adc, 2, 1}, {0x2ae8, 2, 1},},
-	  {{0x2ad5, 0, 0}, {0x2ad4, 0, 1}, {0x2a90, 0, 0},},
-	  },
-	 {
-	  {{0x2ad5, 1, 0}, {0x2ad4, 1, 1}, {0x2a90, 1, 1},},
-	  {{0x2ad5, 2, 0}, {0x2ad4, 2, 1}, {0x2a90, 2, 1},},
-	  {{0x2ad5, 3, 0}, {0x2ad4, 3, 1}, {0x2a90, 3, 0},},
-	  },
-	 },
+		/* please reference f81439 io port */
+		{
+			{
+				{ 0x2ad5, 4, 0 },
+				{ 0x2ad4, 4, 1 },
+				{ 0x2a90, 4, 1 },
+			},
+			{
+				{ 0x2ad5, 5, 0 },
+				{ 0x2ad4, 5, 1 },
+				{ 0x2a90, 5, 1 },
+			},
+			{
+				{ 0x2add, 7, 0 },
+				{ 0x2adc, 7, 1 },
+				{ 0x2ae8, 7, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2add, 3, 0 },
+				{ 0x2adc, 3, 1 },
+				{ 0x2ae8, 3, 1 },
+			},
+			{
+				{ 0x2add, 0, 0 },
+				{ 0x2adc, 0, 1 },
+				{ 0x2ae8, 0, 1 },
+			},
+			{
+				{ 0x2add, 6, 0 },
+				{ 0x2adc, 6, 1 },
+				{ 0x2ae8, 6, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad3, 6, 0 },
+				{ 0x2ad2, 6, 1 },
+				{ 0x2a80, 6, 1 },
+			},
+			{
+				{ 0x2add, 2, 0 },
+				{ 0x2adc, 2, 1 },
+				{ 0x2ae8, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 0, 0 },
+				{ 0x2ad4, 0, 1 },
+				{ 0x2a90, 0, 0 },
+			},
+		},
+		{
+			{
+				{ 0x2ad5, 1, 0 },
+				{ 0x2ad4, 1, 1 },
+				{ 0x2a90, 1, 1 },
+			},
+			{
+				{ 0x2ad5, 2, 0 },
+				{ 0x2ad4, 2, 1 },
+				{ 0x2a90, 2, 1 },
+			},
+			{
+				{ 0x2ad5, 3, 0 },
+				{ 0x2ad4, 3, 1 },
+				{ 0x2a90, 3, 0 },
+			},
+		},
+	},
 };
 
 static const struct io_map_value *f75115_mode_control[uart_mode_invalid] = {
-	&f75115_rs422_control,
-	&f75115_rs232_control,
-	&f75115_rs485_control,
-	&f75115_rs485_1_control,
-	&f75115_rs422_term_control,
-	&f75115_rs232_coexist_control,
-	&f75115_rs485_1_term_control,
-	&f75115_shutdown_control,
+	&f75115_rs422_control,	      &f75115_rs232_control,
+	&f75115_rs485_control,	      &f75115_rs485_1_control,
+	&f75115_rs422_term_control,   &f75115_rs232_coexist_control,
+	&f75115_rs485_1_term_control, &f75115_shutdown_control,
 };
 
-static unsigned int pin0_mode_table[] = {0x2ad2, 0x2ad4, 0x2ad6, 0x2ada,
-						0x2adc};
-static unsigned int pin1_mode_table[] = {0x2ad3, 0x2ad5, 0x2ad7, 0x2adb,
-						0x2add};
-static unsigned int pin_data_table[] = {0x2a80, 0x2a90, 0x2aa0, 0x2ab0,
-						0x2ae8};
+static unsigned int pin0_mode_table[] = { 0x2ad2, 0x2ad4, 0x2ad6, 0x2ada,
+					  0x2adc };
+static unsigned int pin1_mode_table[] = { 0x2ad3, 0x2ad5, 0x2ad7, 0x2adb,
+					  0x2add };
+static unsigned int pin_data_table[] = { 0x2a80, 0x2a90, 0x2aa0, 0x2ab0,
+					 0x2ae8 };
 static DEFINE_MUTEX(id_mutex);
 
 #ifndef I2C_HWMODE
@@ -550,9 +997,9 @@ static unsigned int dev_id = 100;
 #endif
 
 static const struct usb_device_id id_table[] = {
-	{USB_DEVICE(FINTEK_VENDOR_ID_1, FINTEK_DEVICE_ID)},
-	{USB_DEVICE(FINTEK_VENDOR_ID_2, FINTEK_DEVICE_ID)},
-	{}			/* Terminating entry */
+	{ USB_DEVICE(FINTEK_VENDOR_ID_1, FINTEK_DEVICE_ID) },
+	{ USB_DEVICE(FINTEK_VENDOR_ID_2, FINTEK_DEVICE_ID) },
+	{} /* Terminating entry */
 };
 
 MODULE_DEVICE_TABLE(usb, id_table);
@@ -588,10 +1035,11 @@ struct f75115_serial_private {
 #endif
 
 #ifdef SPI_HWMODE
-	struct spi_master	*spi_master;
-	struct spi_device	*spi_device[F75115_SPI_MAX_CS_NUM];
-	struct spi_board_info	info[F75115_SPI_MAX_CS_NUM];
-#else
+	struct spi_master *spi_master;
+	struct spi_device *spi_device[F75115_SPI_MAX_CS_NUM];
+	struct spi_board_info info[F75115_SPI_MAX_CS_NUM];
+
+#else
 	struct platform_device spi_device;
 #endif
 
@@ -636,14 +1084,17 @@ struct f75115_port_private {
 	struct usb_serial_port *port;
 };
 
-const static int m_pwm_freq[] = { 24000000, 12000000, 6000000, 4000000, 3000000, 2000000 };
+const static int m_pwm_freq[] = { 24000000, 12000000, 6000000,
+				  4000000,  3000000,  2000000 };
 
 static int f75115_set_mask_normal_register(struct usb_device *dev, u16 reg,
-						u8 mask, u8 data);
-static int f75115_set_normal_register(struct usb_device *dev, u16 reg, u8 data);
+					   u8 mask, u8 data);
+static int f75115_set_normal_register(struct usb_device *dev, u16 reg,
+				      u8 data);
 static int f75115_get_normal_register(struct usb_device *dev, u16 reg,
-					u8 *data);
-static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u64 duty_us);
+				      u8 *data);
+static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en,
+				   u64 duty_us);
 static int f75115_pwm_div_set(struct usb_serial *serial, int pwm_div);
 static int f75115_pwm_clock_set(struct usb_serial *serial, int pwm_freq);
 
@@ -654,13 +1105,19 @@ static bool f75115_gpio_special_func(int set, int offset)
 
 	switch (index) {
 	// SPI
-	case 14: case 15: case 16: case 17: case 20:
+	case 14:
+	case 15:
+	case 16:
+	case 17:
+	case 20:
 
 	// I2C0
-	case 40: case 41:
+	case 40:
+	case 41:
 
 	// I2C1
-	case 21: case 22:
+	case 21:
+	case 22:
 		return true;
 	}
 
@@ -734,9 +1191,8 @@ static int f75115_i2c_get_ack(struct usb_device *dev, u16 reg, u8 *data)
 	while (count--) {
 		status = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 					 F75115_SET_GET_REGISTER,
-					 USB_TYPE_VENDOR | USB_DIR_IN,
-					 reg, 0, tmp, sizeof(u8),
-					 F75115_USB_TIMEOUT);
+					 USB_TYPE_VENDOR | USB_DIR_IN, reg, 0,
+					 tmp, sizeof(u8), F75115_USB_TIMEOUT);
 		if (status > 0)
 			break;
 
@@ -746,7 +1202,7 @@ static int f75115_i2c_get_ack(struct usb_device *dev, u16 reg, u8 *data)
 
 	if (status < 0) {
 		dev_err(&dev->dev, "%s ERROR reg:%x status:%i failed\n",
-				__func__, reg, status);
+			__func__, reg, status);
 		kfree(tmp);
 		return status;
 	}
@@ -756,7 +1212,8 @@ static int f75115_i2c_get_ack(struct usb_device *dev, u16 reg, u8 *data)
 	return 0;
 }
 
-static int f75115_i2c_get_data_with_ack(struct usb_device *dev, u16 reg, u8 *data, int is_cont)
+static int f75115_i2c_get_data_with_ack(struct usb_device *dev, u16 reg,
+					u8 *data, int is_cont)
 {
 	int count = F75115_USB_MAX_RETRY;
 	int status;
@@ -773,8 +1230,8 @@ static int f75115_i2c_get_data_with_ack(struct usb_device *dev, u16 reg, u8 *dat
 	while (count--) {
 		status = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 					 F75115_SET_GET_REGISTER,
-					 USB_TYPE_VENDOR | USB_DIR_IN,
-					 reg, !is_cont, tmp, sizeof(u8),
+					 USB_TYPE_VENDOR | USB_DIR_IN, reg,
+					 !is_cont, tmp, sizeof(u8),
 					 F75115_USB_TIMEOUT);
 		if (status > 0)
 			break;
@@ -785,7 +1242,7 @@ static int f75115_i2c_get_data_with_ack(struct usb_device *dev, u16 reg, u8 *dat
 
 	if (status < 0) {
 		dev_err(&dev->dev, "%s ERROR reg:%x status:%i failed\n",
-				__func__, reg, status);
+			__func__, reg, status);
 		kfree(tmp);
 		return status;
 	}
@@ -794,7 +1251,6 @@ static int f75115_i2c_get_data_with_ack(struct usb_device *dev, u16 reg, u8 *dat
 	kfree(tmp);
 	return 0;
 }
-
 
 static int f75115_get_acknak(struct i2c_adapter *adap, int *is_ack)
 {
@@ -841,7 +1297,6 @@ static int f75111_i2c_outb(struct i2c_adapter *adap, unsigned char c)
 
 static int f75111_i2c_inb(struct i2c_adapter *adap, u8 *data, int is_cont)
 {
-
 	struct f75115_i2c_priv *i2c_priv = i2c_get_adapdata(adap);
 	struct usb_device *dev = i2c_priv->dev;
 	int reg;
@@ -862,8 +1317,13 @@ static int f75111_sendbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 	int retval;
 	int wrcount = 0;
 
+	dev_info(&adap->dev, "%s: in\n", __func__);
+
 	while (count > 0) {
 		retval = f75111_i2c_outb(adap, *temp);
+		dev_info(&adap->dev,
+			 "%s: wrcount: %d, *temp: %xh, retval: %d\n", __func__,
+			 wrcount, *temp, retval);
 
 		/* OK/ACK; or ignored NAK */
 		if ((retval > 0) || (nak_ok && (retval == 0))) {
@@ -871,7 +1331,7 @@ static int f75111_sendbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 			temp++;
 			wrcount++;
 
-		/* A slave NAKing the master means the slave didn't like
+			/* A slave NAKing the master means the slave didn't like
 		 * something about the data it saw.  For example, maybe
 		 * the SMBus PEC was wrong.
 		 */
@@ -879,7 +1339,7 @@ static int f75111_sendbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 			dev_err(&adap->dev, "sendbytes: NAK bailout.\n");
 			return -EIO;
 
-		/* Timeout; or (someday) lost arbitration
+			/* Timeout; or (someday) lost arbitration
 		 *
 		 * FIXME Lost ARB implies retrying the transaction from
 		 * the first message, after the "winning" master issues
@@ -887,8 +1347,7 @@ static int f75111_sendbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 		 * to know or care about this ... it is *NOT* an error.
 		 */
 		} else {
-			dev_err(&adap->dev, "sendbytes: error %d\n",
-					retval);
+			dev_err(&adap->dev, "sendbytes: error %d\n", retval);
 			return retval;
 		}
 	}
@@ -938,7 +1397,7 @@ static int f75115_bit_doAddress(struct i2c_adapter *adap, struct i2c_msg *msg)
 		}
 #endif
 		return -ENOSPC;
-	} else {		/* normal 7bit address	*/
+	} else { /* normal 7bit address	*/
 		addr = i2c_8bit_addr_from_msg(msg);
 		if (flags & I2C_M_REV_DIR_ADDR)
 			addr ^= 1;
@@ -979,7 +1438,7 @@ static int f75115_readbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 		if (inval >= 0) {
 			*temp = inval;
 			rdcount++;
-		} else {   /* read timed out */
+		} else { /* read timed out */
 			break;
 		}
 
@@ -1004,9 +1463,9 @@ static int f75115_readbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 			msg->len += inval;
 		}
 
-		dev_info(&adap->dev, "readbytes: 0x%02x %s\n", inval, (flags & I2C_M_NO_RD_ACK)
-				? "(no ack/nak)"
-				: (count ? "A" : "NA"));
+		dev_info(&adap->dev, "readbytes: 0x%02x %s\n", inval,
+			 (flags & I2C_M_NO_RD_ACK) ? "(no ack/nak)" :
+						     (count ? "A" : "NA"));
 
 		if (!(flags & I2C_M_NO_RD_ACK)) {
 			inval = acknak(adap, count);
@@ -1019,8 +1478,8 @@ static int f75115_readbytes(struct i2c_adapter *adap, struct i2c_msg *msg)
 	return 0;
 }
 
-
-static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int num)
+static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[],
+			   int num)
 {
 	struct i2c_msg *pmsg;
 	int i, ret;
@@ -1038,7 +1497,8 @@ static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int 
 		if (!(pmsg->flags & I2C_M_NOSTART)) {
 			if (i) {
 				if (msgs[i - 1].flags & I2C_M_STOP) {
-					dev_dbg(&adap->dev, "emitting enforced stop/start condition\n");
+					dev_dbg(&adap->dev,
+						"emitting enforced stop/start condition\n");
 					ret = f75111_i2c_stop(adap);
 					if (ret)
 						goto bailout;
@@ -1047,7 +1507,8 @@ static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int 
 					if (ret)
 						goto bailout;
 				} else {
-					dev_dbg(&adap->dev, "emitting repeated start condition\n");
+					dev_dbg(&adap->dev,
+						"emitting repeated start condition\n");
 
 					//i2c_repstart(adap);
 					ret = f75111_i2c_start(adap);
@@ -1058,16 +1519,18 @@ static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int 
 
 			ret = f75115_bit_doAddress(adap, pmsg);
 			if ((ret != 0) && !nak_ok) {
-				dev_dbg(&adap->dev, "NAK from device addr 0x%02x msg #%d\n", msgs[i].addr, i);
+				dev_dbg(&adap->dev,
+					"NAK from device addr 0x%02x msg #%d\n",
+					msgs[i].addr, i);
 				goto bailout;
 			}
-
 		}
 		if (pmsg->flags & I2C_M_RD) {
 			/* read bytes into buffer*/
 			ret = f75115_readbytes(adap, pmsg);
 			if (ret >= 1)
-				dev_dbg(&adap->dev, "read %d byte%s\n", ret, ret == 1 ? "" : "s");
+				dev_dbg(&adap->dev, "read %d byte%s\n", ret,
+					ret == 1 ? "" : "s");
 			if (ret < pmsg->len) {
 				if (ret >= 0)
 					ret = -EIO;
@@ -1077,7 +1540,8 @@ static int f75115_i2c_xfer(struct i2c_adapter *adap, struct i2c_msg msgs[], int 
 			/* write bytes from buffer */
 			ret = f75111_sendbytes(adap, pmsg);
 			if (ret >= 1)
-				dev_dbg(&adap->dev, "wrote %d byte%s\n", ret, ret == 1 ? "" : "s");
+				dev_dbg(&adap->dev, "wrote %d byte%s\n", ret,
+					ret == 1 ? "" : "s");
 			if (ret < pmsg->len) {
 				if (ret >= 0)
 					ret = -EIO;
@@ -1106,13 +1570,14 @@ static int f75115_i2c_probe(struct platform_device *pdev)
 	int max_name = 32;
 	char *name = NULL;
 
-	pr_info("%s: %d\n", __func__, i2c_priv->chan);
+	pr_debug("%s: %d\n", __func__, i2c_priv->chan);
 
 	i2c_set_adapdata(&i2c_priv->adapter, i2c_priv);
 	i2c_priv->adapter.owner = THIS_MODULE;
 	i2c_priv->adapter.algo = &f75115_i2c_algo;
 	i2c_priv->adapter.dev.parent = &pdev->dev;
-	strlcpy(i2c_priv->adapter.name, pdev->name, sizeof(i2c_priv->adapter.name));
+	strlcpy(i2c_priv->adapter.name, pdev->name,
+		sizeof(i2c_priv->adapter.name));
 
         name = devm_kzalloc(&pdev->dev, max_name, GFP_KERNEL);
         if (!name)
@@ -1128,7 +1593,7 @@ static int f75115_i2c_probe(struct platform_device *pdev)
 	if (status)
 		return status;
 
-	dev_info(&pdev->dev, "%s: i2c bus %d ok\n", __func__, i2c_priv->chan);
+	dev_dbg(&pdev->dev, "%s: i2c bus %d ok\n", __func__, i2c_priv->chan);
 
 	return 0;
 }
@@ -1156,14 +1621,18 @@ static int f75115_i2c_init(struct usb_serial *serial, int gpio_start)
 	struct f75115_serial_private *priv;
 	struct f75115_i2c_priv *i2c_priv;
 	int i, status;
-	int cnt = F75115_MAX_I2C_SET;
 
 	priv = usb_get_serial_data(serial);
-	i2c_priv = devm_kzalloc(&serial->interface->dev, sizeof(*i2c_priv), GFP_KERNEL);
+	i2c_priv = devm_kzalloc(&serial->interface->dev, sizeof(*i2c_priv),
+				GFP_KERNEL);
 
-	for (i = 0; i < cnt; ++i) {
+	for (i = 0; i < F75115_MAX_I2C_SET; ++i) {
+		if ((en_i2c & BIT(i)) == 0)
+			continue;
+		
 		priv->i2c_device[i].name = "f75115-i2c";
-		priv->i2c_device[i].id = PLATFORM_DEVID_AUTO; //PLATFORM_DEVID_AUTO;
+		priv->i2c_device[i].id =
+			PLATFORM_DEVID_AUTO; //PLATFORM_DEVID_AUTO;
 		priv->i2c_device[i].dev.release = f75115_i2c_release;
 		priv->i2c_device[i].dev.parent = &serial->interface->dev;
 
@@ -1173,17 +1642,20 @@ static int f75115_i2c_init(struct usb_serial *serial, int gpio_start)
 
 		pr_debug("%s: i2c_priv.dev: %p", __func__, i2c_priv->dev);
 
-		status = platform_device_add_data(&priv->i2c_device[i], i2c_priv, sizeof(*i2c_priv));
+		status = platform_device_add_data(&priv->i2c_device[i],
+						  i2c_priv, sizeof(*i2c_priv));
 		if (status) {
-			dev_err(&serial->interface->dev, "%s: add data failed\n", __func__);		
-			return status;			
+			dev_err(&serial->interface->dev,
+				"%s: add data failed\n", __func__);
+			return status;
 		}
 
 		status = platform_device_register(&priv->i2c_device[i]);
 		if (status) {
-			dev_err(&serial->interface->dev, "%s: add failed\n", __func__);		
-			return status;			
-		}	
+			dev_err(&serial->interface->dev, "%s: add failed\n",
+				__func__);
+			return status;
+		}
 	}
 
 	return 0;
@@ -1193,12 +1665,15 @@ static void f75115_i2c_deinit(struct usb_serial *serial, int gpio_start)
 {
 	struct f75115_serial_private *priv;
 	int i;
-	int cnt = F75115_MAX_I2C_SET;
 
 	priv = usb_get_serial_data(serial);
 
-	for (i = 0; i < cnt; ++i)
+	for (i = 0; i < F75115_MAX_I2C_SET; ++i) {
+		if ((en_i2c & BIT(i)) == 0)
+			continue;
+
 		platform_device_unregister(&priv->i2c_device[i]);
+	}
 }
 
 #else
@@ -1215,33 +1690,37 @@ static int f75115_i2c_init(struct usb_serial *serial, int gpio_start)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 
-	priv->i2c_table[0] = devm_kzalloc(&serial->interface->dev,
-			sizeof(struct gpiod_lookup_table) + 2 * sizeof(struct gpiod_lookup),
-			GFP_KERNEL);
+	priv->i2c_table[0] =
+		devm_kzalloc(&serial->interface->dev,
+			     sizeof(struct gpiod_lookup_table) +
+				     2 * sizeof(struct gpiod_lookup),
+			     GFP_KERNEL);
 	if (!priv->i2c_table[0])
 		return -ENOMEM;
 
-	//priv->i2c_table[1] = devm_kzalloc(&serial->interface->dev,
-	//		sizeof(struct gpiod_lookup_table) + 2 * sizeof(struct gpiod_lookup),
-	//		GFP_KERNEL);
-	//if (!priv->i2c_table[1])
-	//	return -ENOMEM;
+	priv->i2c_table[1] =
+		devm_kzalloc(&serial->interface->dev,
+			     sizeof(struct gpiod_lookup_table) +
+				     2 * sizeof(struct gpiod_lookup),
+			     GFP_KERNEL);
+	if (!priv->i2c_table[1])
+		return -ENOMEM;
 
 	priv->i2c_data[0].udelay = 1;
 	priv->i2c_data[0].timeout = 1;
 
-	//priv->i2c_data[1].udelay = 1;
-	//priv->i2c_data[1].timeout = 1;
+	priv->i2c_data[1].udelay = 1;
+	priv->i2c_data[1].timeout = 1;
 #else
 	priv->i2c_data[0].sda_pin = gpio_start + F75115_SDA1_PIN;
 	priv->i2c_data[0].scl_pin = gpio_start + F75115_SCL1_PIN;
 	priv->i2c_data[0].udelay = 1;
 	priv->i2c_data[0].timeout = 1;
 
-	//priv->i2c_data[1].sda_pin = gpio_start + F75115_SDA2_PIN;
-	//priv->i2c_data[1].scl_pin = gpio_start + F75115_SCL2_PIN;
-	//priv->i2c_data[1].udelay = 1;
-	//priv->i2c_data[1].timeout = 1;
+	priv->i2c_data[1].sda_pin = gpio_start + F75115_SDA2_PIN;
+	priv->i2c_data[1].scl_pin = gpio_start + F75115_SCL2_PIN;
+	priv->i2c_data[1].udelay = 1;
+	priv->i2c_data[1].timeout = 1;
 #endif
 	for (i = 0; i < cnt; ++i) {
 		mutex_lock(&id_mutex);
@@ -1270,7 +1749,7 @@ static int f75115_i2c_init(struct usb_serial *serial, int gpio_start)
 		status = platform_device_register(&priv->i2c_device[i]);
 		if (status) {
 			dev_err(&serial->interface->dev, "%s: failed\n",
-					__func__);
+				__func__);
 			mutex_unlock(&id_mutex);
 			return status;
 		}
@@ -1278,54 +1757,69 @@ static int f75115_i2c_init(struct usb_serial *serial, int gpio_start)
 		mutex_unlock(&id_mutex);
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
-		dev_name = devm_kzalloc(&serial->interface->dev, 32,
-				GFP_KERNEL);
+		dev_name =
+			devm_kzalloc(&serial->interface->dev, 32, GFP_KERNEL);
 		if (!dev_name)
 			return -ENOMEM;
 
 		sprintf(dev_name, "%s.%d", priv->i2c_device[i].name,
-				priv->i2c_device[i].id);
+			priv->i2c_device[i].id);
 		priv->i2c_table[i]->dev_id = dev_name;
-	
+
 		if (i == 0) {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-			priv->i2c_table[i]->table[0].key = priv->f75115_gpio_chip.label;
+			priv->i2c_table[i]->table[0].key =
+				priv->f75115_gpio_chip.label;
 #else
-			priv->i2c_table[i]->table[0].chip_label = priv->f75115_gpio_chip.label;
+			priv->i2c_table[i]->table[0].chip_label =
+				priv->f75115_gpio_chip.label;
 #endif
-			priv->i2c_table[i]->table[0].chip_hwnum = F75115_SDA1_PIN;
-			priv->i2c_table[i]->table[0].flags = GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN;
+			priv->i2c_table[i]->table[0].chip_hwnum =
+				F75115_SDA1_PIN;
+			priv->i2c_table[i]->table[0].flags = GPIO_ACTIVE_HIGH |
+							     GPIO_OPEN_DRAIN;
 			priv->i2c_table[i]->table[0].con_id = "sda";
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-			priv->i2c_table[i]->table[1].key = priv->f75115_gpio_chip.label;
+			priv->i2c_table[i]->table[1].key =
+				priv->f75115_gpio_chip.label;
 #else
-			priv->i2c_table[i]->table[1].chip_label = priv->f75115_gpio_chip.label;
+			priv->i2c_table[i]->table[1].chip_label =
+				priv->f75115_gpio_chip.label;
 #endif
-			priv->i2c_table[i]->table[1].chip_hwnum = F75115_SCL1_PIN;
-			priv->i2c_table[i]->table[1].flags = GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN;
+			priv->i2c_table[i]->table[1].chip_hwnum =
+				F75115_SCL1_PIN;
+			priv->i2c_table[i]->table[1].flags = GPIO_ACTIVE_HIGH |
+							     GPIO_OPEN_DRAIN;
 			priv->i2c_table[i]->table[1].con_id = "scl";
 
+		} else {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+			priv->i2c_table[i]->table[0].key =
+				priv->f75115_gpio_chip.label;
+#else
+			priv->i2c_table[i]->table[0].chip_label =
+				priv->f75115_gpio_chip.label;
+#endif
+			priv->i2c_table[i]->table[0].chip_hwnum =
+				F75115_SDA2_PIN;
+			priv->i2c_table[i]->table[0].flags = GPIO_ACTIVE_HIGH |
+							     GPIO_OPEN_DRAIN;
+			priv->i2c_table[i]->table[0].con_id = "sda";
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
+			priv->i2c_table[i]->table[1].key =
+				priv->f75115_gpio_chip.label;
+#else
+			priv->i2c_table[i]->table[1].chip_label =
+				priv->f75115_gpio_chip.label;
+#endif
+			priv->i2c_table[i]->table[1].chip_hwnum =
+				F75115_SCL2_PIN;
+			priv->i2c_table[i]->table[1].flags = GPIO_ACTIVE_HIGH |
+							     GPIO_OPEN_DRAIN;
+			priv->i2c_table[i]->table[1].con_id = "scl";
 		}
-	      /*	else {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-			priv->i2c_table[i]->table[0].key = priv->f75115_gpio_chip.label;
-#else
-			priv->i2c_table[i]->table[0].chip_label = priv->f75115_gpio_chip.label;
-#endif
-			priv->i2c_table[i]->table[0].chip_hwnum = F75115_SDA2_PIN;
-			priv->i2c_table[i]->table[0].flags = GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN;
-			priv->i2c_table[i]->table[0].con_id = "sda";
-
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 8, 0)
-			priv->i2c_table[i]->table[1].key = priv->f75115_gpio_chip.label;
-#else
-			priv->i2c_table[i]->table[1].chip_label = priv->f75115_gpio_chip.label;
-#endif
-			priv->i2c_table[i]->table[1].chip_hwnum = F75115_SCL2_PIN;
-			priv->i2c_table[i]->table[1].flags = GPIO_ACTIVE_HIGH | GPIO_OPEN_DRAIN;
-			priv->i2c_table[i]->table[1].con_id = "scl";
-		}*/
 
 		gpiod_add_lookup_table(priv->i2c_table[i]);
 #endif
@@ -1346,13 +1840,14 @@ static void f75115_i2c_deinit(struct usb_serial *serial, int gpio_start)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
 	gpiod_remove_lookup_table(priv->i2c_table[0]);
-	//gpiod_remove_lookup_table(priv->i2c_table[1]);
+	gpiod_remove_lookup_table(priv->i2c_table[1]);
 #endif
 }
 #endif
 
 #ifdef SPI_HWMODE
-static int f75115_spi_cs_gpio_deinit(struct usb_serial *serial, int gpio_start);
+static int f75115_spi_cs_gpio_deinit(struct usb_serial *serial,
+				     int gpio_start);
 static int f75115_spi_cs_gpio_init(struct usb_serial *serial, int gpio_start);
 static int f75115_spi_hw_init(struct usb_serial *serial);
 
@@ -1370,7 +1865,7 @@ static int f75115_spi_setup(struct spi_device *spi)
 	priv = usb_get_serial_data(serial);
 	dev = serial->dev;
 
-	switch (spi->mode & (SPI_CPOL|SPI_CPHA)) {
+	switch (spi->mode & (SPI_CPOL | SPI_CPHA)) {
 	case SPI_MODE_0:
 		data = BIT(3);
 		break;
@@ -1402,11 +1897,11 @@ static int f75115_spi_setup(struct spi_device *spi)
 		data |= 0x06;
 	else
 		data |= 0x07;
-	
+
 	data |= 0xc0; // enable spi
 	status = f75115_set_normal_register(dev, 0x2af1, data);
 	if (status)
-		return status;	
+		return status;
 #else
 	struct dw_spi_chip *chip_info = NULL;
 	struct chip_data *chip;
@@ -1443,7 +1938,7 @@ static int f75115_spi_setup(struct spi_device *spi)
 static void f75115_spi_cleanup(struct spi_device *spi)
 {
 #if 1
-	
+
 #else
 	struct chip_data *chip = spi_get_ctldata(spi);
 
@@ -1454,10 +1949,10 @@ static void f75115_spi_cleanup(struct spi_device *spi)
 
 static void f75115_spi_set_cs(struct spi_device *spi, bool enable)
 {
-	struct usb_serial	*serial;
-	unsigned char		data = 0;
-	struct usb_device	*dev;
-	struct spi_controller	*controller;
+	struct usb_serial *serial;
+	unsigned char data = 0;
+	struct usb_device *dev;
+	struct spi_controller *controller;
 	int gpio_cs;
 
 	controller = spi->controller;
@@ -1465,7 +1960,7 @@ static void f75115_spi_set_cs(struct spi_device *spi, bool enable)
 	dev = serial->dev;
 
 	dev_dbg(&serial->interface->dev, "%s: cs: %d, enable: %d\n", __func__,
-			spi->chip_select, enable);
+		spi->chip_select, enable);
 
 	gpio_cs = controller->cs_gpios[spi->chip_select];
 	if (enable)
@@ -1476,15 +1971,16 @@ static void f75115_spi_set_cs(struct spi_device *spi, bool enable)
 }
 
 static int f75115_spi_transfer_one(struct spi_controller *master,
-		struct spi_device *spi, struct spi_transfer *transfer)
+				   struct spi_device *spi,
+				   struct spi_transfer *transfer)
 {
-	struct usb_serial	*serial;
-	struct usb_device	*dev;
-	unsigned		count = transfer->len;
-	const u8		*tx = transfer->tx_buf;
-	u8			*rx = transfer->rx_buf;
-	u8			word, stat;
-	unsigned int		retry;
+	struct usb_serial *serial;
+	struct usb_device *dev;
+	unsigned count = transfer->len;
+	const u8 *tx = transfer->tx_buf;
+	u8 *rx = transfer->rx_buf;
+	u8 word, stat;
+	unsigned int retry;
 	int status;
 
 	serial = spi_controller_get_devdata(spi->controller);
@@ -1494,23 +1990,26 @@ static int f75115_spi_transfer_one(struct spi_controller *master,
 
 	while (count > 0) {
 		retry = 100;
-		
+
 		if (tx)
 			word = *tx++;
 		else
 			word = 0xff;
 
 		// tx
-		status = f75115_set_normal_register(dev, 0x2af3, word); // tx data
+		status = f75115_set_normal_register(dev, 0x2af3,
+						    word); // tx data
 		if (status)
 			return status;
 
-		status = f75115_set_normal_register(dev, 0x2af5, BIT(3) | BIT(6)); // send
+		status = f75115_set_normal_register(dev, 0x2af5,
+						    BIT(3) | BIT(6)); // send
 		if (status)
 			return status;
 
 		while (retry--) {
-			status = f75115_get_normal_register(dev, 0x2af5, &stat);
+			status =
+				f75115_get_normal_register(dev, 0x2af5, &stat);
 			if (status)
 				return status;
 			else if (stat & BIT(4))
@@ -1540,9 +2039,9 @@ static int f75115_spi_transfer_one(struct spi_controller *master,
 }
 
 static void f75115_spi_handle_err(struct spi_controller *master,
-		struct spi_message *msg)
+				  struct spi_message *msg)
 {
-	struct usb_serial	*serial;
+	struct usb_serial *serial;
 	int status;
 
 	serial = spi_controller_get_devdata(master);
@@ -1551,7 +2050,7 @@ static void f75115_spi_handle_err(struct spi_controller *master,
 	status = f75115_spi_hw_init(serial);
 	if (status) {
 		dev_warn(&serial->interface->dev, "%s: failed: %d\n", __func__,
-				status);
+			 status);
 	}
 }
 
@@ -1559,12 +2058,13 @@ static int f75115_spi_hw_init(struct usb_serial *serial)
 {
 	struct usb_device *dev = serial->dev;
 	int status;
-	
-	status = f75115_set_normal_register(dev, 0x2af2, 0x80);	// dual
+
+	status = f75115_set_normal_register(dev, 0x2af2, 0x80); // dual
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register(dev, 0x2af5, BIT(6));	// clear status
+	status = f75115_set_normal_register(dev, 0x2af5,
+					    BIT(6)); // clear status
 	if (status)
 		return status;
 
@@ -1573,8 +2073,10 @@ static int f75115_spi_hw_init(struct usb_serial *serial)
 
 static int f75115_spi_cs_gpio_deinit(struct usb_serial *serial, int gpio_start)
 {
-	devm_gpio_free(&serial->interface->dev, gpio_start + F75115_SPI_CS0_PIN);
-	devm_gpio_free(&serial->interface->dev, gpio_start + F75115_SPI_CS1_PIN);
+	devm_gpio_free(&serial->interface->dev,
+		       gpio_start + F75115_SPI_CS0_PIN);
+	devm_gpio_free(&serial->interface->dev,
+		       gpio_start + F75115_SPI_CS1_PIN);
 	return 0;
 }
 
@@ -1583,23 +2085,24 @@ static int f75115_spi_cs_gpio_init(struct usb_serial *serial, int gpio_start)
 	struct f75115_serial_private *priv;
 	int status;
 	int i;
-	int cs[F75115_SPI_MAX_CS_NUM] =
-				{ F75115_SPI_CS0_PIN, F75115_SPI_CS1_PIN };
+	int cs[F75115_SPI_MAX_CS_NUM] = { F75115_SPI_CS0_PIN,
+					  F75115_SPI_CS1_PIN };
 
 	priv = usb_get_serial_data(serial);
-	priv->spi_master->cs_gpios = devm_kzalloc(&serial->interface->dev,
-					F75115_SPI_MAX_CS_NUM * sizeof(int),
-					GFP_KERNEL);
+	priv->spi_master->cs_gpios =
+		devm_kzalloc(&serial->interface->dev,
+			     F75115_SPI_MAX_CS_NUM * sizeof(int), GFP_KERNEL);
 	if (!priv->spi_master->cs_gpios)
 		return -ENOMEM;
 
 	for (i = 0; i < F75115_SPI_MAX_CS_NUM; ++i) {
 		status = devm_gpio_request_one(&serial->interface->dev,
-				gpio_start + cs[i], GPIOF_OUT_INIT_HIGH,
-				"F75115 CS");
+					       gpio_start + cs[i],
+					       GPIOF_OUT_INIT_HIGH,
+					       "F75115 CS");
 		if (status) {
 			dev_warn(&serial->interface->dev,
-					"cant alloc gpio: %d\n", cs[i]);
+				 "cant alloc gpio: %d\n", cs[i]);
 			return status;
 		}
 
@@ -1628,7 +2131,7 @@ static int f75115_spi_init(struct usb_serial *serial, int gpio_start)
 
 	priv = usb_get_serial_data(serial);
 	master = spi_alloc_master(&serial->interface->dev,
-				sizeof(struct f75115_serial_private *));
+				  sizeof(struct f75115_serial_private *));
 	if (!master)
 		return -ENOMEM;
 
@@ -1665,15 +2168,15 @@ static int f75115_spi_init(struct usb_serial *serial, int gpio_start)
 		strcpy(priv->info[i].modalias, "spi-petra");
 #endif
 		priv->info[i].chip_select = i;
-		
+
 		priv->spi_device[i] = spi_new_device(master, &priv->info[i]);
 	}
 
 	return 0;
 #else
-	
+
 	struct spi_gpio_platform_data_extra *data_extra;
-	int cs[] = {F75115_SPI_CS0_PIN, F75115_SPI_CS1_PIN};
+	int cs[] = { F75115_SPI_CS0_PIN, F75115_SPI_CS1_PIN };
 	int status;
 	int size;
 	int i;
@@ -1683,7 +2186,7 @@ static int f75115_spi_init(struct usb_serial *serial, int gpio_start)
 
 	priv = usb_get_serial_data(serial);
 	size = sizeof(struct spi_gpio_platform_data_extra) +
-			sizeof(unsigned int) * F75115_SPI_MAX_CS_NUM;
+	       sizeof(unsigned int) * F75115_SPI_MAX_CS_NUM;
 
 	data_extra = devm_kzalloc(&serial->interface->dev, size, GFP_KERNEL);
 	if (!data_extra)
@@ -1697,17 +2200,15 @@ static int f75115_spi_init(struct usb_serial *serial, int gpio_start)
 	for (i = 0; i < F75115_SPI_MAX_CS_NUM; ++i)
 		data_extra->cs[i] = gpio_start + cs[i];
 
-
 	priv->spi_device.name = "f75115_spi_gpio";
 	priv->spi_device.id = PLATFORM_DEVID_AUTO;
 	priv->spi_device.dev.platform_data = data_extra;
 	priv->spi_device.dev.release = f75115_spi_release;
 	priv->spi_device.dev.parent = &serial->interface->dev;
-	
+
 	status = platform_device_register(&priv->spi_device);
 	if (status) {
-		dev_err(&serial->interface->dev, "%s: failed\n",
-				__func__);
+		dev_err(&serial->interface->dev, "%s: failed\n", __func__);
 		return status;
 	}
 #endif
@@ -1753,22 +2254,23 @@ static int f75115_phy_to_logic_port(struct usb_serial *serial, int phy)
 {
 	int count = 0, i;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 
 	for (i = 0; i < phy; ++i) {
 		if (serial_priv->default_conf_data[i] &
-				F75115_PORT_UNAVAILABLE)
+		    F75115_PORT_UNAVAILABLE)
 			continue;
 
 		++count;
 	}
 
 	dev_dbg(&serial->dev->dev, "%s: phy:%d count:%d\n", __func__, phy,
-			count);
+		count);
 	return count;
 }
 
-static int f75115_set_normal_register_size(struct usb_device *dev, u16 reg, u8 *data, int data_size)
+static int f75115_set_normal_register_size(struct usb_device *dev, u16 reg,
+					   u8 *data, int data_size)
 {
 	int count = F75115_USB_MAX_RETRY;
 	int status = 0;
@@ -1787,9 +2289,8 @@ static int f75115_set_normal_register_size(struct usb_device *dev, u16 reg, u8 *
 	while (count--) {
 		status = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 					 F75115_SET_GET_REGISTER,
-					 USB_TYPE_VENDOR | USB_DIR_OUT,
-					 reg, 0, tmp, data_size,
-					 F75115_USB_TIMEOUT);
+					 USB_TYPE_VENDOR | USB_DIR_OUT, reg, 0,
+					 tmp, data_size, F75115_USB_TIMEOUT);
 		if (status > 0)
 			break;
 
@@ -1798,9 +2299,8 @@ static int f75115_set_normal_register_size(struct usb_device *dev, u16 reg, u8 *
 	}
 
 	if (status < 0) {
-		dev_err(&dev->dev,
-				"%s ERROR reg:%x status:%i failed\n",
-				__func__, reg, status);
+		dev_err(&dev->dev, "%s ERROR reg:%x status:%i failed\n",
+			__func__, reg, status);
 		kfree(tmp);
 		return status;
 	}
@@ -1809,7 +2309,8 @@ static int f75115_set_normal_register_size(struct usb_device *dev, u16 reg, u8 *
 	return 0;
 }
 
-static int f75115_get_normal_register_size(struct usb_device *dev, u16 reg, u8 *data, int data_size)
+static int f75115_get_normal_register_size(struct usb_device *dev, u16 reg,
+					   u8 *data, int data_size)
 {
 	int count = F75115_USB_MAX_RETRY;
 	int status;
@@ -1826,9 +2327,8 @@ static int f75115_get_normal_register_size(struct usb_device *dev, u16 reg, u8 *
 	while (count--) {
 		status = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
 					 F75115_SET_GET_REGISTER,
-					 USB_TYPE_VENDOR | USB_DIR_IN,
-					 reg, 0, tmp, data_size,
-					 F75115_USB_TIMEOUT);
+					 USB_TYPE_VENDOR | USB_DIR_IN, reg, 0,
+					 tmp, data_size, F75115_USB_TIMEOUT);
 		if (status > 0)
 			break;
 
@@ -1838,7 +2338,7 @@ static int f75115_get_normal_register_size(struct usb_device *dev, u16 reg, u8 *
 
 	if (status < 0) {
 		dev_err(&dev->dev, "%s ERROR reg:%x status:%i failed\n",
-				__func__, reg, status);
+			__func__, reg, status);
 		kfree(tmp);
 		return status;
 	}
@@ -1854,13 +2354,13 @@ static int f75115_set_normal_register(struct usb_device *dev, u16 reg, u8 data)
 }
 
 static int f75115_get_normal_register(struct usb_device *dev, u16 reg,
-					u8 *data)
+				      u8 *data)
 {
 	return f75115_get_normal_register_size(dev, reg, data, 1);
 }
 
 static int f75115_set_mask_normal_register(struct usb_device *dev, u16 reg,
-						u8 mask, u8 data)
+					   u8 mask, u8 data)
 {
 	int status;
 	u8 tmp;
@@ -1887,7 +2387,7 @@ static int f75115_command_delay(struct usb_serial *usbserial)
 
 	do {
 		status = f75115_get_normal_register(dev, F75115_BUS_REG_STATUS,
-							&tmp);
+						    &tmp);
 		if (status)
 			return status;
 
@@ -1903,7 +2403,7 @@ static int f75115_command_delay(struct usb_serial *usbserial)
 		return -EIO;
 
 	status = f75115_set_normal_register(dev, F75115_BUS_REG_STATUS,
-				tmp & ~F75115_BUS_IDLE);
+					    tmp & ~F75115_BUS_IDLE);
 	if (status)
 		return status;
 
@@ -1911,7 +2411,7 @@ static int f75115_command_delay(struct usb_serial *usbserial)
 }
 
 static int f75115_get_normal_register_with_delay(struct usb_serial *usbserial,
-							u16 reg, u8 *data)
+						 u16 reg, u8 *data)
 {
 	int status;
 	struct usb_device *dev = usbserial->dev;
@@ -1928,7 +2428,7 @@ static int f75115_get_normal_register_with_delay(struct usb_serial *usbserial,
 }
 
 static int f75115_set_normal_register_with_delay(struct usb_serial *usbserial,
-							u16 reg, u8 data)
+						 u16 reg, u8 data)
 {
 	int status;
 	struct usb_device *dev = usbserial->dev;
@@ -1945,7 +2445,7 @@ static int f75115_set_normal_register_with_delay(struct usb_serial *usbserial,
 }
 
 static int f75115_read_data(struct usb_serial *usbserial, u32 address,
-				u32 size, unsigned char *buf)
+			    u32 size, unsigned char *buf)
 {
 	u32 read_size, count;
 	u32 block = 0;
@@ -1953,23 +2453,23 @@ static int f75115_read_data(struct usb_serial *usbserial, u32 address,
 	u8 tmp_buf[F75115_MAX_DATA_BLOCK];
 	int status, offset;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, F75115_CMD_READ);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, F75115_CMD_READ);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 16) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 16) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 8) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 8) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 0) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 0) & 0xff);
 	if (status)
 		return status;
 
@@ -1980,7 +2480,7 @@ static int f75115_read_data(struct usb_serial *usbserial, u32 address,
 		for (count = 0; count < read_size; ++count) {
 			/* We need write F75115_BUS_REG_END when final byte */
 			if ((size <= F75115_MAX_DATA_BLOCK) &&
-					(read_size == (count + 1)))
+			    (read_size == (count + 1)))
 				reg_tmp = F75115_BUS_REG_END;
 			else
 				reg_tmp = F75115_BUS_REG_START;
@@ -1991,14 +2491,13 @@ static int f75115_read_data(struct usb_serial *usbserial, u32 address,
 			 * (any value is ok)
 			 */
 			status = f75115_set_normal_register_with_delay(
-					usbserial, reg_tmp, 0xf1);
+				usbserial, reg_tmp, 0xf1);
 			if (status)
 				return status;
 
 			status = f75115_get_normal_register_with_delay(
-						usbserial,
-						F75115_BUS_READ_DATA,
-						&tmp_buf[count]);
+				usbserial, F75115_BUS_READ_DATA,
+				&tmp_buf[count]);
 			if (status)
 				return status;
 
@@ -2028,28 +2527,28 @@ static int f75115_write_data(struct usb_serial *usbserial, u32 address,
 	u16 reg_tmp;
 	int offset, status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_END, F75115_CMD_ENABLE_WR);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_END, F75115_CMD_ENABLE_WR);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, F75115_CMD_PROGRAM);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, F75115_CMD_PROGRAM);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 16) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 16) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 8) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 8) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_START, (address >> 0) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 0) & 0xff);
 	if (status)
 		return status;
 
@@ -2059,15 +2558,14 @@ static int f75115_write_data(struct usb_serial *usbserial, u32 address,
 		for (count = 0; count < write_size; ++count) {
 			offset = count + block * F75115_MAX_DATA_BLOCK;
 
-			if ((size <= F75115_MAX_DATA_BLOCK)
-					&& (write_size == (count + 1)))
+			if ((size <= F75115_MAX_DATA_BLOCK) &&
+			    (write_size == (count + 1)))
 				reg_tmp = F75115_BUS_REG_END;
 			else
 				reg_tmp = F75115_BUS_REG_START;
 
 			status = f75115_set_normal_register_with_delay(
-						usbserial, reg_tmp,
-						buf[offset]);
+				usbserial, reg_tmp, buf[offset]);
 			if (status)
 				return status;
 		}
@@ -2092,53 +2590,53 @@ static int f75115_erase_sector(struct usb_serial *usbserial, int address)
 	int status;
 	unsigned int count = F75115_MAX_BUS_RETRY;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_END, F75115_CMD_ENABLE_WR);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_END, F75115_CMD_ENABLE_WR);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-			F75115_BUS_REG_START, F75115_CMD_ERASE);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, F75115_CMD_ERASE);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-			F75115_BUS_REG_START, (address >> 16) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 16) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-			F75115_BUS_REG_START, (address >> 8) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_START, (address >> 8) & 0xff);
 	if (status)
 		return status;
 
-	status = f75115_set_normal_register_with_delay(usbserial,
-			F75115_BUS_REG_END, (address >> 0) & 0xff);
+	status = f75115_set_normal_register_with_delay(
+		usbserial, F75115_BUS_REG_END, (address >> 0) & 0xff);
 	if (status)
 		return status;
 
 	while (--count) {
-		status = f75115_set_normal_register_with_delay(usbserial,
-						F75115_BUS_REG_START,
-						F75115_CMD_READ_STATUS);
+		status = f75115_set_normal_register_with_delay(
+			usbserial, F75115_BUS_REG_START,
+			F75115_CMD_READ_STATUS);
 		if (status)
 			return status;
 
 		/* dummy write, any value is acceptable */
-		status = f75115_set_normal_register_with_delay(usbserial,
-				F75115_BUS_REG_END, 0xff);
+		status = f75115_set_normal_register_with_delay(
+			usbserial, F75115_BUS_REG_END, 0xff);
 		if (status)
 			return status;
 
-		status = f75115_get_normal_register_with_delay(usbserial,
-					F75115_BUS_READ_DATA, &current_status);
+		status = f75115_get_normal_register_with_delay(
+			usbserial, F75115_BUS_READ_DATA, &current_status);
 		if (status)
 			return status;
 
 		if (!(F75115_MEDIA_BUSY_STATUS & current_status)) {
 			dev_dbg(&usbserial->dev->dev,
-					"%s: data:%x, count:%d, ok\n",
-					__func__, current_status, count);
+				"%s: data:%x, count:%d, ok\n", __func__,
+				current_status, count);
 			break;
 		}
 	}
@@ -2172,7 +2670,7 @@ static int f75115_pin_init(struct usb_serial *serial)
 #endif
 	for (i = 0; i < 3; ++i) {
 		status = f75115_set_normal_register(serial->dev,
-						0x120C + i * 0x10, 0x00);
+						    0x120C + i * 0x10, 0x00);
 		if (status)
 			return status;
 	}
@@ -2182,7 +2680,7 @@ static int f75115_pin_init(struct usb_serial *serial)
 	f75115_set_normal_register(serial->dev, 0x1640, 0x00);
 	f75115_set_normal_register(serial->dev, 0x1660, 0x00);
 	f75115_set_normal_register(serial->dev, 0x1661, 0x00);
-	
+
 	if (!full_uart)
 		status = f75115_set_normal_register(serial->dev, 0x123C, 0x03);
 	else
@@ -2192,9 +2690,9 @@ static int f75115_pin_init(struct usb_serial *serial)
 }
 
 static int f75115_prepare_write_buffer(struct usb_serial_port *port,
-					void *dest, size_t size)
+				       void *dest, size_t size)
 {
-	unsigned char *ptr = (unsigned char *) dest;
+	unsigned char *ptr = (unsigned char *)dest;
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	int port_num = port_priv->phy;
 	struct usb_serial *serial = port->serial;
@@ -2217,15 +2715,15 @@ static int f75115_prepare_write_buffer(struct usb_serial_port *port,
 	ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 1] = F75115_TOKEN_WRITE;
 	ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 3] = 0;
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-	ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 2] =
-		kfifo_out_locked(&port->write_fifo,
-				&ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 4],
-				F75115_MAX_TX_SIZE, &port->lock);
+	ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 2] = kfifo_out_locked(
+		&port->write_fifo,
+		&ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 4],
+		F75115_MAX_TX_SIZE, &port->lock);
 #else
 	ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 2] =
 		kfifo_get(port->write_fifo,
-				&ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 4],
-				F75115_MAX_TX_SIZE);
+			  &ptr[F75115_RECEIVE_BLOCK_SIZE * port_num + 4],
+			  F75115_MAX_TX_SIZE);
 #endif
 
 	return F75115_WRITE_BUFFER_SIZE;
@@ -2236,7 +2734,7 @@ static int f75115_submit_writer(struct usb_serial_port *port, gfp_t mem_flags)
 	struct usb_serial *serial = port->serial;
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	struct tty_struct *tty;
 	struct urb *urb;
 	bool cts_status = true;
@@ -2300,18 +2798,18 @@ static int f75115_submit_writer(struct usb_serial_port *port, gfp_t mem_flags)
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
 	urb = port->write_urbs[0];
 	f75115_prepare_write_buffer(port, port->bulk_out_buffers[0],
-					port->bulk_out_size);
+				    port->bulk_out_size);
 #else
 	urb = port->write_urb;
 	f75115_prepare_write_buffer(port, port->bulk_out_buffer,
-					port->bulk_out_size);
+				    port->bulk_out_size);
 #endif
 	urb->transfer_buffer_length = F75115_WRITE_BUFFER_SIZE;
 
 	result = usb_submit_urb(urb, mem_flags);
 	if (result) {
 		dev_err(&port->dev, "%s: submit error, result:%d\n", __func__,
-				result);
+			result);
 		return result;
 	}
 
@@ -2329,9 +2827,9 @@ static int f75115_switch_gpio_mode(struct usb_serial_port *port, u8 mode)
 	struct usb_device *dev = port->serial->dev;
 	const struct io_map_value *request_mode = f75115_mode_control[idx];
 	/* our EVB m0 sometime will print as SD(Shutdown) */
-	const struct pin_data *pins[3] = {&request_mode->port[x].m1,
-						&request_mode->port[x].m2,
-						&request_mode->port[x].m0_sd};
+	const struct pin_data *pins[3] = { &request_mode->port[x].m1,
+					   &request_mode->port[x].m2,
+					   &request_mode->port[x].m0_sd };
 
 	if (mode > F75115_PIN_SET_MAX)
 		return -EINVAL;
@@ -2339,38 +2837,32 @@ static int f75115_switch_gpio_mode(struct usb_serial_port *port, u8 mode)
 	for (y = 0; y < ARRAY_SIZE(pins); ++y) {
 #if 1
 		val = pins[y]->port_mode_0.reg_bit ? 0xff : 0x00;
-		status = f75115_set_mask_normal_register(dev,
-						     pins[y]->
-						     port_mode_0.reg_address,
-						     BIT(pins[y]->
-						     port_mode_0.reg_offset),
-						     val);
+		status = f75115_set_mask_normal_register(
+			dev, pins[y]->port_mode_0.reg_address,
+			BIT(pins[y]->port_mode_0.reg_offset), val);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, %d\n", __func__,
-					__LINE__);
+				__LINE__);
 			return status;
 		}
 
 		val = pins[y]->port_mode_1.reg_bit ? 0xff : 0x00;
-		status = f75115_set_mask_normal_register(dev,
-						     pins[y]->
-						     port_mode_1.reg_address,
-						     BIT(pins[y]->
-						     port_mode_1.reg_offset),
-						     val);
+		status = f75115_set_mask_normal_register(
+			dev, pins[y]->port_mode_1.reg_address,
+			BIT(pins[y]->port_mode_1.reg_offset), val);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, %d\n", __func__,
-					__LINE__);
+				__LINE__);
 			return status;
 		}
 #endif
 		val = pins[y]->port_io.reg_bit ? 0xff : 0x00;
-		status = f75115_set_mask_normal_register(dev,
-					pins[y]->port_io.reg_address,
-					BIT(pins[y]->port_io.reg_offset), val);
+		status = f75115_set_mask_normal_register(
+			dev, pins[y]->port_io.reg_address,
+			BIT(pins[y]->port_io.reg_offset), val);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, index:%d\n", __func__,
-					y);
+				y);
 			return status;
 		}
 	}
@@ -2380,39 +2872,42 @@ static int f75115_switch_gpio_mode(struct usb_serial_port *port, u8 mode)
 
 #ifdef CONFIG_GPIOLIB
 static int f75115_gpio_hw_gpio_set(struct gpio_chip *chip, unsigned gpio_num,
-				bool init, int val)
+				   bool init, int val)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int set = gpio_num / 8;
 	int pin = gpio_num % 8;
 	int status;
 	u8 tmp;
 
 	dev_dbg(&serial->interface->dev, "%s: GPIO%d%d, init: %d, val: %d\n",
-			__func__, set, pin, init, val);
+		__func__, set, pin, init, val);
 
 	mutex_lock(&serial_priv->change_mode_mutex);
 
 	if (!init && f75115_gpio_special_func(set, pin))
 		init = true;
 
-	if (init || (serial_priv->gpio_opendrain_changed_bit & BIT(gpio_num))) {
+	if (init ||
+	    (serial_priv->gpio_opendrain_changed_bit & BIT(gpio_num))) {
 		serial_priv->gpio_opendrain_changed_bit =
-				serial_priv->gpio_opendrain_changed_bit & ~BIT(gpio_num);
+			serial_priv->gpio_opendrain_changed_bit &
+			~BIT(gpio_num);
 
-		status = f75115_set_mask_normal_register(serial->dev, 0x1620, BIT(pin), BIT(pin));
+		status = f75115_set_mask_normal_register(serial->dev, 0x1620,
+							 BIT(pin), BIT(pin));
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write output failed\n", __func__);
+				"%s: write output failed\n", __func__);
 			goto out;
 		}
 
@@ -2421,10 +2916,11 @@ static int f75115_gpio_hw_gpio_set(struct gpio_chip *chip, unsigned gpio_num,
 		else
 			tmp = BIT(pin);
 
-		status = f75115_set_mask_normal_register(serial->dev, 0x1640, BIT(pin), tmp);
+		status = f75115_set_mask_normal_register(serial->dev, 0x1640,
+							 BIT(pin), tmp);
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write mode failed\n", __func__);
+				"%s: write mode failed\n", __func__);
 			goto out;
 		}
 	}
@@ -2436,14 +2932,16 @@ static int f75115_gpio_hw_gpio_set(struct gpio_chip *chip, unsigned gpio_num,
 
 	status = f75115_set_normal_register(serial->dev, 0x1630, tmp);
 	if (status) {
-		dev_err(&serial->interface->dev, "%s: set data failed\n", __func__);	
+		dev_err(&serial->interface->dev, "%s: set data failed\n",
+			__func__);
 		goto out;
 	}
 #else
-	status = f75115_set_mask_normal_register(serial->dev, 0x1630, BIT(pin), val ? BIT(pin) : 0);
+	status = f75115_set_mask_normal_register(serial->dev, 0x1630, BIT(pin),
+						 val ? BIT(pin) : 0);
 	if (status) {
-		dev_err(&serial->interface->dev,
-				"%s: write pin1 failed\n", __func__);
+		dev_err(&serial->interface->dev, "%s: write pin1 failed\n",
+			__func__);
 		goto out;
 	}
 #endif
@@ -2455,25 +2953,25 @@ out:
 }
 
 static int f75115_gpio_hw_gpio_get(struct gpio_chip *chip, unsigned gpio_num,
-				bool init)
+				   bool init)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int set = gpio_num / 8;
 	int pin = gpio_num % 8;
 	int status;
 	u8 tmp;
 
 	dev_dbg(&serial->interface->dev, "%s: GPIO%d%d, init: %d\n", __func__,
-			set, pin, init);
+		set, pin, init);
 
 	mutex_lock(&serial_priv->change_mode_mutex);
 
@@ -2481,10 +2979,11 @@ static int f75115_gpio_hw_gpio_get(struct gpio_chip *chip, unsigned gpio_num,
 		init = true;
 
 	if (init) {
-		status = f75115_set_mask_normal_register(serial->dev, 0x1620, BIT(pin), 0);
+		status = f75115_set_mask_normal_register(serial->dev, 0x1620,
+							 BIT(pin), 0);
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write input failed\n", __func__);
+				"%s: write input failed\n", __func__);
 			goto out;
 		}
 	}
@@ -2492,7 +2991,7 @@ static int f75115_gpio_hw_gpio_get(struct gpio_chip *chip, unsigned gpio_num,
 	status = f75115_get_normal_register(serial->dev, 0x1650, &tmp);
 	if (status) {
 		dev_err(&serial->interface->dev, "%s: write data failed\n",
-				__func__);
+			__func__);
 		goto out;
 	}
 
@@ -2502,8 +3001,9 @@ static int f75115_gpio_hw_gpio_get(struct gpio_chip *chip, unsigned gpio_num,
 
 	status = !!(tmp & BIT(pin));
 
-	dev_dbg(&serial->interface->dev, "%s: get: %d, pin: %d, init: %d, data: %d\n",
-			__func__, set, pin, init, status);
+	dev_dbg(&serial->interface->dev,
+		"%s: get: %d, pin: %d, init: %d, data: %d\n", __func__, set,
+		pin, init, status);
 
 out:
 	mutex_unlock(&serial_priv->change_mode_mutex);
@@ -2512,7 +3012,8 @@ out:
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 8, 0)
-static int f75115_gpio_hw_gpio_get_dir(struct usb_device *dev, unsigned gpio_num)
+static int f75115_gpio_hw_gpio_get_dir(struct usb_device *dev,
+				       unsigned gpio_num)
 {
 	int set = gpio_num / 8;
 	int pin = gpio_num % 8;
@@ -2534,18 +3035,18 @@ static int f75115_gpio_hw_gpio_get_dir(struct usb_device *dev, unsigned gpio_num
 #endif
 
 static int f75115_gpio_hw_sfr_set(struct gpio_chip *chip, unsigned gpio_num,
-				bool init, int val)
+				  bool init, int val)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	u8 mode_pin0;
 	u8 mode_pin1;
 	u8 tmp;
@@ -2554,8 +3055,8 @@ static int f75115_gpio_hw_sfr_set(struct gpio_chip *chip, unsigned gpio_num,
 	int status;
 
 	dev_dbg(&serial->interface->dev,
-			"%s: set: %d, pin: %d, init: %d, val: %d\n",
-			__func__, set, pin, init, !!val);
+		"%s: set: %d, pin: %d, init: %d, val: %d\n", __func__, set,
+		pin, init, !!val);
 
 	mutex_lock(&serial_priv->change_mode_mutex);
 
@@ -2565,9 +3066,11 @@ static int f75115_gpio_hw_sfr_set(struct gpio_chip *chip, unsigned gpio_num,
 	//pr_info("%s: init: %d, bit: %d\n", __func__, init,
 	//		!!(serial_priv->gpio_opendrain_changed_bit & BIT(gpio_num)));
 
-	if (init || (serial_priv->gpio_opendrain_changed_bit & BIT(gpio_num))) {
+	if (init ||
+	    (serial_priv->gpio_opendrain_changed_bit & BIT(gpio_num))) {
 		serial_priv->gpio_opendrain_changed_bit =
-				serial_priv->gpio_opendrain_changed_bit & ~BIT(gpio_num);
+			serial_priv->gpio_opendrain_changed_bit &
+			~BIT(gpio_num);
 
 		mode_pin0 = BIT(pin);
 
@@ -2575,24 +3078,26 @@ static int f75115_gpio_hw_sfr_set(struct gpio_chip *chip, unsigned gpio_num,
 			mode_pin1 = BIT(pin); /* open drain */
 		else
 			mode_pin1 = 0; /* push pull */
-		
+
 		dev_dbg(&serial->interface->dev,
-				"%s: init pin0: %x, pin1: %x\n", __func__,
-				mode_pin0, mode_pin1);
+			"%s: init pin0: %x, pin1: %x\n", __func__, mode_pin0,
+			mode_pin1);
 
 		status = f75115_set_mask_normal_register(serial->dev,
-				pin0_mode_table[set], BIT(pin), mode_pin0);
+							 pin0_mode_table[set],
+							 BIT(pin), mode_pin0);
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write pin0 failed\n", __func__);
+				"%s: write pin0 failed\n", __func__);
 			goto out;
 		}
 
 		status = f75115_set_mask_normal_register(serial->dev,
-				pin1_mode_table[set], BIT(pin), mode_pin1);
+							 pin1_mode_table[set],
+							 BIT(pin), mode_pin1);
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write pin1 failed\n", __func__);
+				"%s: write pin1 failed\n", __func__);
 			goto out;
 		}
 	}
@@ -2602,18 +3107,21 @@ static int f75115_gpio_hw_sfr_set(struct gpio_chip *chip, unsigned gpio_num,
 	tmp = (tmp & ~BIT(pin)) | (BIT(pin) & (val ? BIT(pin) : 0));
 	serial_priv->gpio_data[set] = tmp;
 
-	status = f75115_set_normal_register(serial->dev, pin_data_table[set], tmp);
+	status = f75115_set_normal_register(serial->dev, pin_data_table[set],
+					    tmp);
 	if (status) {
-		dev_err(&serial->interface->dev, "%s: set data failed\n", __func__);	
+		dev_err(&serial->interface->dev, "%s: set data failed\n",
+			__func__);
 		goto out;
 	}
 
 #else
 	status = f75115_set_mask_normal_register(serial->dev,
-			pin_data_table[set], BIT(pin), val ? BIT(pin) : 0);
+						 pin_data_table[set], BIT(pin),
+						 val ? BIT(pin) : 0);
 	if (status) {
 		dev_err(&serial->interface->dev, "%s: write data failed\n",
-				__func__);
+			__func__);
 		goto out;
 	}
 #endif
@@ -2621,22 +3129,21 @@ out:
 	mutex_unlock(&serial_priv->change_mode_mutex);
 
 	return status;
-
 }
 
 static int f75115_gpio_hw_sfr_get(struct gpio_chip *chip, unsigned gpio_num,
-				bool init)
+				  bool init)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int set = gpio_num / 8;
 	int pin = gpio_num % 8;
 	int status;
@@ -2649,31 +3156,31 @@ static int f75115_gpio_hw_sfr_get(struct gpio_chip *chip, unsigned gpio_num,
 
 	if (init) {
 		dev_dbg(&serial->interface->dev,
-				"%s: init pin0: %x, pin1: %x\n", __func__,
-				pin0_mode_table[set], pin1_mode_table[set]);
+			"%s: init pin0: %x, pin1: %x\n", __func__,
+			pin0_mode_table[set], pin1_mode_table[set]);
 
-		status = f75115_set_mask_normal_register(serial->dev,
-				pin0_mode_table[set], BIT(pin), 0);
+		status = f75115_set_mask_normal_register(
+			serial->dev, pin0_mode_table[set], BIT(pin), 0);
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write pin0 failed\n", __func__);
+				"%s: write pin0 failed\n", __func__);
 			goto out;
 		}
 
-		status = f75115_set_mask_normal_register(serial->dev,
-				pin1_mode_table[set], BIT(pin), BIT(pin));
+		status = f75115_set_mask_normal_register(
+			serial->dev, pin1_mode_table[set], BIT(pin), BIT(pin));
 		if (status) {
 			dev_err(&serial->interface->dev,
-					"%s: write pin1 failed\n", __func__);
+				"%s: write pin1 failed\n", __func__);
 			goto out;
 		}
 	}
 
 	status = f75115_get_normal_register(serial->dev, pin_data_table[set],
-						&tmp);
+					    &tmp);
 	if (status) {
 		dev_err(&serial->interface->dev, "%s: write data failed\n",
-				__func__);
+			__func__);
 		goto out;
 	}
 
@@ -2683,8 +3190,9 @@ static int f75115_gpio_hw_sfr_get(struct gpio_chip *chip, unsigned gpio_num,
 	serial_priv->gpio_data[set] = tmp;
 #endif
 
-	dev_dbg(&serial->interface->dev, "%s: get: %d, pin: %d, init: %d, data: %d\n",
-			__func__, set, pin, init, status);
+	dev_dbg(&serial->interface->dev,
+		"%s: get: %d, pin: %d, init: %d, data: %d\n", __func__, set,
+		pin, init, status);
 
 out:
 	mutex_unlock(&serial_priv->change_mode_mutex);
@@ -2692,20 +3200,19 @@ out:
 	return status;
 }
 
-
 static int f75115_gpio_hw_set(struct gpio_chip *chip, unsigned gpio_num,
-				bool init, int val)
+			      bool init, int val)
 {
 	int set = gpio_num / 8;
 
 	if (set == 5)
 		return f75115_gpio_hw_gpio_set(chip, gpio_num, init, val);
-	
+
 	return f75115_gpio_hw_sfr_set(chip, gpio_num, init, val);
 }
 
 static int f75115_gpio_hw_get(struct gpio_chip *chip, unsigned gpio_num,
-				bool init)
+			      bool init)
 {
 	int set = gpio_num / 8;
 
@@ -2718,11 +3225,11 @@ static int f75115_gpio_hw_get(struct gpio_chip *chip, unsigned gpio_num,
 static int f75115_gpio_get(struct gpio_chip *chip, unsigned gpio_num)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 
@@ -2734,11 +3241,11 @@ static int f75115_gpio_get(struct gpio_chip *chip, unsigned gpio_num)
 static int f75115_gpio_direction_in(struct gpio_chip *chip, unsigned gpio_num)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	int status;
@@ -2752,15 +3259,15 @@ static int f75115_gpio_direction_in(struct gpio_chip *chip, unsigned gpio_num)
 	return 0;
 }
 
-static int f75115_gpio_direction_out(struct gpio_chip *chip,
-				     unsigned gpio_num, int val)
+static int f75115_gpio_direction_out(struct gpio_chip *chip, unsigned gpio_num,
+				     int val)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 
@@ -2772,11 +3279,11 @@ static int f75115_gpio_direction_out(struct gpio_chip *chip,
 static void f75115_gpio_set(struct gpio_chip *chip, unsigned gpio_num, int val)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 
@@ -2789,15 +3296,15 @@ static void f75115_gpio_set(struct gpio_chip *chip, unsigned gpio_num, int val)
 static int f75115_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int set = offset / 8;
 	int pin = offset % 8;
 	int status;
@@ -2814,40 +3321,40 @@ static int f75115_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 		return status;
 
 	} else {
-		status = f75115_get_normal_register(serial->dev, pin0_mode_table[set],
-				&tmp);
+		status = f75115_get_normal_register(
+			serial->dev, pin0_mode_table[set], &tmp);
 		if (status) {
-			dev_err(&serial->interface->dev, "%s: write pin0 failed\n",
-					__func__);
+			dev_err(&serial->interface->dev,
+				"%s: write pin0 failed\n", __func__);
 			mutex_unlock(&serial_priv->change_mode_mutex);
 			return status;
 		}
-		
+
 		mode |= !!(tmp & BIT(pin)) << 0;
-		
+
 		//pr_info("%s: set: %d\n", __func__, set);
-		status = f75115_get_normal_register(serial->dev, pin1_mode_table[set],
-				&tmp);
+		status = f75115_get_normal_register(
+			serial->dev, pin1_mode_table[set], &tmp);
 		if (status) {
-			dev_err(&serial->interface->dev, "%s: write pin1 failed\n",
-					__func__);
+			dev_err(&serial->interface->dev,
+				"%s: write pin1 failed\n", __func__);
 			mutex_unlock(&serial_priv->change_mode_mutex);
 			return status;
-		}	
-		
+		}
+
 		mode |= !!(tmp & BIT(pin)) << 1;
-		
+
 		mutex_unlock(&serial_priv->change_mode_mutex);
-		
+
 		switch (mode) {
 		case 1:
 		case 3:
 			dev_dbg(&serial->interface->dev, "%s: mode: %d, out\n",
-					__func__, mode);
+				__func__, mode);
 			return GPIOF_DIR_OUT;
 		case 2:
-			dev_dbg(&serial->interface->dev,"%s: mode: %d, in\n",
-					__func__, mode);
+			dev_dbg(&serial->interface->dev, "%s: mode: %d, in\n",
+				__func__, mode);
 			return GPIOF_DIR_IN;
 		}
 	}
@@ -2859,11 +3366,11 @@ static int f75115_gpio_get_direction(struct gpio_chip *chip, unsigned offset)
 static int f75115_gpio_request(struct gpio_chip *chip, unsigned offset)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 
@@ -2875,11 +3382,11 @@ static int f75115_gpio_request(struct gpio_chip *chip, unsigned offset)
 static void f75115_gpio_free(struct gpio_chip *chip, unsigned offset)
 {
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
-	struct usb_interface *intf = container_of(chip->dev,
-						struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->dev, struct usb_interface, dev);
 #else
-	struct usb_interface *intf = container_of(chip->parent,
-					struct usb_interface, dev);
+	struct usb_interface *intf =
+		container_of(chip->parent, struct usb_interface, dev);
 #endif
 	struct usb_serial *serial = usb_get_intfdata(intf);
 
@@ -2902,7 +3409,7 @@ static struct gpio_chip f75115_gpio_chip_templete = {
 };
 
 static ssize_t open_drain_mode_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+				    struct device_attribute *attr, char *buf)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -2921,8 +3428,8 @@ static ssize_t open_drain_mode_show(struct device *dev,
 }
 
 static ssize_t open_drain_mode_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -2936,7 +3443,8 @@ static ssize_t open_drain_mode_store(struct device *dev,
 	mutex_lock(&serial_priv->change_mode_mutex);
 
 	tmp = simple_strtoull(buf, NULL, 0);
-	serial_priv->gpio_opendrain_changed_bit |= tmp ^ serial_priv->gpio_opendrain_mode;
+	serial_priv->gpio_opendrain_changed_bit |=
+		tmp ^ serial_priv->gpio_opendrain_mode;
 	serial_priv->gpio_opendrain_mode = tmp;
 
 	mutex_unlock(&serial_priv->change_mode_mutex);
@@ -2949,7 +3457,7 @@ static DEVICE_ATTR_RW(open_drain_mode);
 static int f75115_prepare_gpio(struct usb_serial *serial)
 {
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int max_name = 32;
 	char *name = NULL;
 	int rc;
@@ -2959,7 +3467,7 @@ static int f75115_prepare_gpio(struct usb_serial *serial)
 		return -ENOMEM;
 
 	memcpy(&serial_priv->f75115_gpio_chip, &f75115_gpio_chip_templete,
-			sizeof(f75115_gpio_chip_templete));
+	       sizeof(f75115_gpio_chip_templete));
 
 	snprintf(name, max_name - 1, "%s", IC_NAME);
 
@@ -2974,15 +3482,15 @@ static int f75115_prepare_gpio(struct usb_serial *serial)
 	rc = gpiochip_add(&serial_priv->f75115_gpio_chip);
 	if (rc) {
 		dev_err(&serial->interface->dev,
-				"%s: f75115_prepare_gpio failed:%d\n",
-				__func__, rc);
+			"%s: f75115_prepare_gpio failed:%d\n", __func__, rc);
 		return rc;
 	}
 
 	rc = device_create_file(&serial->interface->dev,
-					&dev_attr_open_drain_mode);
+				&dev_attr_open_drain_mode);
 	if (rc)
 		return -EPERM;
+
 
 	return 0;
 }
@@ -2990,7 +3498,36 @@ static int f75115_prepare_gpio(struct usb_serial *serial)
 static int f75115_release_gpio(struct usb_serial *serial)
 {
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
+        int base = serial_priv->f75115_gpio_chip.base;
+
+        gpio_unexport(base + F75115_GPIO52);
+        gpio_unexport(base + F75115_GPIO16);
+        gpio_unexport(base + F75115_GPIO30);
+        gpio_unexport(base + F75115_GPIO32);
+        gpio_unexport(base + F75115_GPIO34);
+        gpio_unexport(base + F75115_GPIO36);
+        gpio_unexport(base + F75115_GPIO20);
+        gpio_unexport(base + F75115_GPIO21);
+        gpio_unexport(base + F75115_GPIO24);
+        gpio_unexport(base + F75115_GPIO07);
+        gpio_unexport(base + F75115_GPIO03);
+        gpio_unexport(base + F75115_GPIO01);
+        gpio_unexport(base + F75115_GPIO10);
+
+        gpio_free(base + F75115_GPIO52);
+        gpio_free(base + F75115_GPIO16);
+        gpio_free(base + F75115_GPIO30);
+        gpio_free(base + F75115_GPIO32);
+        gpio_free(base + F75115_GPIO34);
+        gpio_free(base + F75115_GPIO36);
+        gpio_free(base + F75115_GPIO20);
+        gpio_free(base + F75115_GPIO21);
+        gpio_free(base + F75115_GPIO24);
+        gpio_free(base + F75115_GPIO07);
+        gpio_free(base + F75115_GPIO03);
+        gpio_free(base + F75115_GPIO01);
+        gpio_free(base + F75115_GPIO10);
 
 	device_remove_file(&serial->interface->dev, &dev_attr_open_drain_mode);
 	gpiochip_remove(&serial_priv->f75115_gpio_chip);
@@ -3002,7 +3539,7 @@ static int f75115_prepare_gpio(struct usb_serial *serial)
 {
 	dev_info(&serial->interface->dev, "CONFIG_GPIOLIB is not enabled\n");
 	dev_info(&serial->interface->dev,
-			"The GPIOLIB interface will not register\n");
+		 "The GPIOLIB interface will not register\n");
 	return 0;
 }
 
@@ -3031,20 +3568,20 @@ static int f75115_calc_baud_divisor(u32 baudrate, u32 clockrate, u32 *remain)
 }
 
 static int f75115_setregister(struct usb_device *dev, u8 uart, u16 reg,
-				u8 data)
+			      u8 data)
 {
 	return f75115_set_normal_register(dev, reg + uart * 0x10, data);
 }
 
 static int f75115_getregister(struct usb_device *dev, u8 uart, u16 reg,
-				u8 *data)
+			      u8 *data)
 {
 	return f75115_get_normal_register(dev, reg + uart * 0x10, data);
 }
 
 static int f75115_set_port_config(struct usb_device *dev, u8 port_number,
-					 struct usb_serial_port *port,
-					 u32 baudrate, u16 lcr)
+				  struct usb_serial_port *port, u32 baudrate,
+				  u16 lcr)
 {
 	struct usb_serial *serial = port->serial;
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
@@ -3069,28 +3606,28 @@ static int f75115_set_port_config(struct usb_device *dev, u8 port_number,
 
 #ifdef MULTIDROP_ENABLE
 	if (is_9bits)
-		value |= 1L << 6;	/* enable 9bits */
+		value |= 1L << 6; /* enable 9bits */
 #endif
 
 	status = f75115_setregister(serial->dev, device_port, CLK_SEL_REGISTER,
-					value);
+				    value);
 	if (status) {
 		dev_err(&port->dev, "%s: CLK REG setting failed\n", __func__);
 		return status;
 	}
 
 	if (port_priv->current_baud_rate <= 1200)
-		value = F75115_1X_RXTRIGGER;	/* 128 FIFO & TL: 1x */
+		value = F75115_1X_RXTRIGGER; /* 128 FIFO & TL: 1x */
 	else
-		value = F75115_8X_RXTRIGGER;	/* 128 FIFO & TL: 8x */
+		value = F75115_8X_RXTRIGGER; /* 128 FIFO & TL: 8x */
 
 #ifdef MULTIDROP_ENABLE
 	if (is_9bits)
-		value |= 1L << 4;	/* enable 9bits auto addr */
+		value |= 1L << 4; /* enable 9bits auto addr */
 #endif
 
 	status = f75115_setregister(serial->dev, device_port, CONFIG1_REGISTER,
-					value);
+				    value);
 	if (status) {
 		dev_err(&port->dev, "%s: CONFIG1 setting failed\n", __func__);
 		return status;
@@ -3104,7 +3641,7 @@ static int f75115_set_port_config(struct usb_device *dev, u8 port_number,
 		value = UART_FCR_R_TRIG_11 | UART_FCR_ENABLE_FIFO; /* TL: 14 */
 
 	status = f75115_setregister(serial->dev, device_port,
-					    FIFO_CONTROL_REGISTER, value);
+				    FIFO_CONTROL_REGISTER, value);
 	if (status) {
 		dev_err(&port->dev, "%s: FCR setting failed\n", __func__);
 		return status;
@@ -3113,65 +3650,65 @@ static int f75115_set_port_config(struct usb_device *dev, u8 port_number,
 	if (baudrate) {
 		value = UART_LCR_DLAB;
 		status = f75115_setregister(serial->dev, device_port,
-							LINE_CONTROL_REGISTER, value);
+					    LINE_CONTROL_REGISTER, value);
 		if (status) {
-			dev_err(&port->dev, "%s: set LCR failed, %d\n", __func__,
-					status);
+			dev_err(&port->dev, "%s: set LCR failed, %d\n",
+				__func__, status);
 			return status;
 		}
 
 		value = divisor & 0xFF;
 		status = f75115_setregister(serial->dev, device_port,
-						DIVISOR_LATCH_LSB, value);
+					    DIVISOR_LATCH_LSB, value);
 		if (status) {
-			dev_err(&port->dev, "%s: set DLAB LSB failed, %d\n", __func__,
-					status);
+			dev_err(&port->dev, "%s: set DLAB LSB failed, %d\n",
+				__func__, status);
 			return status;
 		}
 
 		value = (divisor >> 8) & 0xFF;
 		status = f75115_setregister(serial->dev, device_port,
-						DIVISOR_LATCH_MSB, value);
+					    DIVISOR_LATCH_MSB, value);
 		if (status) {
-			dev_err(&port->dev, "%s: set DLAB MSB failed, %d\n", __func__,
-					status);
+			dev_err(&port->dev, "%s: set DLAB MSB failed, %d\n",
+				__func__, status);
 			return status;
 		}
 	}
 
 	status = f75115_setregister(serial->dev, device_port,
-						LINE_CONTROL_REGISTER, lcr);
+				    LINE_CONTROL_REGISTER, lcr);
 	if (status) {
 		dev_err(&port->dev, "%s: set LCR failed, %d\n", __func__,
-				status);
+			status);
 		return status;
 	}
 
 #ifdef MULTIDROP_ENABLE
 	if (is_9bits) {
 		status = f75115_setregister(dev, port_number,
-				SADDRESS_REGISTER, port_priv->addr_9bit);
+					    SADDRESS_REGISTER,
+					    port_priv->addr_9bit);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, %d\n", __func__,
-					__LINE__);
+				__LINE__);
 			return status;
 		}
 
 		status = f75115_setregister(dev, port_number, SADEN_REGISTER,
-						port_priv->bitmask_9bit);
+					    port_priv->bitmask_9bit);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, %d\n", __func__,
-					__LINE__);
+				__LINE__);
 			return status;
 		}
-
 	}
 #endif
 	return 0;
 }
 
 static int f75115_update_mctrl(struct usb_serial_port *port, unsigned int set,
-				unsigned int clear)
+			       unsigned int clear)
 {
 	struct usb_device *dev = port->serial->dev;
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
@@ -3182,9 +3719,9 @@ static int f75115_update_mctrl(struct usb_serial_port *port, unsigned int set,
 
 	if (((set | clear) & (TIOCM_DTR | TIOCM_RTS | TIOCM_LOOP)) == 0) {
 		dev_dbg(&dev->dev, "%s -DTR|RTS not being set|cleared\n",
-				__func__);
+			__func__);
 		mutex_unlock(&port_priv->msr_mutex);
-		return 0;	/* no change */
+		return 0; /* no change */
 	}
 
 	/* 'set' takes precedence over 'clear' */
@@ -3196,46 +3733,44 @@ static int f75115_update_mctrl(struct usb_serial_port *port, unsigned int set,
 	if (clear & TIOCM_DTR) {
 		tmp &= ~UART_MCR_DTR;
 		dev_dbg(&dev->dev, "%s: port:%d clear DTR\n", __func__,
-				port_priv->phy);
+			port_priv->phy);
 	}
 
 	if (clear & TIOCM_RTS) {
 		tmp &= ~UART_MCR_RTS;
 		dev_dbg(&dev->dev, "%s: port:%d clear RTS\n", __func__,
-				port_priv->phy);
-
+			port_priv->phy);
 	}
 
 	if (clear & TIOCM_LOOP) {
 		tmp &= ~UART_MCR_LOOP;
 		dev_dbg(&dev->dev, "%s: port:%d clear LOOP\n", __func__,
-				port_priv->phy);
+			port_priv->phy);
 	}
 
 	if (set & TIOCM_DTR) {
 		tmp |= UART_MCR_DTR;
 		dev_dbg(&dev->dev, "%s: port:%d set DTR\n", __func__,
-				port_priv->phy);
-
+			port_priv->phy);
 	}
 
 	if (set & TIOCM_RTS) {
 		tmp |= UART_MCR_RTS;
 		dev_dbg(&dev->dev, "%s: port:%d set RTS\n", __func__,
-				port_priv->phy);
+			port_priv->phy);
 	}
 
 	if (set & TIOCM_LOOP) {
 		tmp |= UART_MCR_LOOP;
 		dev_dbg(&dev->dev, "%s: port:%d set LOOP\n", __func__,
-				port_priv->phy);
+			port_priv->phy);
 	}
 
 	status = f75115_setregister(dev, port_priv->phy,
-					MODEM_CONTROL_REGISTER, tmp);
+				    MODEM_CONTROL_REGISTER, tmp);
 	if (status < 0) {
 		dev_err(&port->dev, "%s- Error from MODEM_CTRL URB: %i\n",
-				__func__, status);
+			__func__, status);
 		mutex_unlock(&port_priv->msr_mutex);
 		return status;
 	}
@@ -3258,12 +3793,12 @@ static int f75115_find_config_idx(struct usb_serial *serial, uintptr_t *index)
 
 	for (idx = F75115_CUSTOM_MAX_IDX - 1; idx >= 0; --idx) {
 		offset = F75115_CUSTOM_ADDRESS_START +
-					F75115_CUSTOM_DATA_SIZE * idx;
+			 F75115_CUSTOM_DATA_SIZE * idx;
 		status = f75115_read_data(serial, offset, 1, &custom_data);
 		if (status) {
 			dev_err(&serial->dev->dev,
-					"%s: read error, idx:%d, status:%d\n",
-					__func__, idx, status);
+				"%s: read error, idx:%d, status:%d\n",
+				__func__, idx, status);
 			return status;
 		}
 
@@ -3281,17 +3816,18 @@ static int f75115_find_config_idx(struct usb_serial *serial, uintptr_t *index)
 	return 0;
 }
 
-static inline struct f75115_serial_private *to_f75115_serial_private(struct pwm_chip *c)
+static inline struct f75115_serial_private *
+to_f75115_serial_private(struct pwm_chip *c)
 {
 	return container_of(c, struct f75115_serial_private, f75115_pwm_chip);
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)
 static int f75115_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
-			  const struct pwm_state *state)
+			    const struct pwm_state *state)
 #else
 static int f75115_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
-			  struct pwm_state *state)
+			    struct pwm_state *state)
 #endif
 {
 	struct f75115_serial_private *serial_priv;
@@ -3304,7 +3840,8 @@ static int f75115_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 	serial_priv = to_f75115_serial_private(chip);
 	serial = serial_priv->serial;
 
-	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) / serial_priv->pwm_cur_clock;
+	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) /
+		     serial_priv->pwm_cur_clock;
 	memcpy(&old_state, state, sizeof(*state));
 
 	pwm_set_period(pwm, cur_period);
@@ -3328,7 +3865,8 @@ static int f75115_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
 
 	//dev_info(&serial->dev->dev, "%s: 111 period: %lld", __func__, state->period);
 
-	r = f75115_pwm_en_param_set(serial, idx, state->enabled, state->duty_cycle);
+	r = f75115_pwm_en_param_set(serial, idx, state->enabled,
+				    state->duty_cycle);
 	if (r) {
 		dev_info(&serial->dev->dev, "%s: %d", __func__, __LINE__);
 		goto end;
@@ -3345,7 +3883,7 @@ end:
 }
 
 static void f75115_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
-			       struct pwm_state *s)
+				 struct pwm_state *s)
 {
 #if 1
 	struct f75115_serial_private *serial_priv;
@@ -3357,7 +3895,8 @@ static void f75115_pwm_get_state(struct pwm_chip *chip, struct pwm_device *pwm,
 	serial_priv = to_f75115_serial_private(chip);
 	serial = serial_priv->serial;
 
-	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) / serial_priv->pwm_cur_clock;
+	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) /
+		     serial_priv->pwm_cur_clock;
 	state->period = cur_period;
 	state->duty_cycle = serial_priv->pwm_cur_duty_us[idx];
 	state->polarity = PWM_POLARITY_NORMAL;
@@ -3427,7 +3966,8 @@ static int f75115_pwm_reload(struct usb_serial *serial)
 	for (i = 0; i < F75115_MAX_PWN_CNT; ++i) {
 		r = f75115_pwm_en_param_set(serial, i, 0, 0);
 		if (r) {
-			pr_info("%s: idx: %d, f75115_pwm_en_param_set failed: %d", __func__, i, r);
+			pr_info("%s: idx: %d, f75115_pwm_en_param_set failed: %d",
+				__func__, i, r);
 			return r;
 		}
 	}
@@ -3453,7 +3993,8 @@ static int f75115_pwm_clock_set(struct usb_serial *serial, int pwm_freq)
 
 	r = f75115_get_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
 	}
 
@@ -3465,9 +4006,10 @@ static int f75115_pwm_clock_set(struct usb_serial *serial, int pwm_freq)
 
 	r = f75115_set_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
-	}	
+	}
 
 	serial_priv->pwm_cur_clock = pwm_freq;
 	//dev_info(&serial->dev->dev, "%s: pwm_freq: %d", __func__, pwm_freq);
@@ -3488,7 +4030,8 @@ static int f75115_pwm_div_set(struct usb_serial *serial, int pwm_div)
 
 	r = f75115_get_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
 	}
 
@@ -3499,17 +4042,20 @@ static int f75115_pwm_div_set(struct usb_serial *serial, int pwm_div)
 
 	r = f75115_set_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
-	}	
+	}
 
 	serial_priv->pwm_cur_div = pwm_div;
-	dev_info(&serial->dev->dev, "%s: pwm_cur_div: %d", __func__, serial_priv->pwm_cur_div);
+	dev_info(&serial->dev->dev, "%s: pwm_cur_div: %d", __func__,
+		 serial_priv->pwm_cur_div);
 
 	return 0;
 }
 
-static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u64 duty_us)
+static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en,
+				   u64 duty_us)
 {
 	struct f75115_serial_private *serial_priv;
 	int r, div;
@@ -3517,7 +4063,8 @@ static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u
 	u64 cur_period;
 
 	serial_priv = usb_get_serial_data(serial);
-	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) / serial_priv->pwm_cur_clock;
+	cur_period = 1000000000UL * (serial_priv->pwm_cur_div) /
+		     serial_priv->pwm_cur_clock;
 
 	if (idx < 0 || idx >= F75115_MAX_PWN_CNT) {
 		dev_err(&serial->dev->dev, "%s: %d", __func__, __LINE__);
@@ -3526,16 +4073,21 @@ static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u
 
 	if (cur_period < duty_us || !cur_period) {
 		dev_err(&serial->dev->dev, "%s: line: %d", __func__, __LINE__);
-		dev_err(&serial->dev->dev, "%s: duty_us: %d", __func__, (int)duty_us);
-		dev_err(&serial->dev->dev, "%s: cur_period: %d", __func__, (int)cur_period);
-		dev_err(&serial->dev->dev, "%s: pwm_cur_clock: %d", __func__, (int)serial_priv->pwm_cur_clock);
-		dev_err(&serial->dev->dev, "%s: pwm_cur_div: %d", __func__, (int)serial_priv->pwm_cur_div);
+		dev_err(&serial->dev->dev, "%s: duty_us: %d", __func__,
+			(int)duty_us);
+		dev_err(&serial->dev->dev, "%s: cur_period: %d", __func__,
+			(int)cur_period);
+		dev_err(&serial->dev->dev, "%s: pwm_cur_clock: %d", __func__,
+			(int)serial_priv->pwm_cur_clock);
+		dev_err(&serial->dev->dev, "%s: pwm_cur_div: %d", __func__,
+			(int)serial_priv->pwm_cur_div);
 		return -EINVAL;
 	}
 
 	r = f75115_get_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: read 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
 	}
 
@@ -3544,7 +4096,6 @@ static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u
 		buf[0] |= BIT(idx);
 	else
 		buf[0] &= ~BIT(idx);
-
 
 	div = (serial_priv->pwm_cur_div) * duty_us / cur_period;
 	if (div < 0 || div > 1023) {
@@ -3570,7 +4121,8 @@ static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u
 
 	r = f75115_set_normal_register_size(serial->dev, 0xe001, buf, 11);
 	if (r) {
-		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n", __func__, r);
+		dev_warn(&serial->dev->dev, "%s: write 0xe001 failed: %d\n",
+			 __func__, r);
 		return r;
 	}
 
@@ -3584,8 +4136,8 @@ static int f75115_pwm_en_param_set(struct usb_serial *serial, int idx, int en, u
 	return 0;
 }
 
-static ssize_t pwm_freq_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t pwm_freq_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -3599,8 +4151,8 @@ static ssize_t pwm_freq_show(struct device *dev,
 }
 
 static ssize_t pwm_freq_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+			      struct device_attribute *attr, const char *buf,
+			      size_t count)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -3642,8 +4194,8 @@ static DEVICE_ATTR_RW(pwm_freq);
 static DEVICE_ATTR(pwm_freq, S_IRUGO | S_IWUSR, pwm_freq_show, pwm_freq_store);
 #endif
 
-static ssize_t pwm_div_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t pwm_div_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -3656,9 +4208,8 @@ static ssize_t pwm_div_show(struct device *dev,
 	return sprintf(buf, "%d\n", serial_priv->pwm_cur_div);
 }
 
-static ssize_t pwm_div_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+static ssize_t pwm_div_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t count)
 {
 	struct f75115_serial_private *serial_priv;
 	struct usb_interface *intf;
@@ -3706,8 +4257,8 @@ static int f75115_pwm_init(struct usb_serial *serial)
 
 	if (serial_priv->fw_ver <= 0xaa88) {
 		dev_info(&serial->dev->dev,
-				"%s: the version(%lx) not support PWM",
-				__func__, serial_priv->fw_ver);
+			 "%s: the version(%lx) not support PWM", __func__,
+			 serial_priv->fw_ver);
 
 		return 0;
 	}
@@ -3720,9 +4271,10 @@ static int f75115_pwm_init(struct usb_serial *serial)
 	if (r) {
 		pr_info("%s: write 0xe002 failed: %d\n", __func__, r);
 		return r;
-	}	
+	}
 
-	serial_priv->f75115_pwm_chip.dev = &serial->interface->dev;//&serial->dev->dev;
+	serial_priv->f75115_pwm_chip.dev =
+		&serial->interface->dev; //&serial->dev->dev;
 	serial_priv->f75115_pwm_chip.ops = &pwm_f75115_ops;
 	serial_priv->f75115_pwm_chip.npwm = F75115_MAX_PWN_CNT;
 	serial_priv->f75115_pwm_chip.base = -1;
@@ -3733,7 +4285,8 @@ static int f75115_pwm_init(struct usb_serial *serial)
 
 	r = device_create_file(&serial->interface->dev, &dev_attr_pwm_div);
 	if (r) {
-		device_remove_file(&serial->interface->dev, &dev_attr_pwm_freq);
+		device_remove_file(&serial->interface->dev,
+				   &dev_attr_pwm_freq);
 		return -EPERM;
 	}
 
@@ -3771,7 +4324,7 @@ static void f75115_pwm_deinit(struct usb_serial *serial)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 static int f75115_calc_num_ports(struct usb_serial *serial,
-		struct usb_serial_endpoints *epds)
+				 struct usb_serial_endpoints *epds)
 #else
 static int f75115_calc_num_ports(struct usb_serial *serial)
 #endif
@@ -3786,13 +4339,13 @@ static int f75115_calc_num_ports(struct usb_serial *serial)
 	status = f75115_find_config_idx(serial, &setting_idx);
 	if (status) {
 		dev_err(&serial->dev->dev,
-				"%s: f75115_find_config_idx read failed!!\n",
-				__func__);
+			"%s: f75115_find_config_idx read failed!!\n",
+			__func__);
 		return 0;
 	}
 
 	/* Save the configuration area idx as private data for attach() */
-	usb_set_serial_data(serial, (void *) setting_idx);
+	usb_set_serial_data(serial, (void *)setting_idx);
 
 	/*
 	 * if had custom setting, override it.
@@ -3800,27 +4353,26 @@ static int f75115_calc_num_ports(struct usb_serial *serial)
 	 * is had data, then skip with 1st data
 	 */
 	if (setting_idx != F75115_CUSTOM_NO_CUSTOM_DATA) {
-		status = f75115_read_data(serial,
-					  F75115_CUSTOM_ADDRESS_START +
-					  F75115_CUSTOM_DATA_SIZE *
-					  setting_idx + 1, sizeof(setting),
-					  setting);
+		status = f75115_read_data(
+			serial,
+			F75115_CUSTOM_ADDRESS_START +
+				F75115_CUSTOM_DATA_SIZE * setting_idx + 1,
+			sizeof(setting), setting);
 		if (status) {
 			dev_err(&serial->dev->dev,
-					"%s: get custom data failed!!\n",
-					__func__);
+				"%s: get custom data failed!!\n", __func__);
 			return 0;
 		}
 
 		dev_info(&serial->dev->dev,
-				"%s: read configure from block:%d\n", __func__,
-				(int) setting_idx);
+			 "%s: read configure from block:%d\n", __func__,
+			 (int)setting_idx);
 	} else {
 #if 0	
 		reset = true;
 #endif
 		dev_info(&serial->dev->dev, "%s: read configure default\n",
-				__func__);
+			 __func__);
 	}
 
 #if 0	
@@ -3850,12 +4402,12 @@ static int f75115_calc_num_ports(struct usb_serial *serial)
 		return num_port;
 
 	dev_err(&serial->dev->dev, "Read Failed!!, default 4 ports\n");
-	return 4;		/* nothing found, oldest version IC */
+	return 4; /* nothing found, oldest version IC */
 }
 
 static void f75115_set_termios(struct tty_struct *tty,
-				struct usb_serial_port *port,
-				struct ktermios *old_termios)
+			       struct usb_serial_port *port,
+			       struct ktermios *old_termios)
 {
 	struct usb_device *dev = port->serial->dev;
 	struct f75115_port_private *port_priv;
@@ -3917,7 +4469,7 @@ static void f75115_set_termios(struct tty_struct *tty,
 					new_lcr);
 	if (status < 0)
 		dev_err(&port->dev, "%s - f75115_set_port_config failed: %i\n",
-				__func__, status);
+			__func__, status);
 
 	/* Re-Enable writer for to check H/W flow Control */
 	status = f75115_submit_writer(port, GFP_KERNEL);
@@ -3934,18 +4486,17 @@ static int f75115_init_uart(struct usb_serial_port *port)
 	port_priv = usb_get_serial_port_data(port);
 	serial_priv = usb_get_serial_data(port->serial);
 
-	status =
-	    f75115_switch_gpio_mode(port, F75115_PIN_SET_DEFAULT);
+	status = f75115_switch_gpio_mode(port, F75115_PIN_SET_DEFAULT);
 	if (status) {
 		dev_err(&port->dev,
-				"%s: switch gpio mode failed!! status:%d\n",
-				__func__, status);
+			"%s: switch gpio mode failed!! status:%d\n", __func__,
+			status);
 		return status;
 	}
 
-	status = f75115_setregister(port->serial->dev, port_priv->phy,
-			INTERRUPT_ENABLE_REGISTER,
-			UART_IER_MSI | UART_IER_THRI | UART_IER_RDI);
+	status = f75115_setregister(
+		port->serial->dev, port_priv->phy, INTERRUPT_ENABLE_REGISTER,
+		UART_IER_MSI | UART_IER_THRI | UART_IER_RDI);
 
 	return status;
 }
@@ -3953,7 +4504,7 @@ static int f75115_init_uart(struct usb_serial_port *port)
 static int f75115_open(struct tty_struct *tty, struct usb_serial_port *port)
 {
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(port->serial);
+		usb_get_serial_data(port->serial);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	int phy = port_priv->phy;
 	int status;
@@ -4039,7 +4590,7 @@ static int f75115_open(struct tty_struct *tty, struct usb_serial_port *port)
 
 	for (i = 0; i < 1; ++i)
 		pr_info("%s: i: %d, data: %x\r\n", __func__, i, buf[i]);
-	
+
 #endif
 
 	atomic_inc(&serial_priv->port_active[phy]);
@@ -4051,7 +4602,7 @@ static void f75115_close(struct usb_serial_port *port)
 	int i;
 	unsigned long flags;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(port->serial);
+		usb_get_serial_data(port->serial);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	int phy = port_priv->phy;
 
@@ -4139,7 +4690,7 @@ static void f75115_remove_urbs(struct usb_serial *serial)
 static void f75115_disconnect(struct usb_serial *serial)
 {
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 
 	if (en_i2c)
 		f75115_i2c_deinit(serial, serial_priv->f75115_gpio_chip.base);
@@ -4159,7 +4710,7 @@ static void f75115_disconnect(struct usb_serial *serial)
 static void f75115_release(struct usb_serial *serial)
 {
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 
 	kfree(serial_priv);
 
@@ -4199,8 +4750,8 @@ static int f75115_get_serial_info(struct usb_serial_port *port,
 }
 
 #ifdef MULTIDROP_ENABLE
-static int f75115_mask_setregister(struct usb_device *dev, u8 uart, u16 reg, u8 mask,
-				u8 data)
+static int f75115_mask_setregister(struct usb_device *dev, u8 uart, u16 reg,
+				   u8 mask, u8 data)
 {
 	int status;
 	u8 tmp;
@@ -4238,38 +4789,36 @@ static int f75115_set_9Bits(struct usb_serial_port *port, int __user *arg)
 		port_priv->bitmask_9bit = (mode >> 8) & 0xFF;
 	} else {
 		port_priv->mode_9bit = port_priv->bitmask_9bit =
-		    port_priv->addr_9bit = 0;
+			port_priv->addr_9bit = 0;
 	}
 
 	/* bit4 9bit mode */
-	status = f75115_mask_setregister(dev, port_num,
-				CONFIG1_REGISTER, (1 << 4),
-				port_priv->mode_9bit << 4);
+	status = f75115_mask_setregister(dev, port_num, CONFIG1_REGISTER,
+					 (1 << 4), port_priv->mode_9bit << 4);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
 	}
 
 	/* bit6 auto addr */
-	status = f75115_mask_setregister(dev, port_num,
-				CLK_SEL_REGISTER, (1 << 6),
-				port_priv->mode_9bit << 6);
+	status = f75115_mask_setregister(dev, port_num, CLK_SEL_REGISTER,
+					 (1 << 6), port_priv->mode_9bit << 6);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
 	}
 
 	/* saddress */
-	status = f75115_setregister(dev, port_num,
-				SADDRESS_REGISTER, port_priv->addr_9bit);
+	status = f75115_setregister(dev, port_num, SADDRESS_REGISTER,
+				    port_priv->addr_9bit);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
 	}
 
 	/* saden */
-	status = f75115_setregister(dev, port_num,
-				SADEN_REGISTER, port_priv->bitmask_9bit);
+	status = f75115_setregister(dev, port_num, SADEN_REGISTER,
+				    port_priv->bitmask_9bit);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
@@ -4277,8 +4826,8 @@ static int f75115_set_9Bits(struct usb_serial_port *port, int __user *arg)
 
 	/* bit4 sm2 */
 	status = f75115_mask_setregister(dev, port_num,
-				INTERRUPT_ENABLE_REGISTER, (1 << 4),
-				port_priv->mode_9bit << 4);
+					 INTERRUPT_ENABLE_REGISTER, (1 << 4),
+					 port_priv->mode_9bit << 4);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
@@ -4311,9 +4860,8 @@ static int f75115_get_sm2(struct usb_serial_port *port, int __user *arg)
 	int status;
 	int port_num = port_priv->phy;
 
-	status = f75115_getregister(dev, port_num,
-					INTERRUPT_ENABLE_REGISTER,
-					&tmp);
+	status = f75115_getregister(dev, port_num, INTERRUPT_ENABLE_REGISTER,
+				    &tmp);
 	if (status) {
 		dev_err(&port->dev, "%s: failed, %d\n", __func__, __LINE__);
 		return status;
@@ -4329,7 +4877,7 @@ static int f75115_get_sm2(struct usb_serial_port *port, int __user *arg)
 #endif
 
 static int f75115_set_port_mode(struct usb_serial_port *port,
-		enum uart_mode eMode)
+				enum uart_mode eMode)
 {
 	int status;
 	u8 tmp;
@@ -4340,7 +4888,7 @@ static int f75115_set_port_mode(struct usb_serial_port *port,
 
 	if (eMode != uart_mode_invalid) {
 		status = f75115_getregister(port->serial->dev, port_priv->phy,
-						CLK_SEL_REGISTER, &tmp);
+					    CLK_SEL_REGISTER, &tmp);
 		if (status)
 			return status;
 
@@ -4369,7 +4917,7 @@ static int f75115_set_port_mode(struct usb_serial_port *port,
 #endif
 
 		status = f75115_setregister(port->serial->dev, port_priv->phy,
-						CLK_SEL_REGISTER, tmp);
+					    CLK_SEL_REGISTER, tmp);
 		if (status)
 			return status;
 	}
@@ -4388,8 +4936,8 @@ static int f75115_get_configure_data(struct usb_serial_port *port,
 
 	memset(&data, 0, sizeof(data));
 
-	if (copy_from_user
-	    (&data, (struct internal_data __user *)arg, sizeof(data)))
+	if (copy_from_user(&data, (struct internal_data __user *)arg,
+			   sizeof(data)))
 		return -EFAULT;
 
 	data.size = min(data.size, max_block);
@@ -4398,8 +4946,8 @@ static int f75115_get_configure_data(struct usb_serial_port *port,
 	if (nRet)
 		return nRet;
 
-	if (copy_to_user
-	    ((struct internal_data __user *)arg, &data, sizeof(data)))
+	if (copy_to_user((struct internal_data __user *)arg, &data,
+			 sizeof(data)))
 		return -EFAULT;
 
 	return 0;
@@ -4415,8 +4963,8 @@ static int f75115_set_configure_data(struct usb_serial_port *port,
 
 	memset(&data, 0, sizeof(data));
 
-	if (copy_from_user
-	    (&data, (struct internal_data __user *)arg, sizeof(data)))
+	if (copy_from_user(&data, (struct internal_data __user *)arg,
+			   sizeof(data)))
 		return -EFAULT;
 
 	data.size = min(data.size, max_block);
@@ -4425,8 +4973,8 @@ static int f75115_set_configure_data(struct usb_serial_port *port,
 	if (nRet)
 		return nRet;
 
-	if (copy_to_user
-	    ((struct internal_data __user *)arg, &data, sizeof(data)))
+	if (copy_to_user((struct internal_data __user *)arg, &data,
+			 sizeof(data)))
 		return -EFAULT;
 
 	return 0;
@@ -4441,8 +4989,8 @@ static int f75115_erase_configure_data(struct usb_serial_port *port,
 
 	memset(&data, 0, sizeof(data));
 
-	if (copy_from_user
-	    (&data, (struct internal_data __user *)arg, sizeof(data)))
+	if (copy_from_user(&data, (struct internal_data __user *)arg,
+			   sizeof(data)))
 		return -EFAULT;
 
 	nRet = f75115_erase_sector(serial, data.address);
@@ -4454,7 +5002,7 @@ static int f75115_erase_configure_data(struct usb_serial_port *port,
 #endif
 
 static int f75115_ioctl_set_gpio(struct usb_serial_port *port,
-				     struct gpio_access __user *arg)
+				 struct gpio_access __user *arg)
 {
 	struct usb_serial *serial;
 	struct f75115_serial_private *serial_priv;
@@ -4466,7 +5014,8 @@ static int f75115_ioctl_set_gpio(struct usb_serial_port *port,
 
 	memset(&data, 0, sizeof(data));
 
-	if (copy_from_user(&data, (struct gpio_access __user *)arg, sizeof(data)))
+	if (copy_from_user(&data, (struct gpio_access __user *)arg,
+			   sizeof(data)))
 		return -EFAULT;
 
 	if (data.set != 0 && data.set != 3 && data.set != 5)
@@ -4479,15 +5028,16 @@ static int f75115_ioctl_set_gpio(struct usb_serial_port *port,
 #endif
 
 	if (data.set == 5) {
-		status = f75115_set_normal_register(serial->dev, 0x1630, data.data);
+		status = f75115_set_normal_register(serial->dev, 0x1630,
+						    data.data);
 	} else {
-		status = f75115_set_normal_register(serial->dev,
-				pin_data_table[data.set], data.data);
+		status = f75115_set_normal_register(
+			serial->dev, pin_data_table[data.set], data.data);
 	}
 
 	if (status) {
-		dev_err(&serial->interface->dev, "%s: ioctl write data failed\n",
-				__func__);
+		dev_err(&serial->interface->dev,
+			"%s: ioctl write data failed\n", __func__);
 	} else {
 		serial_priv->gpio_data[data.set] = data.data;
 	}
@@ -4498,7 +5048,7 @@ static int f75115_ioctl_set_gpio(struct usb_serial_port *port,
 }
 
 static int f75115_ioctl_get_gpio(struct usb_serial_port *port,
-				     struct gpio_access __user *arg)
+				 struct gpio_access __user *arg)
 {
 	struct usb_serial *serial;
 	struct f75115_serial_private *serial_priv;
@@ -4510,7 +5060,8 @@ static int f75115_ioctl_get_gpio(struct usb_serial_port *port,
 
 	memset(&data, 0, sizeof(data));
 
-	if (copy_from_user(&data, (struct gpio_access __user *)arg, sizeof(data)))
+	if (copy_from_user(&data, (struct gpio_access __user *)arg,
+			   sizeof(data)))
 		return -EFAULT;
 
 	if (data.set != 0 && data.set != 3 && data.set != 5)
@@ -4519,16 +5070,18 @@ static int f75115_ioctl_get_gpio(struct usb_serial_port *port,
 	mutex_lock(&serial_priv->change_mode_mutex);
 
 	if (data.set == 5) {
-		status = f75115_get_normal_register(serial->dev, 0x1650, &data.data);
+		status = f75115_get_normal_register(serial->dev, 0x1650,
+						    &data.data);
 	} else {
-		status = f75115_get_normal_register(serial->dev, pin_data_table[data.set], &data.data);
+		status = f75115_get_normal_register(
+			serial->dev, pin_data_table[data.set], &data.data);
 		if (!status)
 			serial_priv->gpio_data[data.set] = data.data;
 	}
 
 	if (status) {
-		dev_err(&serial->interface->dev, "%s: ioctl write data failed\n",
-				__func__);
+		dev_err(&serial->interface->dev,
+			"%s: ioctl write data failed\n", __func__);
 		goto end;
 	}
 
@@ -4536,14 +5089,14 @@ static int f75115_ioctl_get_gpio(struct usb_serial_port *port,
 	serial_priv->gpio_data[data.set] = data.data;
 #endif
 
-	if (copy_to_user((struct gpio_access __user *)arg, &data, sizeof(data)))
+	if (copy_to_user((struct gpio_access __user *)arg, &data,
+			 sizeof(data)))
 		status = -EFAULT;
 end:
 	mutex_unlock(&serial_priv->change_mode_mutex);
 
 	return status;
 }
-
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
 static int f75115_ioctl(struct tty_struct *tty, unsigned int cmd,
@@ -4557,9 +5110,8 @@ static int f75115_ioctl(struct tty_struct *tty, struct file *file,
 
 	switch (cmd) {
 	case TIOCGSERIAL:
-		return f75115_get_serial_info(port,
-						(struct serial_struct __user *)
-						arg);
+		return f75115_get_serial_info(
+			port, (struct serial_struct __user *)arg);
 #ifdef MULTIDROP_ENABLE
 	case FINTEK_SET_MULTI_DROP_MODE:
 		return f75115_set_9Bits(port, (int __user *)arg);
@@ -4570,24 +5122,23 @@ static int f75115_ioctl(struct tty_struct *tty, struct file *file,
 #endif
 #ifdef FLASH_RW_DRIVER
 	case FINTEK_ERASE_DATA_PAGE:
-		return f75115_erase_configure_data(port,
-						(struct internal_data __user *)
-						arg);
+		return f75115_erase_configure_data(
+			port, (struct internal_data __user *)arg);
 
 	case FINTEK_GET_DATA:
-		return f75115_get_configure_data(port,
-						(struct internal_data __user *)
-						arg);
+		return f75115_get_configure_data(
+			port, (struct internal_data __user *)arg);
 
 	case FINTEK_SET_DATA:
-		return f75115_set_configure_data(port,
-						(struct internal_data __user *)
-						arg);
+		return f75115_set_configure_data(
+			port, (struct internal_data __user *)arg);
 #endif
 	case FINTEK_GET_GPIO:
-		return f75115_ioctl_get_gpio(port, (struct gpio_access __user *) arg);
+		return f75115_ioctl_get_gpio(port,
+					     (struct gpio_access __user *)arg);
 	case FINTEK_SET_GPIO:
-		return f75115_ioctl_set_gpio(port, (struct gpio_access __user *) arg);
+		return f75115_ioctl_set_gpio(port,
+					     (struct gpio_access __user *)arg);
 	default:
 		break;
 	}
@@ -4599,8 +5150,7 @@ static int f75115_ioctl(struct tty_struct *tty, struct file *file,
 static void f75115_writer_worker(struct work_struct *work)
 {
 	struct f75115_port_private *port_priv =
-			container_of(work, struct f75115_port_private,
-					writer_work);
+		container_of(work, struct f75115_port_private, writer_work);
 	struct usb_serial_port *port = port_priv->port;
 	int status;
 
@@ -4615,22 +5165,21 @@ static void f75115_writer_worker(struct work_struct *work)
 static void f75115_lsr_worker(struct work_struct *work)
 {
 	struct f75115_port_private *port_priv =
-			container_of(work, struct f75115_port_private,
-					lsr_work);
+		container_of(work, struct f75115_port_private, lsr_work);
 	struct usb_serial_port *port = port_priv->port;
 	int status;
 	u8 tmp;
 
 	status = f75115_getregister(port->serial->dev, port_priv->phy,
-				LINE_STATUS_REGISTER, &tmp);
+				    LINE_STATUS_REGISTER, &tmp);
 	if (status) {
-		dev_err(&port->dev, "%s: read failed: %x\n",__func__, status);
+		dev_err(&port->dev, "%s: read failed: %x\n", __func__, status);
 	}
 }
 #endif
 
 static void f75115_compare_msr(struct usb_serial_port *port, u8 msr,
-				bool is_port_open)
+			       bool is_port_open)
 {
 	u8 old_msr;
 	struct tty_struct *tty = NULL;
@@ -4649,7 +5198,7 @@ static void f75115_compare_msr(struct usb_serial_port *port, u8 msr,
 	spin_unlock_irqrestore(&port_priv->msr_lock, flags);
 
 	if ((msr & (UART_MSR_CTS | UART_MSR_DCTS)) ==
-			(UART_MSR_CTS | UART_MSR_DCTS)) {
+	    (UART_MSR_CTS | UART_MSR_DCTS)) {
 		/* CTS changed, wakeup writer to re-check flow control */
 		if (is_port_open) {
 #ifdef WRITER_WQ
@@ -4658,16 +5207,16 @@ static void f75115_compare_msr(struct usb_serial_port *port, u8 msr,
 			status = f75115_submit_writer(port, GFP_ATOMIC);
 			if (status) {
 				dev_err(&port->dev, "%s: submit failed\n",
-						__func__);
+					__func__);
 			}
 #endif
 		}
 		dev_dbg(&port->dev, "%s: CTS Flag changed, value: %x\n",
-				__func__, !!(msr & UART_MSR_CTS));
+			__func__, !!(msr & UART_MSR_CTS));
 	}
 
 	dev_dbg(&port->dev, "%s: MSR from %02x to %02x\n", __func__, old_msr,
-			msr);
+		msr);
 
 	if (!is_port_open)
 		return;
@@ -4690,7 +5239,7 @@ static void f75115_compare_msr(struct usb_serial_port *port, u8 msr,
 		return;
 
 	dev_dbg(&port->dev, "%s: DCD Changed: port %d from %x to %x.\n",
-			__func__, port_priv->phy, old_msr, msr);
+		__func__, port_priv->phy, old_msr, msr);
 
 	tty = tty_port_tty_get(&port->port);
 	if (!tty)
@@ -4702,7 +5251,7 @@ static void f75115_compare_msr(struct usb_serial_port *port, u8 msr,
 }
 
 static void f75115_process_per_serial_block(struct usb_serial_port *port,
-		unsigned char *data)
+					    unsigned char *data)
 {
 	u8 lsr, lsr_total = 0;
 	char tty_flag;
@@ -4711,7 +5260,7 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 #endif
 	struct usb_serial *serial = port->serial;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 #ifdef LSR_ISSUE
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 #endif
@@ -4724,8 +5273,8 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 	int read_size = 0;
 	int i;
 	unsigned long flags;
-	bool available = !!atomic_read(
-				&serial_priv->port_active[phy_port_num]);
+	bool available =
+		!!atomic_read(&serial_priv->port_active[phy_port_num]);
 
 	/*
 	 * The block layout is 128 Bytes
@@ -4764,12 +5313,12 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 	case F75115_TOKEN_RECEIVE:
 		read_size = data[2];
 		dev_dbg(&port->dev, "%s: F75115_TOKEN_RECEIVE read_size:%d\n",
-				__func__, read_size);
+			__func__, read_size);
 		break;
 
 	default:
 		dev_warn(&port->dev, "%s: unknown token:%02x\n", __func__,
-				data[1]);
+			 data[1]);
 		return;
 	}
 
@@ -4802,7 +5351,7 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 		lsr = data[i + 1];
 
 		lsr_total |= lsr;
-		
+
 		if (lsr & UART_LSR_BRK_ERROR_BITS) {
 			//dev_warn(&port->dev, "lsr : %x\n", lsr);
 
@@ -4830,13 +5379,12 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 #endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
 				tty_insert_flip_char(&port->port, 0,
-						TTY_OVERRUN);
+						     TTY_OVERRUN);
 #else
 				tty_insert_flip_char(tty, 0, TTY_OVERRUN);
 #endif
 			}
 		}
-
 
 		if (
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 34)
@@ -4864,7 +5412,7 @@ static void f75115_process_per_serial_block(struct usb_serial_port *port,
 		schedule_work(&port_priv->lsr_work);
 #endif
 	}
-	
+
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0)
 	tty_flip_buffer_push(&port->port);
 #else
@@ -4880,7 +5428,7 @@ static void f75115_process_read_urb(struct urb *urb)
 	int tty_port_num;
 	unsigned char *ch;
 	struct usb_serial *serial;
- 	struct f75115_serial_private *serial_priv = NULL;
+	struct f75115_serial_private *serial_priv = NULL;
 	struct usb_serial_port *port = NULL;
 	struct f75115_port_private *port_priv = NULL;
 
@@ -4896,16 +5444,15 @@ static void f75115_process_read_urb(struct urb *urb)
 		phy_port_num = ch[i];
 		if (phy_port_num >= F75115_NUM_PORT) {
 			dev_err(&serial->dev->dev,
-					"phy_port_num >= F75115_NUM_PORT: %d\n",
-					phy_port_num);
+				"phy_port_num >= F75115_NUM_PORT: %d\n",
+				phy_port_num);
 			continue;
 		}
 
-		if(serial_priv->default_conf_data[phy_port_num] &
-				F75115_PORT_UNAVAILABLE) {
-			dev_dbg(&serial->dev->dev, 
-					"phy_port_num: %d, skipped\n",
-					phy_port_num);
+		if (serial_priv->default_conf_data[phy_port_num] &
+		    F75115_PORT_UNAVAILABLE) {
+			dev_dbg(&serial->dev->dev,
+				"phy_port_num: %d, skipped\n", phy_port_num);
 			continue;
 		}
 
@@ -4922,9 +5469,8 @@ static void f75115_process_read_urb(struct urb *urb)
 		 */
 		port_priv = usb_get_serial_port_data(port);
 		if (!port_priv) {
-			dev_dbg(&serial->dev->dev,
-					"%s: phy: %d not ready!\n", __func__,
-					phy_port_num);
+			dev_dbg(&serial->dev->dev, "%s: phy: %d not ready!\n",
+				__func__, phy_port_num);
 			continue;
 		}
 
@@ -4933,9 +5479,8 @@ static void f75115_process_read_urb(struct urb *urb)
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2, 6, 35)
 	i = usb_submit_urb(urb, GFP_ATOMIC);
 	if (i)
-		dev_err(&port->dev,
-				"%s: resubmitting read URB, failed %d\n",
-				__func__, i);
+		dev_err(&port->dev, "%s: resubmitting read URB, failed %d\n",
+			__func__, i);
 #endif
 }
 
@@ -4946,7 +5491,7 @@ static void f75115_write_usb_callback(struct urb *urb)
 
 	if (status) {
 		dev_warn(&port->dev, "%s - non-zero URB status: %d\n",
-				__func__, status);
+			 __func__, status);
 	} else {
 		usb_serial_port_softint(port);
 	}
@@ -4977,8 +5522,8 @@ static int f75115_setup_urbs(struct usb_serial *serial)
 		if (kfifo_alloc(&port->write_fifo, PAGE_SIZE, GFP_KERNEL))
 			goto failed;
 #else
-		port->write_fifo = kfifo_alloc(PAGE_SIZE, GFP_KERNEL,
-								&port->lock);
+		port->write_fifo =
+			kfifo_alloc(PAGE_SIZE, GFP_KERNEL, &port->lock);
 		if (IS_ERR(port->write_fifo))
 			goto failed;
 #endif
@@ -4994,17 +5539,18 @@ static int f75115_setup_urbs(struct usb_serial *serial)
 			if (!port->write_urbs[j])
 				goto failed;
 
-			port->bulk_out_buffers[j] = kmalloc(buffer_size,
-								GFP_KERNEL);
+			port->bulk_out_buffers[j] =
+				kmalloc(buffer_size, GFP_KERNEL);
 			if (!port->bulk_out_buffers[j])
 				goto failed;
 
 			usb_fill_bulk_urb(port->write_urbs[j], serial->dev,
-					usb_sndbulkpipe(serial->dev,
-						port0_out_address),
-					port->bulk_out_buffers[j], buffer_size,
-					serial->type->write_bulk_callback,
-					port);
+					  usb_sndbulkpipe(serial->dev,
+							  port0_out_address),
+					  port->bulk_out_buffers[j],
+					  buffer_size,
+					  serial->type->write_bulk_callback,
+					  port);
 		}
 
 		port->write_urb = port->write_urbs[0];
@@ -5019,11 +5565,11 @@ static int f75115_setup_urbs(struct usb_serial *serial)
 			goto failed;
 
 		usb_fill_bulk_urb(port->write_urb, serial->dev,
-			usb_sndbulkpipe(serial->dev,
-				port0_out_address), port->bulk_out_buffer,
-			buffer_size, serial->type->write_bulk_callback, port);
+				  usb_sndbulkpipe(serial->dev,
+						  port0_out_address),
+				  port->bulk_out_buffer, buffer_size,
+				  serial->type->write_bulk_callback, port);
 #endif
-
 	}
 	return 0;
 
@@ -5037,28 +5583,29 @@ static int f75115_submit_read_urb(struct usb_serial *serial, gfp_t mem_flags)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 3, 0)
 	status = usb_serial_generic_submit_read_urbs(serial->port[0],
-				mem_flags);
+						     mem_flags);
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 35)
-	status = usb_serial_generic_submit_read_urb(serial->port[0],
-				mem_flags);
+	status =
+		usb_serial_generic_submit_read_urb(serial->port[0], mem_flags);
 #else
 	/* Continue reading from device */
-	usb_fill_bulk_urb(serial->port[0]->read_urb, serial->dev,
-			usb_rcvbulkpipe(serial->dev,
+	usb_fill_bulk_urb(
+		serial->port[0]->read_urb, serial->dev,
+		usb_rcvbulkpipe(serial->dev,
 				serial->port[0]->bulk_in_endpointAddress),
-			serial->port[0]->read_urb->transfer_buffer,
-			serial->port[0]->read_urb->transfer_buffer_length,
-			f75115_process_read_urb, serial->port[0]);
+		serial->port[0]->read_urb->transfer_buffer,
+		serial->port[0]->read_urb->transfer_buffer_length,
+		f75115_process_read_urb, serial->port[0]);
 	status = usb_submit_urb(serial->port[0]->read_urb, mem_flags);
 	if (status)
 		dev_err(&serial->dev->dev,
-				"%s: submitting read URB, fail %d\n",
-				__func__, status);
+			"%s: submitting read URB, fail %d\n", __func__,
+			status);
 #endif
 	if (status) {
 		dev_err(&serial->dev->dev,
-				"%s: submit read URB failed!! status:%d!!\n",
-				__func__, status);
+			"%s: submit read URB failed!! status:%d!!\n", __func__,
+			status);
 		return status;
 	}
 
@@ -5225,7 +5772,7 @@ static int f75115_read_fw_ver(struct usb_serial *serial)
 {
 	struct f75115_serial_private *serial_priv;
 	int i, r, len;
-	u8 buf[5] = {0};
+	u8 buf[5] = { 0 };
 
 	serial_priv = usb_get_serial_data(serial);
 	len = strlen(serial->dev->product);
@@ -5233,12 +5780,65 @@ static int f75115_read_fw_ver(struct usb_serial *serial)
 	for (i = 0; i < 4; ++i)
 		buf[i] = serial->dev->product[len - 4 + i];
 
-	r = kstrtol(buf, 16, &serial_priv->fw_ver); 
+	r = kstrtol(buf, 16, &serial_priv->fw_ver);
 	//pr_info("%s: %lx\n", __func__, serial_priv->fw_ver);
 
 	//dev_info(&serial->dev->dev, "%s: H/W version: %x\n", __func__, ver);
 
 	return 0;
+}
+
+static void f75115_gpio_init_status(struct usb_serial *serial)
+{
+        struct f75115_serial_private *serial_priv =
+                usb_get_serial_data(serial);
+	int base = serial_priv->f75115_gpio_chip.base;
+
+        dev_info(&serial->dev->dev, "%s: base=%d\n", __func__, base);
+	gpio_request(base + F75115_GPIO52,"U2_E12_1_EN");
+	gpio_request(base + F75115_GPIO16,"U2_E12_2_EN");
+	gpio_request(base + F75115_GPIO30,"U2_E34_1_EN");
+	gpio_request(base + F75115_GPIO32,"U2_E34_2_EN");
+	gpio_request(base + F75115_GPIO34,"CC_SW_EN");
+	gpio_request(base + F75115_GPIO36,"DIS_SW_EN");
+	gpio_request(base + F75115_GPIO20,"USB_5V_EN");
+	gpio_request(base + F75115_GPIO21,"S_U2H_RESET_N");
+	gpio_request(base + F75115_GPIO24,"EX_DO1");
+	gpio_request(base + F75115_GPIO07,"SSR_EN");
+	gpio_request(base + F75115_GPIO03,"AMP_SDZ_N");
+	gpio_request(base + F75115_GPIO01,"EX_DO2");
+        gpio_request(base + F75115_GPIO10,"U2H_RESET_N");
+	
+	mdelay(150);
+
+	gpio_direction_output(base + F75115_GPIO52, 1);
+	gpio_direction_output(base + F75115_GPIO16, 1);
+	gpio_direction_output(base + F75115_GPIO30, 1);
+	gpio_direction_output(base + F75115_GPIO32, 1);
+	gpio_direction_output(base + F75115_GPIO34, 1);
+	gpio_direction_output(base + F75115_GPIO36, 1);
+	gpio_direction_output(base + F75115_GPIO20, 1);
+	gpio_direction_output(base + F75115_GPIO21, 1);
+	gpio_direction_output(base + F75115_GPIO24, 1);
+	gpio_direction_output(base + F75115_GPIO07, 1);
+	gpio_direction_output(base + F75115_GPIO03, 1);
+	gpio_direction_output(base + F75115_GPIO01, 1);
+        gpio_direction_output(base + F75115_GPIO10, 1);
+
+	gpio_export(base + F75115_GPIO52, 1);
+	gpio_export(base + F75115_GPIO16, 1);
+	gpio_export(base + F75115_GPIO30, 1);
+	gpio_export(base + F75115_GPIO32, 1);
+	gpio_export(base + F75115_GPIO34, 1);
+	gpio_export(base + F75115_GPIO36, 1);
+	gpio_export(base + F75115_GPIO20, 1);
+	gpio_export(base + F75115_GPIO21, 1);
+	gpio_export(base + F75115_GPIO24, 1);
+	gpio_export(base + F75115_GPIO07, 1);
+        gpio_export(base + F75115_GPIO03, 1);
+	gpio_export(base + F75115_GPIO01, 1);
+        gpio_export(base + F75115_GPIO10, 1);
+
 }
 
 static int f75115_attach(struct usb_serial *serial)
@@ -5250,7 +5850,7 @@ static int f75115_attach(struct usb_serial *serial)
 
 	status = f75115_pin_init(serial);
 	if (status)
-		return status;	
+		return status;
 
 #if 0
 	status = f75115_fixup(serial);
@@ -5276,8 +5876,8 @@ static int f75115_attach(struct usb_serial *serial)
 	status = f75115_prepare_gpio(serial);
 	if (status) {
 		dev_err(&serial->dev->dev,
-				"%s: f75115_prepare_gpio failed!! status:%d!!\n",
-				__func__, status);
+			"%s: f75115_prepare_gpio failed!! status:%d!!\n",
+			__func__, status);
 
 		goto failed;
 	}
@@ -5285,8 +5885,8 @@ static int f75115_attach(struct usb_serial *serial)
 	offset = F75115_CUSTOM_ADDRESS_START + 1;
 	/* only read 8 bytes for mode & GPIO */
 	status = f75115_read_data(serial, offset,
-					sizeof(serial_priv->default_conf_data),
-					serial_priv->default_conf_data);
+				  sizeof(serial_priv->default_conf_data),
+				  serial_priv->default_conf_data);
 
 	status = f75115_setup_urbs(serial);
 	if (status)
@@ -5301,14 +5901,14 @@ static int f75115_attach(struct usb_serial *serial)
 	status = f75115_submit_read_urb(serial, GFP_KERNEL);
 	if (status) {
 		dev_err(&serial->dev->dev,
-				"%s: submit read URB failed!! status:%d!!\n",
-				__func__, status);
+			"%s: submit read URB failed!! status:%d!!\n", __func__,
+			status);
 		goto failed;
 	}
 
 	if (en_i2c) {
 		status = f75115_i2c_init(serial,
-					serial_priv->f75115_gpio_chip.base);
+					 serial_priv->f75115_gpio_chip.base);
 		if (status) {
 			f75115_release_gpio(serial);
 			return -EINVAL;
@@ -5317,7 +5917,7 @@ static int f75115_attach(struct usb_serial *serial)
 
 	if (en_spi) {
 		status = f75115_spi_init(serial,
-					serial_priv->f75115_gpio_chip.base);
+					 serial_priv->f75115_gpio_chip.base);
 		if (status) {
 			f75115_release_gpio(serial);
 			return -EINVAL;
@@ -5330,6 +5930,8 @@ static int f75115_attach(struct usb_serial *serial)
 		return -EINVAL;
 	}
 
+	f75115_gpio_init_status(serial);
+
 	device_set_wakeup_enable(&serial->dev->dev, true);
 	return 0;
 
@@ -5339,8 +5941,8 @@ failed:
 }
 
 #ifdef SAVE_CONTROL
-static ssize_t no_save_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t no_save_show(struct device *dev, struct device_attribute *attr,
+			    char *buf)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
@@ -5348,9 +5950,8 @@ static ssize_t no_save_show(struct device *dev,
 	return sprintf(buf, "%d\n", !!(port_priv->port_flag & PORT_NOSAVE));
 }
 
-static ssize_t no_save_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+static ssize_t no_save_store(struct device *dev, struct device_attribute *attr,
+			     const char *buf, size_t count)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
@@ -5368,13 +5969,13 @@ static ssize_t no_save_store(struct device *dev,
 #endif
 
 #ifdef DEBUG_INTERNAL_SYSFS
-static ssize_t internal_show(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t internal_show(struct device *dev, struct device_attribute *attr,
+			     char *buf)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct usb_serial *serial = port->serial;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
 	int fifo_size = kfifo_len(&port->write_fifo);
@@ -5383,18 +5984,18 @@ static ssize_t internal_show(struct device *dev,
 #endif
 
 	return sprintf(buf, "is using(txempty):%d\nfifo size:%d\n",
-			serial_priv->is_phy_port_not_empty[port_priv->phy],
-			fifo_size);
+		       serial_priv->is_phy_port_not_empty[port_priv->phy],
+		       fifo_size);
 }
 
 static ssize_t internal_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+			      struct device_attribute *attr, const char *buf,
+			      size_t count)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct usb_serial *serial = port->serial;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 
 	if (!count)
@@ -5409,7 +6010,7 @@ static ssize_t internal_store(struct device *dev,
 }
 
 static ssize_t reg_dump_show(struct device *dev, struct device_attribute *attr,
-				char *buf)
+			     char *buf)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct usb_serial *serial = port->serial;
@@ -5420,22 +6021,22 @@ static ssize_t reg_dump_show(struct device *dev, struct device_attribute *attr,
 	len += sprintf(&buf[len], "Port Phy: %d\n", port_priv->phy);
 	for (i = 0; i < 12; ++i) {
 		status = f75115_getregister(serial->dev, port_priv->phy,
-						SERIAL_BASE_ADDRESS + i, &tmp);
+					    SERIAL_BASE_ADDRESS + i, &tmp);
 		if (status) {
 			dev_err(&port->dev, "%s: failed, %d\n", __func__,
-					__LINE__);
+				__LINE__);
 			return status;
 		}
 		len += sprintf(&buf[len], "Reg: %04x, value:%02x\n",
-					SERIAL_BASE_ADDRESS + i, tmp);
+			       SERIAL_BASE_ADDRESS + i, tmp);
 	}
 
 	return len;
 }
 
 static ssize_t reg_dump_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+			      struct device_attribute *attr, const char *buf,
+			      size_t count)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct usb_serial *serial = port->serial;
@@ -5450,24 +6051,23 @@ static ssize_t reg_dump_store(struct device *dev,
 
 #ifndef CONFIG_GPIO_SYSFS
 static ssize_t gpio_show(struct device *dev, struct device_attribute *attr,
-				char *buf)
+			 char *buf)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 
 	return sprintf(buf, "gpio mode: %d\n",
-			port_priv->port_pin_data.gpio_mode);
+		       port_priv->port_pin_data.gpio_mode);
 }
 
-static ssize_t gpio_store(struct device *dev,
-				struct device_attribute *attr, const char *buf,
-				size_t count)
+static ssize_t gpio_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
 {
 	struct usb_serial_port *port = to_usb_serial_port(dev);
 	struct usb_serial *serial = port->serial;
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	int status;
 	u8 tmp;
 
@@ -5530,7 +6130,7 @@ static int f75115_init_msr(struct usb_serial_port *port)
 
 	/* Get MSR initial value*/
 	status = f75115_getregister(serial->dev, phy, MODEM_STATUS_REGISTER,
-					&msr);
+				    &msr);
 	if (status)
 		return status;
 
@@ -5544,7 +6144,7 @@ static int f75115_port_probe(struct usb_serial_port *port)
 {
 	struct usb_serial *serial = port->serial;
 	struct f75115_serial_private *serial_priv =
-			usb_get_serial_data(serial);
+		usb_get_serial_data(serial);
 	struct f75115_port_private *port_priv = NULL;
 	int status, i, count = 0;
 	int port_index = f75115_port_index(port);
@@ -5592,7 +6192,7 @@ static int f75115_port_probe(struct usb_serial_port *port)
 
 	for (i = 0; i < F75115_NUM_PORT; ++i) {
 		if (serial_priv->default_conf_data[i] &
-				F75115_PORT_UNAVAILABLE)
+		    F75115_PORT_UNAVAILABLE)
 			continue;
 
 		if (port_index == count) {
@@ -5610,7 +6210,7 @@ static int f75115_port_probe(struct usb_serial_port *port)
 
 	usb_set_serial_port_data(port, port_priv);
 	dev_info(&port->dev, "%s: mapping to phy: %d\n", __func__,
-			port_priv->phy);
+		 port_priv->phy);
 
 	/*
 	 * We'll read MSR reg only with port_porbe() for initial once, then
@@ -5624,7 +6224,7 @@ static int f75115_port_probe(struct usb_serial_port *port)
 	status = f75115_set_port_mode(port, uart_mode_rs232);
 	if (status < 0) {
 		dev_err(&port->dev, "%s: initial setup failed phy: (%i)\n",
-				__func__, port_priv->phy);
+			__func__, port_priv->phy);
 		goto port_fail;
 	}
 
@@ -5753,8 +6353,8 @@ static int f75115_tiocmget(struct tty_struct *tty, struct file *file)
 
 	mcr = port_priv->shadow_mcr;
 
-	r = f75115_getregister(serial->dev, port_priv->phy, MODEM_STATUS_REGISTER,
-					&msr);
+	r = f75115_getregister(serial->dev, port_priv->phy,
+			       MODEM_STATUS_REGISTER, &msr);
 	if (r) {
 		mutex_unlock(&port_priv->msr_mutex);
 		return r;
@@ -5776,12 +6376,11 @@ static int f75115_tiocmget(struct tty_struct *tty, struct file *file)
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0)
-static int f75115_tiocmset(struct tty_struct *tty,
-			   unsigned int set, unsigned int clear)
-#else
-static int f75115_tiocmset(struct tty_struct *tty,
-			   struct file *file, unsigned int set,
+static int f75115_tiocmset(struct tty_struct *tty, unsigned int set,
 			   unsigned int clear)
+#else
+static int f75115_tiocmset(struct tty_struct *tty, struct file *file,
+			   unsigned int set, unsigned int clear)
 #endif
 {
 	struct usb_serial_port *port = tty->driver_data;
@@ -5799,8 +6398,7 @@ static void f75115_dtr_rts(struct usb_serial_port *port, int on)
 	//dev_info(&port->dev, "%s: %d\n", __func__, on);
 }
 
-static int f75115_write(struct tty_struct *tty,
-			struct usb_serial_port *port,
+static int f75115_write(struct tty_struct *tty, struct usb_serial_port *port,
 			const unsigned char *buf, int count)
 {
 #ifdef WRITER_WQ
@@ -5814,8 +6412,8 @@ static int f75115_write(struct tty_struct *tty,
 		return 0;
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 33)
-	bytes_out = kfifo_in_locked(&port->write_fifo, buf, count,
-					&port->lock);
+	bytes_out =
+		kfifo_in_locked(&port->write_fifo, buf, count, &port->lock);
 #else
 	bytes_out = kfifo_put(port->write_fifo, buf, count);
 #endif
@@ -5846,8 +6444,8 @@ static int f75115_resume(struct usb_serial *serial)
 	status = f75115_submit_read_urb(serial, GFP_NOIO);
 	if (status) {
 		dev_err(&serial->dev->dev,
-				"%s: submit read URB failed!! status:%d!!\n",
-				__func__, status);
+			"%s: submit read URB failed!! status:%d!!\n", __func__,
+			status);
 		return status;
 	}
 
@@ -5893,7 +6491,7 @@ static inline int usb_endpoint_maxp(const struct usb_endpoint_descriptor *epd)
 #endif
 
 static int f75115_probe(struct usb_serial *serial,
-					const struct usb_device_id *id)
+			const struct usb_device_id *id)
 {
 	struct usb_endpoint_descriptor *endpoint;
 	struct usb_host_interface *iface_desc;
@@ -5927,7 +6525,7 @@ static int f75115_probe(struct usb_serial *serial,
 	}
 
 	if (size_bulk_out != F75115_WRITE_BUFFER_SIZE ||
-			size_bulk_in != F75115_MAX_RECEIVE_BLOCK_SIZE) {
+	    size_bulk_in != F75115_MAX_RECEIVE_BLOCK_SIZE) {
 		dev_err(dev, "unsupported endpoint max packet size\n");
 		return -ENODEV;
 	}
@@ -5941,7 +6539,7 @@ static bool f75115_tx_empty(struct usb_serial_port *port)
 {
 	struct f75115_port_private *port_priv = usb_get_serial_port_data(port);
 	struct f75115_serial_private *serial_priv =
-				usb_get_serial_data(port->serial);
+		usb_get_serial_data(port->serial);
 	unsigned long flags;
 	bool status;
 
@@ -6000,15 +6598,15 @@ static struct usb_serial_driver f75115_device = {
 };
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0)
-static struct usb_serial_driver *const serial_drivers[] = {
-	&f75115_device, NULL
-};
-	
+static struct usb_serial_driver *const serial_drivers[] = { &f75115_device,
+							    NULL };
+
 static int __init f75115_init(void)
 {
 	int r;
 
-	r = usb_serial_register_drivers(serial_drivers, KBUILD_MODNAME, id_table);
+	r = usb_serial_register_drivers(serial_drivers, KBUILD_MODNAME,
+					id_table);
 	if (r)
 		return r;
 
