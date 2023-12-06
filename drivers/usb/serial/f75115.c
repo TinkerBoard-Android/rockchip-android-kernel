@@ -37,7 +37,7 @@
 //#include <linux/spi/spi_bitbang.h>
 //#include "spi_gpio.h"
 
-#define DRIVER_VER "v1.02-20231123a1"
+#define DRIVER_VER "v1.02-20231205a1"
 
 #include <linux/platform_device.h>
 #if LINUX_VERSION_CODE <= KERNEL_VERSION(4, 17, 0)
@@ -2975,9 +2975,6 @@ static int f75115_gpio_hw_gpio_get(struct gpio_chip *chip, unsigned gpio_num,
 
 	mutex_lock(&serial_priv->change_mode_mutex);
 
-	if (!init && f75115_gpio_special_func(set, pin))
-		init = true;
-
 	if (init) {
 		status = f75115_set_mask_normal_register(serial->dev, 0x1620,
 							 BIT(pin), 0);
@@ -3150,9 +3147,6 @@ static int f75115_gpio_hw_sfr_get(struct gpio_chip *chip, unsigned gpio_num,
 	u8 tmp;
 
 	mutex_lock(&serial_priv->change_mode_mutex);
-
-	if (!init && f75115_gpio_special_func(set, pin))
-		init = true;
 
 	if (init) {
 		dev_dbg(&serial->interface->dev,
