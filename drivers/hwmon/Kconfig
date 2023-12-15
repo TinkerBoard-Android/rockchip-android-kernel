@@ -1921,6 +1921,16 @@ config SENSORS_XGENE
 	  If you say yes here you get support for the temperature
 	  and power sensors for APM X-Gene SoC.
 
+config SENSORS_NCT7716
+        tristate "Nuvoton NCT7716 Temperature sensor monitoring driver"
+        depends on I2C
+        help
+          If you say yes here you get support for the Nuvoton NCT7716
+          sensor chip.
+
+          This driver can also be built as a module. If so, the module
+          will be called nct7716.
+
 if ACPI
 
 comment "ACPI drivers"
