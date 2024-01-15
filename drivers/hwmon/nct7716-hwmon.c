@@ -267,7 +267,6 @@ static int nct7716_probe(struct i2c_client *client)
 
 	if (!nct7716_check_id(chip)) {
 		dev_err(&client->dev, "No NCT7716 device\n");
-		return -ENODEV;
 	}
 
 	hwmon_dev = devm_hwmon_device_register_with_info(&client->dev,
