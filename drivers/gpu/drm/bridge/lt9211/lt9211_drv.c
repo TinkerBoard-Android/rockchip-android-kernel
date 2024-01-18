@@ -163,6 +163,16 @@ void lt9211_systemint(struct lt9211_data *lt9211)
 	lt9211_write(lt9211->client, 0x26, 0x0f);
 }
 
+void lt9211_mipirx_logic_rst(struct lt9211_data *lt9211)
+{
+    lt9211_write(lt9211->client,0xff,0x81);
+    lt9211_write(lt9211->client,0x0a,0xc0);
+    lt9211_write(lt9211->client,0x20,0xbf);  //mipi rx div logic reset,for portb input
+    msleep(10);
+    lt9211_write(lt9211->client,0x0a,0xc1);
+    lt9211_write(lt9211->client,0x20,0xff);
+}
+
 void lt9211_mipirxphy(struct lt9211_data *lt9211)
 {   
 	lt9211_write(lt9211->client, 0xff, 0x85);
@@ -270,6 +280,7 @@ void lt9211_timingset(struct lt9211_data *lt9211)
 	uint8_t pa_lpn = 0;
 	struct video_timing lvds_timing = {0};
 
+   	lt9211_mipirx_logic_rst(lt9211);
 	msleep(500);//500-->100
 	lt9211_write(lt9211->client, 0xff, 0xd0);
 	hact = ((lt9211_read(lt9211->client, 0x82))<<8) + lt9211_read(lt9211->client, 0x83);
