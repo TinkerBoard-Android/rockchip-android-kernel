@@ -529,8 +529,8 @@ static int ehci_platform_remove(struct platform_device *dev)
 static int __maybe_unused ehci_platform_suspend(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	struct usb_ehci_pdata *pdata = dev_get_platdata(dev);
-	struct platform_device *pdev = to_platform_device(dev);
+	//struct usb_ehci_pdata *pdata = dev_get_platdata(dev);
+	//struct platform_device *pdev = to_platform_device(dev);
 	struct ehci_platform_priv *priv = hcd_to_ehci_priv(hcd);
 	bool do_wakeup = device_may_wakeup(dev);
 	int ret;
@@ -542,8 +542,9 @@ static int __maybe_unused ehci_platform_suspend(struct device *dev)
 	if (ret)
 		return ret;
 
-	if (pdata->power_suspend)
-		pdata->power_suspend(pdev);
+
+	//if (pdata->power_suspend)
+	//	pdata->power_suspend(pdev);
 
 	return ret;
 }
