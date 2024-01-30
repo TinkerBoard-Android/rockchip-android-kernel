@@ -36,7 +36,7 @@
 #include <linux/suspend.h>
 
 #define CONFIG_BLUEDROID        1 /* bleuz 0, bluedroid 1 */
-#define CONFIG_SCO_OVER_HCI
+//#define CONFIG_SCO_OVER_HCI
 
 #ifdef CONFIG_SCO_OVER_HCI
 #include <linux/usb/audio.h>
@@ -102,6 +102,7 @@ typedef struct RTK_sco_card {
 #define PRINT_CMD_EVENT         0
 #define PRINT_ACL_DATA          0
 #define PRINT_SCO_DATA          0
+#define PRINT_ISO_DATA          0
 
 #define RTKBT_DBG_FLAG          0
 
@@ -185,6 +186,8 @@ int mp_drv_mode = 0; /* 1 Mptool Fw; 0 Normal Fw */
 #define ROM_LMP_8851a               0x8852
 #define ROM_LMP_8852bp              0x8852
 #define ROM_LMP_8851b               0x8851
+#define ROM_LMP_8822e               0x8822
+
 
 /* signature: Realtek */
 const uint8_t RTK_EPATCH_SIGNATURE[8] = {0x52,0x65,0x61,0x6C,0x74,0x65,0x63,0x68};
@@ -217,7 +220,18 @@ uint16_t project_id[] = {
     ROM_LMP_8773b,  //bblite
     ROM_LMP_8762a,  //bee
     ROM_LMP_8762b,  //bee2
-    ROM_LMP_8852c
+    ROM_LMP_8852c,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_NONE,
+    ROM_LMP_8822e,
+    ROM_LMP_8852bp,//34 8852bp
+    ROM_LMP_8851a,
+    ROM_LMP_8851b
 };
 struct rtk_eversion_evt {
     uint8_t status;
@@ -352,6 +366,7 @@ enum {
 #define HCI_ACLDATA_PKT        0x02
 #define HCI_SCODATA_PKT        0x03
 #define HCI_EVENT_PKT        0x04
+#define HCI_ISODATA_PKT        0x05
 #define HCI_VENDOR_PKT        0xff
 
 #define HCI_MAX_NAME_LENGTH        248
@@ -378,6 +393,7 @@ struct hci_ev_cmd_complete {
 #define HCI_EVENT_HDR_SIZE   2
 #define HCI_ACL_HDR_SIZE     4
 #define HCI_SCO_HDR_SIZE     3
+#define HCI_ISO_HDR_SIZE     4
 
 struct hci_command_hdr {
     __le16    opcode;        /* OCF & OGF */
@@ -399,6 +415,11 @@ struct hci_sco_hdr {
     __u8    dlen;
 } __packed;
 
+struct hci_iso_hdr {
+    __le16    handle;        /* Handle & Flags(PB, BC) */
+    __le16    dlen;
+} __packed;
+
 static inline struct hci_event_hdr *hci_event_hdr(const struct sk_buff *skb)
 {
     return (struct hci_event_hdr *) skb->data;
@@ -412,6 +433,11 @@ static inline struct hci_acl_hdr *hci_acl_hdr(const struct sk_buff *skb)
 static inline struct hci_sco_hdr *hci_sco_hdr(const struct sk_buff *skb)
 {
     return (struct hci_sco_hdr *) skb->data;
+}
+
+static inline struct hci_iso_hdr *hci_iso_hdr(const struct sk_buff *skb)
+{
+    return (struct hci_iso_hdr *) skb->data;
 }
 
 /* ---- HCI Ioctl requests structures ---- */
@@ -604,9 +630,15 @@ static inline void hci_set_drvdata(struct hci_dev *hdev, void *data)
 #define CMD_HDR_LEN        sizeof(struct hci_command_hdr)
 #define EVT_HDR_LEN        sizeof(struct hci_event_hdr)
 #define CMD_CMP_LEN        sizeof(struct hci_ev_cmd_complete)
-#define MAX_PATCH_SIZE_24K (1024*24)
-#define MAX_PATCH_SIZE_25K (1024*25)
-#define MAX_PATCH_SIZE_40K (1024*40)
+
+#define MAX_PATCH_SIZE_24K            (1024*24 + 529)   //24K
+#define MAX_PATCH_SIZE_25K            (1024*25 + 529)   //25K for rtl8822b
+#define MAX_PATCH_SIZE_40K            (1024*40 + 529)   //40K
+#define MAX_PATCH_SIZE_49_2K          (0xC4CF + 529)   //49.2K 8723f
+#define MAX_PATCH_SIZE_69_2K          (0x114D0 + 529)  //69.2K 8852a
+#define MAX_PATCH_SIZE_65_2K          (0x104D0 + 529)   //65.2K 8852b
+#define MAX_PATCH_SIZE_78K            (1024*78 + 529)   //78K  8852c
+#define MAX_PATCH_SIZE_145K           (0x24620)        //145K 8822E
 
 enum rtk_endpoit {
     CTRL_EP = 0,
@@ -665,6 +697,7 @@ typedef struct {
 #define DWFW_CMPLT              _IOW('E', 179, int)
 
 #define GET_USB_INFO            _IOR('E', 180, int)
+#define SET_ISO_MIN_HANDLE      _IOR('E', 181, int)
 
 /*  for altsettings*/
 #include <linux/fs.h>
