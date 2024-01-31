@@ -1424,6 +1424,7 @@
 &sdmmc0 {
 	max-frequency = <150000000>;
 	supports-sd;
+        supports-emmc;
 	bus-width = <4>;
 	cap-mmc-highspeed;
 	cap-sd-highspeed;
