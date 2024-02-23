@@ -36,6 +36,7 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/of.h>
+#include <linux/gpio.h>
 
 #include "ehci.h"
 
@@ -346,6 +347,22 @@ static int ehci_platform_probe(struct platform_device *dev)
 		}
 	}
 
+	ehci->gpio_hub_reset = devm_gpiod_get_index_optional(&dev->dev, "hub-reset", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(ehci->gpio_hub_reset)) {
+		dev_info(&dev->dev, "Could not get named GPIO for hub-reset-gpios.\n");
+		ehci->gpio_hub_reset = NULL;
+	}
+	if (ehci->gpio_hub_reset)
+		gpiod_set_value(ehci->gpio_hub_reset, 1);
+
+	ehci->gpio_hub_vbus = devm_gpiod_get_index_optional(&dev->dev, "hub-vbus", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(ehci->gpio_hub_vbus)) {
+		ehci->gpio_hub_vbus = NULL;
+		dev_info(&dev->dev, "Could not get named GPIO for hub-vbus-gpios.\n");
+	}
+	if (ehci->gpio_hub_vbus)
+		gpiod_set_value(ehci->gpio_hub_vbus, 1);
+
 	priv->rsts = devm_reset_control_array_get_optional_shared(&dev->dev);
 	if (IS_ERR(priv->rsts)) {
 		err = PTR_ERR(priv->rsts);
@@ -438,12 +455,16 @@ err_put_clks:
 static int ehci_platform_remove(struct platform_device *dev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(dev);
+	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
 	struct usb_ehci_pdata *pdata = dev_get_platdata(&dev->dev);
 	struct ehci_platform_priv *priv = hcd_to_ehci_priv(hcd);
 	int clk;
 
 	if (priv->quirk_poll)
 		quirk_poll_end(priv);
+
+	if (ehci->gpio_hub_vbus)
+		gpiod_set_value(ehci->gpio_hub_vbus, 0);
 
 	usb_remove_hcd(hcd);
 

@@ -1023,6 +1023,84 @@ static int debug_registers_open(struct inode *inode, struct file *file)
 	return file->private_data ? 0 : -ENOMEM;
 }
 
+static int debug_hub_reset_show(struct seq_file *s, void *unused)
+{
+	seq_printf(s, "usage: echo 1 > hub_reset to trigger usb hub reset.\n");
+	return 0;
+}
+
+static int debug_hub_reset_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, debug_hub_reset_show, inode->i_private);
+}
+
+static ssize_t debug_hub_reset_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file		*s = file->private_data;
+	struct ehci_hcd		*ehci = s->private;
+	char			buf[32];
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if (!strncmp(buf, "1", 1)) {
+		gpiod_set_value(ehci->gpio_hub_reset, 0);
+		msleep(1);
+		gpiod_set_value(ehci->gpio_hub_reset, 1);
+		printk(KERN_INFO "ehci: user space trigger hub reset.\n");
+	}
+	return count;
+}
+
+static const struct file_operations debug_hub_reset_fops = {
+	.open			= debug_hub_reset_open,
+	.write			= debug_hub_reset_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
+static int debug_hub_vbus_show(struct seq_file *s, void *unused)
+{
+	struct ehci_hcd		*ehci = s->private;
+
+	seq_printf(s, "%s\n", gpiod_get_value(ehci->gpio_hub_vbus)? "on":"off");
+	return 0;
+}
+
+static int debug_hub_vbus_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, debug_hub_vbus_show, inode->i_private);
+}
+
+static ssize_t debug_hub_vbus_write(struct file *file,
+		const char __user *ubuf, size_t count, loff_t *ppos)
+{
+	struct seq_file		*s = file->private_data;
+	struct ehci_hcd		*ehci = s->private;
+	char			buf[32];
+
+	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
+		return -EFAULT;
+
+	if (!strncmp(buf, "on", 2) || !strncmp(buf, "1", 1))
+		gpiod_set_value(ehci->gpio_hub_vbus, 1);
+
+	if (!strncmp(buf, "off", 3) || !strncmp(buf, "0", 1))
+		gpiod_set_value(ehci->gpio_hub_vbus, 0);
+
+	return count;
+}
+
+static const struct file_operations debug_hub_vbus_fops = {
+	.open			= debug_hub_vbus_open,
+	.write			= debug_hub_vbus_write,
+	.read			= seq_read,
+	.llseek			= seq_lseek,
+	.release		= single_release,
+};
+
 static inline void create_debug_files(struct ehci_hcd *ehci)
 {
 	struct usb_bus *bus = &ehci_to_hcd(ehci)->self;
@@ -1037,6 +1115,14 @@ static inline void create_debug_files(struct ehci_hcd *ehci)
 			    &debug_periodic_fops);
 	debugfs_create_file("registers", S_IRUGO, ehci->debug_dir, bus,
 			    &debug_registers_fops);
+
+	if (ehci->gpio_hub_vbus)
+		debugfs_create_file("hub_vbus", S_IRUGO | S_IWUSR,
+				    ehci->debug_dir, ehci, &debug_hub_vbus_fops);
+
+	if (ehci->gpio_hub_reset)
+		debugfs_create_file("hub_reset", S_IRUGO | S_IWUSR,
+				    ehci->debug_dir, ehci, &debug_hub_reset_fops);
 }
 
 static inline void remove_debug_files(struct ehci_hcd *ehci)
