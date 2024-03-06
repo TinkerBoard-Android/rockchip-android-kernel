@@ -13,7 +13,7 @@
 #include "rk3566-tinker_board_3-common.dtsi"
 
 / {
-	model = "Rockchip RK3566 EVB2 LP4X V10 Board";
+	model = "ASUS Tinker Board 3";
 	compatible = "rockchip,rk3566-evb2-lp4x-v10", "rockchip,rk3566";
 
 	vcc_camera: vcc-camera-regulator {
