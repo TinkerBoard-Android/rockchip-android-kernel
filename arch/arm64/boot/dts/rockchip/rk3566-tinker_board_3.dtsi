@@ -160,7 +160,7 @@
  * when dsi0 is enabled
  */
 &dsi0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi0_in_vp0 {
@@ -168,7 +168,7 @@
 };
 
 &dsi0_in_vp1 {
-	status = "okay";
+	status = "disabled";
 };
 
 &dsi0_panel {
@@ -203,15 +203,15 @@
 
 &edp {
 	hpd-gpios = <&gpio4 RK_PC4 GPIO_ACTIVE_HIGH>;
-	status = "okay";
+	status = "disabled";
 };
 
 &edp_phy {
-	status = "okay";
+	status = "disabled";
 };
 
 &edp_in_vp0 {
-	status = "okay";
+	status = "disabled";
 };
 
 &edp_in_vp1 {
@@ -390,7 +390,7 @@
 };
 
 &route_dsi0 {
-	status = "okay";
+	status = "disabled";
 	connect = <&vp1_out_dsi0>;
 };
 
