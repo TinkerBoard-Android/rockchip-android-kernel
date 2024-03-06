@@ -35,11 +35,14 @@ int eth_mac_eeprom(u8 *eth_mac, int gmac_num)
 
 	memset(eth_mac, 0, 6);
 	pr_info("GMAC%d Read the Ethernet MAC address from EEPROM:", gmac_num);
-
+#ifdef CONFIG_EEPROM_AT24
 	if (gmac_num == 1)
 		at24_read_eeprom(eth_mac, 6, 6);
 	else
 		at24_read_eeprom(eth_mac, 0, 6);
+#else
+	ret = 0;
+#endif
 
 	for(i=0; i<5; i++)
 		pr_info("%2.2x:", eth_mac[i]);
