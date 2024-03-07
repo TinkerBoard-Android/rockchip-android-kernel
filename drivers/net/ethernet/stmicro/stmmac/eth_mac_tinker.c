@@ -40,8 +40,6 @@ int eth_mac_eeprom(u8 *eth_mac, int gmac_num)
 		at24_read_eeprom(eth_mac, 6, 6);
 	else
 		at24_read_eeprom(eth_mac, 0, 6);
-#else
-	ret = 0;
 #endif
 
 	for(i=0; i<5; i++)
