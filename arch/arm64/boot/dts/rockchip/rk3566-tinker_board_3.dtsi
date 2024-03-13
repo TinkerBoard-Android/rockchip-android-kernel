@@ -231,11 +231,10 @@
 &i2c2 {
 	status = "okay";
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2c2m1_xfer>;
 
 	/* split mode: lane0/1 */
 	ov5695: ov5695@36 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ovti,ov5695";
 		reg = <0x36>;
 		clocks = <&cru CLK_CAM0_OUT>;
@@ -259,7 +258,7 @@
 	};
 
 	ov02k10: ov02k10@36 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ovti,ov02k10";
 		reg = <0x36>;
 		clocks = <&cru CLK_CAM1_OUT>;
