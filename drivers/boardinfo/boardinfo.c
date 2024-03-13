@@ -8,16 +8,19 @@
 #include "tb-setting.h"
 #include "tb2-setting.h"
 #include "tb3-setting.h"
+#include "tb3n-setting.h"
 
 static const char *model;
 static int hwid = -1, pid = -1, odmid = -1;
 
 static const struct of_device_id of_board_info_match[] = {
 	{ .compatible = "board-info", },
-	{ .compatible = "ADC1-PCBID", },
-	{ .compatible = "ADC3-RAMID", },
-	{ .compatible = "ADC4-ODMID", },
-	{ .compatible = "ADC5-PRJID", },
+	{ .compatible = "RK3568-ADC1-PCBID", },
+	{ .compatible = "RK3568-ADC3-RAMID", },
+	{ .compatible = "RK3568-ADC4-ODMID", },
+	{ .compatible = "RK3568-ADC5-PRJID", },
+	{ .compatible = "RK3566-ADC1-PCBID", },
+	{ .compatible = "RK3566-ADC3-PRJID", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_board_info_match);
@@ -38,14 +41,19 @@ static int board_info_probe(struct platform_device *pdev)
 		if (device_property_read_string(dev, "model", &model))
 			model = "unknow";
 
-		if (!strcmp(model, "rk3288"))
+		if (!strcmp("rk3288", model))
 			ret = tb_gpios(dev, &hwid, &pid);
-		else if (!strcmp(model, "rk3399"))
+		else if (!strcmp("rk3399", model))
 			ret = tb2_gpios(dev, &hwid, &pid);
-		else if (!strcmp(model, "rk3568"))
+		else if (!strcmp("rk3568", model))
+			ret = tb3n_gpios(dev);
+		else if (!strcmp("rk3566", model))
 			ret = tb3_gpios(dev);
 	} else {
-		ret = tb3_adcs(dev, compatible, &hwid, &pid, &odmid);
+		if (!strcmp("rk3568", model))
+			ret = tb3n_adcs(dev, compatible, &hwid, &pid, &odmid);
+		else if (!strcmp("rk3566", model))
+			ret = tb3_adcs(dev, compatible, &hwid, &pid);
 	}
 
 	if (ret < 0)
@@ -56,12 +64,14 @@ static int board_info_probe(struct platform_device *pdev)
 
 int get_board_model(void)
 {
-	if (!strcmp(model, "rk3288"))
+	if (!strcmp("rk3288", model))
 		return 3288;
-	else if (!strcmp(model, "rk3399"))
+	else if (!strcmp("rk3399", model))
 		return 3399;
-	else if (!strcmp(model, "rk3568"))
+	else if (!strcmp("rk3568", model))
 		return 3568;
+	else if (!strcmp("rk3566", model))
+		return 3566;
 	else
 		return -1;
 }
@@ -87,11 +97,13 @@ EXPORT_SYMBOL_GPL(get_odm_id);
 
 static int board_info_remove(struct platform_device *pdev)
 {
-	if (!strcmp(model, "rk3288"))
+	if (!strcmp("rk3288", model))
 		tb_gpios_free();
-	else if (!strcmp(model, "rk3399"))
+	else if (!strcmp("rk3399", model))
 		tb2_gpios_free();
-	else if (!strcmp(model, "rk3568"))
+	else if (!strcmp("rk3568", model))
+		tb3n_gpios_free();
+	else if (!strcmp("rk3566", model))
 		tb3_gpios_free();
 
 	return 0;

@@ -46,6 +46,34 @@
 			<0x0 0xfd90e000 0x0 0x1000>,
 			<0x0 0xfd90f000 0x0 0x1000>;
 	};
+
+	board_info: board-info {
+		compatible = "board-info";
+
+		model = "rk3566";
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&boardinfo_gpio>;
+
+		emmc0-gpios = <&gpio2 RK_PB0 GPIO_ACTIVE_HIGH>;
+		emmc1-gpios = <&gpio2 RK_PA7 GPIO_ACTIVE_HIGH>;
+		emmc2-gpios = <&gpio2 RK_PA6 GPIO_ACTIVE_HIGH>;
+		ddr0-gpios = <&gpio2 RK_PA5 GPIO_ACTIVE_HIGH>;
+		ddr1-gpios = <&gpio2 RK_PA4 GPIO_ACTIVE_HIGH>;
+		ddr2-gpios = <&gpio2 RK_PA3 GPIO_ACTIVE_HIGH>;
+        };
+
+	RK3566-ADC1-PCBID {
+		compatible = "RK3566-ADC1-PCBID";
+		io-channels = <&saradc 1>;
+		io-channel-names = "RK3566-ADC1-PCBID";
+	};
+
+	RK3566-ADC3-PRJID {
+		compatible = "RK3566-ADC3-PRJID";
+		io-channels = <&saradc 3>;
+		io-channel-names = "RK3566-ADC3-PRJID";
+	};
 };
 
 &reserved_memory {

@@ -8,11 +8,11 @@
 #include <linux/iio/driver.h>
 #include <linux/iio/consumer.h>
 #include <linux/proc_fs.h>
-#include "tb3-setting.h"
+#include "tb3n-setting.h"
 
-static int projectid = -1, boardid = -1, ddrid = -1, emmcid = -1;
-static char *boardinfo, *boardver, *ddr, *emmc;
-static int emmc0_gpio = 0, emmc1_gpio = 0, emmc2_gpio = 0, ddr0_gpio = 0, ddr1_gpio = 0, ddr2_gpio = 0, init_done = 0;
+static int projectid = -1, boardid = -1, ddrid = -1, emmcid = -1, odmid = -1;
+static char *boardinfo, *boardver, *ddr, *emmc, *odm;
+static int emmc0_gpio = 0, emmc1_gpio = 0, init_done = 0;
 
 static int all_show(struct seq_file *m, void *v)
 {
@@ -24,6 +24,8 @@ static int all_show(struct seq_file *m, void *v)
 	seq_printf(m, "ddrid:\t\t%d\n", ddrid);
 	seq_printf(m, "emmc:\t\t%s\n", emmc);
 	seq_printf(m, "emmcid:\t\t%d\n", emmcid);
+	seq_printf(m, "odm:\t\t%s\n", odm);
+	seq_printf(m, "odmid:\t\t%d\n", odmid);
 	return 0;
 }
 
@@ -174,11 +176,45 @@ static struct file_operations emmcid_ops = {
 	.read	= seq_read,
 };
 
-int tb3_gpios(struct device *dev)
+static int odm_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%s\n", odm);
+	return 0;
+}
+
+static int odm_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, odm_show, NULL);
+}
+
+static struct file_operations odm_ops = {
+	.owner	= THIS_MODULE,
+	.open	= odm_open,
+	.read	= seq_read,
+};
+
+static int odmid_show(struct seq_file *m, void *v)
+{
+	seq_printf(m, "%d\n", odmid);
+	return 0;
+}
+
+static int odmid_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, odmid_show, NULL);
+}
+
+static struct file_operations odmid_ops = {
+	.owner	= THIS_MODULE,
+	.open	= odmid_open,
+	.read	= seq_read,
+};
+
+int tb3n_gpios(struct device *dev)
 {
 	int ret;
 	struct proc_dir_entry* file;
-	int id0, id1, id2;
+	int id0, id1;
 
 	emmc0_gpio = of_get_named_gpio(dev->of_node, "emmc0-gpios", 0);
 	if (!gpio_is_valid(emmc0_gpio)) {
@@ -204,37 +240,24 @@ int tb3_gpios(struct device *dev)
 		}
 	}
 
-	emmc2_gpio = of_get_named_gpio(dev->of_node, "emmc2-gpios", 0);
-	if (!gpio_is_valid(emmc2_gpio)) {
-		printk("[boardinfo] No emmc2-gpio pin available in boardinfo\n");
-		return -ENODEV;
-	} else {
-		ret = devm_gpio_request_one(dev, emmc2_gpio, GPIOF_DIR_IN, "GPIO_EMMC2");
-		if (ret < 0) {
-			printk("[boardinfo] Failed to request EMMC2 gpio: %d\n", ret);
-			return ret;
-		}
-	}
-
 	id0 = gpio_get_value(emmc0_gpio);
 	id1 = gpio_get_value(emmc1_gpio);
-	id2 = gpio_get_value(emmc2_gpio);
 
-	emmcid = (id2 << 2) + (id1 << 1) + id0;
+	emmcid = (id1 << 1) + id0;
 
 	switch(emmcid) {
 		case 0:
-			emmc = "NONE";
-			break;
-		case 1:
 			emmc = "16GB";
 			break;
+		case 1:
+			emmc = "32GB";
+			break;
 		case 2:
+			emmc = "64GB";
+			break;
 		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 7:
+			emmc = "NONE";
+			break;
 		default:
 			emmc = "unknown";
 	}
@@ -244,73 +267,6 @@ int tb3_gpios(struct device *dev)
 		return -ENOMEM;
 
 	file = proc_create("emmcid", 0444, NULL, &emmcid_ops);
-	if (!file)
-		return -ENOMEM;
-
-	ddr0_gpio = of_get_named_gpio(dev->of_node, "ddr0-gpios", 0);
-	if (!gpio_is_valid(ddr0_gpio)) {
-		printk("[boardinfo] No ddr0-gpio pin available in boardinfo\n");
-		return -ENODEV;
-	} else {
-		ret = devm_gpio_request_one(dev, ddr0_gpio, GPIOF_DIR_IN, "GPIO_DDR0");
-		if (ret < 0) {
-			printk("[boardinfo] Failed to request DDR0 gpio: %d\n", ret);
-			return ret;
-		}
-	}
-
-	ddr1_gpio = of_get_named_gpio(dev->of_node, "ddr1-gpios", 0);
-	if (!gpio_is_valid(ddr1_gpio)) {
-		printk("[boardinfo] No ddr1-gpio pin available in boardinfo\n");
-		return -ENODEV;
-	} else {
-		ret = devm_gpio_request_one(dev, ddr1_gpio, GPIOF_DIR_IN, "GPIO_DDR1");
-		if (ret < 0) {
-			printk("[boardinfo] Failed to request DDR1 gpio: %d\n", ret);
-			return ret;
-		}
-	}
-
-	ddr2_gpio = of_get_named_gpio(dev->of_node, "ddr2-gpios", 0);
-	if (!gpio_is_valid(ddr2_gpio)) {
-		printk("[boardinfo] No ddr2-gpio pin available in boardinfo\n");
-		return -ENODEV;
-	} else {
-		ret = devm_gpio_request_one(dev, ddr2_gpio, GPIOF_DIR_IN, "GPIO_DDR2");
-		if (ret < 0) {
-			printk("[boardinfo] Failed to request DDR2 gpio: %d\n", ret);
-			return ret;
-		}
-	}
-
-	id0 = gpio_get_value(ddr0_gpio);
-	id1 = gpio_get_value(ddr1_gpio);
-	id2 = gpio_get_value(ddr2_gpio);
-
-	ddrid = (id2 << 2) + (id1 << 1) + id0;
-
-	switch(ddrid) {
-		case 0:
-			ddr = "2GB";
-			break;
-		case 1:
-			ddr = "4GB";
-			break;
-		case 2:
-		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 7:
-		default:
-			ddr = "unknown";
-	}
-
-	file = proc_create("ddr", 0444, NULL, &ddr_ops);
-	if (!file)
-		return -ENOMEM;
-
-	file = proc_create("ddrid", 0444, NULL, &ddrid_ops);
 	if (!file)
 		return -ENOMEM;
 
@@ -325,17 +281,13 @@ int tb3_gpios(struct device *dev)
 	return 0;
 }
 
-void tb3_gpios_free(void)
+void tb3n_gpios_free(void)
 {
 	gpio_free(emmc0_gpio);
 	gpio_free(emmc1_gpio);
-	gpio_free(emmc2_gpio);
-	gpio_free(ddr0_gpio);
-	gpio_free(ddr1_gpio);
-	gpio_free(ddr2_gpio);
 }
 
-int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid)
+int tb3n_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, int *oid)
 {
 	int ret, raw, vref, bits, vresult;
 	struct iio_channel *channels;
@@ -382,7 +334,7 @@ int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid)
 	else if (vresult < 150)
 		ret = 0;
 
-	if (strcmp(compatible, "RK3566-ADC1-PCBID") == 0) {
+	if (strcmp(compatible, "ADC1-PCBID") == 0) {
 		boardid = ret;
 		*hwid = boardid;
 
@@ -411,19 +363,77 @@ int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid)
 		file = proc_create("boardid", 0444, NULL, &boardid_ops);
 		if (!file)
 			return -ENOMEM;
-	} else if (strcmp(compatible, "RK3566-ADC3-PRJID") == 0) {
+	} else if (strcmp(compatible, "ADC3-RAMID") == 0) {
+		ddrid = ret;
+
+		switch(ddrid) {
+			case 18:
+				ddr = "2GB";
+				break;
+			case 15:
+				ddr = "4GB";
+				break;
+			case 12:
+				ddr = "8GB";
+				break;
+			case 9:
+			case 6:
+			case 3:
+			case 0:
+			default:
+				ddr = "unknown";
+		}
+
+		file = proc_create("ddr", 0444, NULL, &ddr_ops);
+		if (!file)
+			return -ENOMEM;
+
+		file = proc_create("ddrid", 0444, NULL, &ddrid_ops);
+		if (!file)
+			return -ENOMEM;
+	} else if (strcmp(compatible, "ADC4-ODMID") == 0) {
+		odmid = ret;
+		*oid = odmid;
+
+		switch(odmid) {
+			case 18:
+				odm = "Tinker Board 3N";
+				break;
+			case 15:
+				odm = "Sanden";
+				break;
+			case 12:
+			case 9:
+			case 6:
+			case 3:
+			case 0:
+			default:
+				odm = "unknown";
+		}
+
+		file = proc_create("odm", 0444, NULL, &odm_ops);
+		if (!file)
+			return -ENOMEM;
+
+		file = proc_create("odmid", 0444, NULL, &odmid_ops);
+		if (!file)
+			return -ENOMEM;
+	} else if (strcmp(compatible, "ADC5-PRJID") == 0) {
 		projectid = ret;
 		*pid = projectid;
 
 		switch(projectid) {
 			case 18:
-				boardinfo = "Tinker Board 3 - SKU1";
+				if (odmid == 15)
+					boardinfo = "Sanden - SKU1";
+				else
+					boardinfo = "Tinker Board 3N - SKU1";
 				break;
 			case 15:
-				boardinfo = "Tinker Board 3 - SKU2";
+				boardinfo = "Tinker Board 3N - SKU2";
 				break;
 			case 12:
-				boardinfo = "Tinker Board 3 - SKU3";
+				boardinfo = "Tinker Board 3N - SKU3";
 				break;
 			case 9:
 			case 6:
