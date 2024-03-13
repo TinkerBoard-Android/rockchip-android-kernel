@@ -20,7 +20,9 @@
 		regulator-min-microvolt = <3300000>;
 		regulator-max-microvolt = <3300000>;
 		enable-active-high;
-		gpio = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
+		regulator-always-on;
+                regulator-boot-on;
+		gpio = <&gpio3 RK_PA2 GPIO_ACTIVE_HIGH>;
 		startup-delay-us = <5000>;
 		vin-supply = <&dc_12v>;
 	};
@@ -328,6 +330,7 @@
 &pcie2x1 {
 	reset-gpios = <&gpio1 RK_PB2 GPIO_ACTIVE_HIGH>;
 	vpcie3v3-supply = <&vcc3v3_pcie>;
+	vpcie3v3-always-on;
 	status = "okay";
 };
 
@@ -434,13 +437,16 @@
 	BT,reset_gpio    = <&gpio4 RK_PA5 GPIO_ACTIVE_HIGH>;
 	BT,wake_gpio     = <&gpio4 RK_PA6 GPIO_ACTIVE_HIGH>;
 	BT,wake_host_irq = <&gpio4 RK_PB1 GPIO_ACTIVE_HIGH>;
-	status = "okay";
+	status = "disable";
 };
 
 &wireless_wlan {
 	pinctrl-names = "default";
-	pinctrl-0 = <&wifi_host_wake_irq>;
-	WIFI,host_wake_irq = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
+	pinctrl-0 = <&wifi_power_gpios>;
+	WIFI,m2e_dis1_n = <&gpio3 RK_PA7 GPIO_ACTIVE_HIGH>;
+	WIFI,m2e_dis2_n = <&gpio3 RK_PB0 GPIO_ACTIVE_HIGH>;
+	WIFI,host_wake_irq = <&gpio1 RK_PB1 GPIO_ACTIVE_HIGH>;
+	status = "okay";
 };
 
 &work_led {
@@ -476,7 +482,13 @@
 
 	wireless-wlan {
 		wifi_host_wake_irq: wifi-host-wake-irq {
-			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_down>;
+			rockchip,pins = <2 RK_PB2 RK_FUNC_GPIO &pcfg_pull_down>;
+		};
+		wifi_power_gpios: wifi-power-gpios {
+			rockchip,pins = <3 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>,
+					<3 RK_PB0 RK_FUNC_GPIO &pcfg_pull_none>,
+					<1 RK_PB0 RK_FUNC_GPIO &pcfg_pull_up>,
+					<1 RK_PB1 RK_FUNC_GPIO &pcfg_pull_up>;
 		};
 	};
 
