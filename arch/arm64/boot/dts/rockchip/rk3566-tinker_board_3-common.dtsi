@@ -1818,6 +1818,8 @@
 };
 
 &usbhost_dwc3 {
+	snps,parkmode-disable-hs-quirk;
+	snps,parkmode-disable-ss-quirk;
 	status = "okay";
 };
 
