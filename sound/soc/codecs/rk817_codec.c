@@ -67,9 +67,15 @@
 
 extern int jack_connection_status;
 
+extern int get_board_model(void);
 static int spk_enable_init(void)
 {
 	int ret = 0;
+
+	// GPIO3_RK_PC3 is LAN-WOL-IRQ-GPIO for RK3566
+	if (get_board_model() == 3566)
+		goto err_gpio_spk;
+
 	ret = gpio_request(SPK_EN, "spk_en");
 	if (ret){
 		pr_info("gpio %d request failed \n", SPK_EN);

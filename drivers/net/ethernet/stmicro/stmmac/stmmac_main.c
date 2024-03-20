@@ -932,7 +932,7 @@ void setConfiguration(struct phy_device *phydev) {
 
 	if (is_rtl8211f) {
 		// RTL8211F
-		if (get_board_model() == 3568)
+		if ((get_board_model() == 3568) || (get_board_model() == 3566))
 			set_led_configuration_f_vd_cg(phydev);
 		else
 			set_led_configuration_f_cg(phydev);
