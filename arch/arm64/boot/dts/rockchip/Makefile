@@ -171,6 +171,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb-rk628-rgb2hdmi-ddr4-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb-rk628-rgb2lvds-ddr4-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb-rk628-rgb2lvds-dual-ddr4-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-ddr4-v10.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-tinker_board_3n.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-ddr4-v10-dual-camera.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-ddr4-v10-edp-panel.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3568-evb1-ddr4-v10-one-vp-two-single-channel-lvds.dtb
