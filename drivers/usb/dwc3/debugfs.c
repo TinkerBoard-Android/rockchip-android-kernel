@@ -1028,7 +1028,10 @@ static int dwc3_hub_vbus_show(struct seq_file *s, void *unused)
 {
 	struct dwc3		*dwc = s->private;
 
-	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_hub_vbus)? "on":"off");
+	if (gpiod_get_value(dwc->gpio_hub_vbus))
+		seq_printf(s, "on\n");
+	else
+		seq_printf(s, "%s\n", dwc->vbus_lock ? "off(locked)":"off");
 	return 0;
 }
 
@@ -1047,11 +1050,15 @@ static ssize_t dwc3_hub_vbus_write(struct file *file,
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
 
-	if (!strncmp(buf, "on", 2) || !strncmp(buf, "1", 1))
+	if (!strncmp(buf, "on", 2) || !strncmp(buf, "1", 1)) {
 		gpiod_set_value(dwc->gpio_hub_vbus, 1);
+		dwc->vbus_lock = false;
+	}
 
-	if (!strncmp(buf, "off", 3) || !strncmp(buf, "0", 1))
+	if (!strncmp(buf, "off", 3) || !strncmp(buf, "0", 1)) {
 		gpiod_set_value(dwc->gpio_hub_vbus, 0);
+		dwc->vbus_lock = true;
+	}
 
 	return count;
 }

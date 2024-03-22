@@ -47,7 +47,7 @@ static int debug_hub_vbus_show(struct seq_file *s, void *unused)
 {
 	struct ehci_hcd		*ehci = s->private;
 
-	seq_printf(s, "%s\n", gpiod_get_value(ehci->gpio_hub_vbus)? "on":"off");
+	seq_printf(s, "%s\n", gpiod_get_value(ehci->gpio_hub_vbus)? "on":"off(locked)");
 	return 0;
 }
 
