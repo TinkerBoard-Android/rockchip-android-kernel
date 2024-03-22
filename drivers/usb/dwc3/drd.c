@@ -460,7 +460,8 @@ static int dwc3_vbus_notifier(struct notifier_block *nb,
 {
 	struct dwc3 *dwc = container_of(nb, struct dwc3, vbus_nb);
 
-	schedule_work(&dwc->vbus_event_work);
+	if (!dwc->vbus_lock)
+		schedule_work(&dwc->vbus_event_work);
 
 	return NOTIFY_DONE;
 }

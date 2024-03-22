@@ -1266,6 +1266,7 @@ struct dwc3 {
 	struct gpio_desc	*gpio_hub_reset;
 	struct gpio_desc	*gpio_hub_vbus;
 	struct gpio_desc        *gpio_connector_vbus;
+	bool 			vbus_lock;
 	struct work_struct	vbus_event_work;
 };
 
