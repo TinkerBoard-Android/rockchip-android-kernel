@@ -926,17 +926,24 @@ static ssize_t dwc3_hub_vbus_write(struct file *file,
 	struct seq_file		*s = file->private_data;
 	struct dwc3		*dwc = s->private;
 	char			buf[32];
+	unsigned long		flags;
+	u32			reg;
 
 	if (copy_from_user(&buf, ubuf, min_t(size_t, sizeof(buf) - 1, count)))
 		return -EFAULT;
 
+	spin_lock_irqsave(&dwc->lock, flags);
+	reg = dwc3_readl(dwc->regs, DWC3_GCTL);
+	spin_unlock_irqrestore(&dwc->lock, flags);
 	if (!strncmp(buf, "on", 2) || !strncmp(buf, "1", 1)) {
-		gpiod_set_value(dwc->gpio_hub_vbus, 1);
+		if (DWC3_GCTL_PRTCAP(reg) == DWC3_GCTL_PRTCAP_HOST)
+			gpiod_set_value(dwc->gpio_hub_vbus, 1);
 		dwc->vbus_lock = false;
 	}
 
 	if (!strncmp(buf, "off", 3) || !strncmp(buf, "0", 1)) {
-		gpiod_set_value(dwc->gpio_hub_vbus, 0);
+		if (DWC3_GCTL_PRTCAP(reg) == DWC3_GCTL_PRTCAP_HOST)
+			gpiod_set_value(dwc->gpio_hub_vbus, 0);
 		dwc->vbus_lock = true;
 	}
 
@@ -955,7 +962,7 @@ static int dwc3_connector_vbus_show(struct seq_file *s, void *unused)
 {
 	struct dwc3		*dwc = s->private;
 
-	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_connector_vbus)? "on":"off");
+	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_connector_vbus)? "on":"off(locked)");
 	return 0;
 }
 
