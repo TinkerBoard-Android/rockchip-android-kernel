@@ -225,6 +225,8 @@ isl1208_i2c_get_usr(struct i2c_client *client)
 	return (buf[1] << 8) | buf[0];
 }
 
+#if 0
+
 static int
 isl1208_i2c_set_usr(struct i2c_client *client, u16 usr)
 {
@@ -236,6 +238,8 @@ isl1208_i2c_set_usr(struct i2c_client *client, u16 usr)
 	return isl1208_i2c_set_regs(client, ISL1208_REG_USR1, buf,
 				    ISL1208_USR_SECTION_LEN);
 }
+
+#endif
 
 static int
 isl1208_rtc_toggle_alarm(struct i2c_client *client, int enable)
@@ -654,6 +658,8 @@ static const struct rtc_class_ops isl1208_rtc_ops = {
 
 /* sysfs interface */
 
+#if 0
+
 static ssize_t
 isl1208_sysfs_show_atrim(struct device *dev,
 			 struct device_attribute *attr, char *buf)
@@ -737,6 +743,8 @@ static struct attribute *isl1219_rtc_attrs[] = {
 static const struct attribute_group isl1219_rtc_sysfs_files = {
 	.attrs	= isl1219_rtc_attrs,
 };
+
+#endif
 
 static int isl1208_nvmem_read(void *priv, unsigned int off, void *buf,
 			      size_t count)
@@ -870,6 +878,8 @@ isl1208_probe(struct i2c_client *client, const struct i2c_device_id *id)
 		}
 		evdet_irq = of_irq_get_byname(np, "evdet");
 	}
+
+#if 0
 	if (isl1208->config->has_timestamp) {
 		rc = rtc_add_group(isl1208->rtc, &isl1219_rtc_sysfs_files);
 		if (rc)
@@ -879,6 +889,7 @@ isl1208_probe(struct i2c_client *client, const struct i2c_device_id *id)
 	rc = rtc_add_group(isl1208->rtc, &isl1208_rtc_sysfs_files);
 	if (rc)
 		return rc;
+#endif
 
 	if (client->irq > 0) {
 		rc = isl1208_setup_irq(client, client->irq);

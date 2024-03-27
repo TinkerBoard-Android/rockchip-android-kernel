@@ -69,4 +69,10 @@ config CPU_RK3568
 config CPU_RK3588
 	bool "RK3588"
 
+config RK3566_TB3
+	bool "Support Tinker Board 3"
+
+config RK3568_TB3N
+	bool "Support Tinker Board 3N"
+
 endmenu

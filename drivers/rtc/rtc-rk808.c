@@ -414,6 +414,14 @@ static int rk808_rtc_probe(struct platform_device *pdev)
 	struct device_node *np;
 	int ret;
 
+#if IS_ENABLED(CONFIG_RK3568_TB3N)
+	pr_info("rk808_rtc is disabled\n");
+	return -EINVAL;
+#else 
+        pr_info("rk808_rtc enable\n");
+        return -EINVAL;
+#endif
+
 	switch (rk808->variant) {
 	case RK805_ID:
 	case RK808_ID:
