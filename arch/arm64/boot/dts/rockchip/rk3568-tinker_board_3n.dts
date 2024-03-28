@@ -59,6 +59,17 @@
 		memory-region = <&vendor_storage_rm>;
 		status = "okay";
 	};
+
+	fan: pwm-fan {
+		compatible = "pwm-fan";
+		#cooling-cells = <2>;
+		pwms = <&pwm0 0 40000 0>;
+		interrupt-parent = <&gpio0>;
+		interrupts = <RK_PC3 IRQ_TYPE_EDGE_FALLING>;
+		pulses-per-revolution = <2>;
+
+		status = "okay";
+	};
 };
 
 &reserved_memory {
@@ -168,4 +179,12 @@
                 reg = <0x6a>;
                 status = "okay";
         };
+};
+
+&pwm0 {
+	status = "okay";
+};
+
+&pwm4 {
+	status = "disabled";
 };
