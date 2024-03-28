@@ -162,4 +162,10 @@
                 pinctrl-0 = <&tb3_eeprom>;
 		status = "okay";
 	};
+
+        clock-generator@6a {
+                compatible = "renesas,9fgv0441tb3n";
+                reg = <0x6a>;
+                status = "okay";
+        };
 };

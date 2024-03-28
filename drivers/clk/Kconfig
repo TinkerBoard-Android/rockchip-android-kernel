@@ -375,6 +375,15 @@ config COMMON_CLK_RS9_PCIE
 	  This driver supports the Renesas 9-series PCIe clock generator
 	  models 9FGV/9DBV/9DMV/9FGL/9DML/9QXL/9SQ.
 
+config ASUS_TB3N_RS9_PCIE
+        tristate "Clock driver for ASUS Tinker Board 3 clock signal"
+        depends on I2C
+        depends on OF
+        select REGMAP_I2C
+        help
+          This driver supports the Renesas 9-series PCIe clock generator
+          models 9FGV to write 0xfe to SR register at default.
+
 config COMMON_CLK_VC5
 	tristate "Clock driver for IDT VersaClock 5,6 devices"
 	depends on I2C
