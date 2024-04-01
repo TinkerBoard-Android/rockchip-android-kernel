@@ -1,0 +1,1 @@
+#define DRIVERVERSION	"v1.19.12.1-55-g3f1e513eb.20240124_beta"
