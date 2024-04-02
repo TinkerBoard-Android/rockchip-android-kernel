@@ -258,22 +258,35 @@
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		gpio = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio3 RK_PD4 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_usb>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&vcc5v0_host_en>;
 	};
 
-	vcc5v0_otg: vcc5v0-otg-regulator {
+	vcc5v0_host_con: vcc5v0-host-con-regulator {
 		compatible = "regulator-fixed";
-		regulator-name = "vcc5v0_otg";
+		regulator-name = "vcc5v0_host_con";
+		regulator-boot-on;
+		regulator-always-on;
 		regulator-min-microvolt = <5000000>;
 		regulator-max-microvolt = <5000000>;
 		enable-active-high;
-		gpio = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
+		gpio = <&gpio3 RK_PD2 GPIO_ACTIVE_HIGH>;
 		vin-supply = <&vcc5v0_usb>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_otg_en>;
+		pinctrl-0 = <&vcc5v0_host_con_en>;
+	};
+
+	usb_hub_reset_gpio: rtc-wakeup-gpio {
+		compatible = "regulator-fixed";
+		regulator-name = "usb_hub_reset_gpio";
+		gpio = <&gpio4 RK_PD2 GPIO_ACTIVE_HIGH>;
+		enable-active-high;
+		regulator-always-on;
+		regulator-boot-on;
+		pinctrl-names = "default";
+		pinctrl-0 = <&usb_hub_reset>;
 	};
 
 	vcc3v3_lcd0_n: vcc3v3-lcd0-n {
@@ -1479,11 +1492,15 @@
 
 	usb {
 		vcc5v0_host_en: vcc5v0-host-en {
-			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
+			rockchip,pins = <3 RK_PD4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		vcc5v0_otg_en: vcc5v0-otg-en {
-			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
+		vcc5v0_host_con_en: vcc5v0-host-con-en {
+			rockchip,pins = <3 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		usb_hub_reset: usb-hub-reset {
+			rockchip,pins = <4 RK_PD2 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 
@@ -1726,7 +1743,6 @@
 };
 
 &u2phy0_otg {
-	vbus-supply = <&vcc5v0_otg>;
 	status = "okay";
 };
 
