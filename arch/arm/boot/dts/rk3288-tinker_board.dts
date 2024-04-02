@@ -199,8 +199,6 @@
 
 &fiq_debugger {
 	rockchip,serial-id = <3>;
-	pinctrl-0 = <&uart3_xfer>;
-	status = "disabled";
 };
 
 &spi0 {

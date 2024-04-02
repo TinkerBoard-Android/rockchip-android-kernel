@@ -149,7 +149,6 @@
 		rockchip,irq-mode-enable = <0>;  /* If enable uart uses irq instead of fiq */
 		rockchip,baudrate = <115200>;  /* Only 115200 and 1500000 */
 		pinctrl-names = "default";
-		pinctrl-0 = <&uart2_xfer>;
 	};
 
 	psci {
