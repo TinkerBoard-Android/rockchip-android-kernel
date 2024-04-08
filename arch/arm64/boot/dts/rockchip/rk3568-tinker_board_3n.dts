@@ -200,6 +200,11 @@
                 reg = <0x6f>;
                 status = "okay";
         };
+
+	it5201: tcpc@67 {
+		compatible = "ite,it5201";
+		reg = <0x67>;
+	};
 };
 
 &i2c2 {

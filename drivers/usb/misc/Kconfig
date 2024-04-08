@@ -266,3 +266,11 @@ config USB_CHAOSKEY
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called chaoskey.
+
+config USB_IT5201
+	tristate "ITE IT5201 CC Logic For Type-C Applications"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Say Y here to enable ITE IT5201 CC logic for Type-C applications,
+	  this chip can supply the CC flip, attach and detach detection.
