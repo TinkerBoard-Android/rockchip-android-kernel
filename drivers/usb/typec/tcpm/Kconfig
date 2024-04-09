@@ -34,6 +34,13 @@ config TYPEC_HUSB311
 	  Type-C Port Controller Manager to provide USB PD and USB
 	  Type-C functionalities.
 
+config TYPEC_IT5201
+	tristate "ITE IT5201FN Type-C chip driver"
+	help
+	  ITE IT5201FN Type-C chip driver that works with
+	  Type-C Port Controller Manager to provide USB PD and USB
+	  Type-C functionalities.
+
 config TYPEC_RT1711H
 	tristate "Richtek RT1711H Type-C chip driver"
 	help

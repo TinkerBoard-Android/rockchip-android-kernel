@@ -288,7 +288,7 @@
 	status = "okay";
 	gc8034: gc8034@37 {
 		compatible = "galaxycore,gc8034";
-		status = "okay";
+		status = "disabled";
 		reg = <0x37>;
 		clocks = <&cru CLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -311,6 +311,7 @@
 	};
 	os04a10: os04a10@36 {
 		compatible = "ovti,os04a10";
+		status = "disabled";
 		reg = <0x36>;
 		clocks = <&cru CLK_CIF_OUT>;
 		clock-names = "xvclk";
@@ -331,7 +332,7 @@
 		};
 	};
 	ov5695: ov5695@36 {
-		status = "okay";
+		status = "disabled";
 		compatible = "ovti,ov5695";
 		reg = <0x36>;
 		clocks = <&cru CLK_CIF_OUT>;
