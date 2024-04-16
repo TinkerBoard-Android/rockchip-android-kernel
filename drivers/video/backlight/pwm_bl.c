@@ -19,6 +19,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
 
+unsigned int minimal_brightness = 0;
 static bool bl_quiescent;
 module_param_named(quiescent, bl_quiescent, bool, 0600);
 MODULE_PARM_DESC(quiescent,
@@ -27,11 +28,15 @@ MODULE_PARM_DESC(quiescent,
 struct pwm_bl_data {
 	struct pwm_device	*pwm;
 	struct device		*dev;
+	unsigned int 		enable_soc_enablekl_delay;
+	unsigned int 		disable_soc_enablekl_delay;
 	unsigned int		lth_brightness;
 	unsigned int		*levels;
 	bool			enabled;
 	struct regulator	*power_supply;
 	struct gpio_desc	*enable_gpio;
+	struct gpio_desc	*soc_enablekl;
+	bool power_sequence_reverse;
 	unsigned int		scale;
 	bool			legacy;
 	unsigned int		post_pwm_on_delay;
@@ -57,8 +62,25 @@ static void pwm_backlight_power_on(struct pwm_bl_data *pb)
 	if (err < 0)
 		dev_err(pb->dev, "failed to enable power supply\n");
 
+	if (pb->power_sequence_reverse) {
+		if (pb->soc_enablekl)
+			gpiod_set_value_cansleep(pb->soc_enablekl, 1);
+
+		if (pb->enable_soc_enablekl_delay)
+			msleep(pb->enable_soc_enablekl_delay);
+	}
+
 	state.enabled = true;
 	pwm_apply_state(pb->pwm, &state);
+
+	if (!pb->power_sequence_reverse) {
+		if (pb->enable_soc_enablekl_delay)
+			msleep(pb->enable_soc_enablekl_delay);
+
+		if (pb->soc_enablekl) {
+			gpiod_set_value_cansleep(pb->soc_enablekl, 1);
+		}
+	}
 
 	if (pb->post_pwm_on_delay)
 		msleep(pb->post_pwm_on_delay);
@@ -83,9 +105,25 @@ static void pwm_backlight_power_off(struct pwm_bl_data *pb)
 	if (pb->pwm_off_delay)
 		msleep(pb->pwm_off_delay);
 
+	if (!pb->power_sequence_reverse) {
+		if (pb->soc_enablekl)
+			gpiod_set_value_cansleep(pb->soc_enablekl, 0);
+
+		if (pb->disable_soc_enablekl_delay)
+			msleep(pb->disable_soc_enablekl_delay);
+	}
+
 	state.enabled = false;
 	state.duty_cycle = 0;
 	pwm_apply_state(pb->pwm, &state);
+
+	if (pb->power_sequence_reverse) {
+		if (pb->disable_soc_enablekl_delay)
+			msleep(pb->disable_soc_enablekl_delay);
+
+		if (pb->soc_enablekl)
+			gpiod_set_value_cansleep(pb->soc_enablekl, 0);
+	}
 
 	regulator_disable(pb->power_supply);
 	pb->enabled = false;
@@ -115,6 +153,11 @@ static int pwm_backlight_update_status(struct backlight_device *bl)
 	struct pwm_bl_data *pb = bl_get_data(bl);
 	int brightness = backlight_get_brightness(bl);
 	struct pwm_state state;
+
+	if ((brightness <= minimal_brightness) && (minimal_brightness > 0)) {
+		bl->props.brightness = minimal_brightness;
+		brightness = minimal_brightness;
+	}
 
 	if (pb->notify)
 		brightness = pb->notify(pb->dev, brightness);
@@ -358,6 +401,8 @@ static int pwm_backlight_parse_dt(struct device *dev,
 		}
 
 		data->max_brightness = num_levels - 1;
+		ret = of_property_read_u32(node, "minimal-brightness-level",
+			&minimal_brightness);
 	}
 
 	return 0;
@@ -451,6 +496,10 @@ static int pwm_backlight_initial_power_state(const struct pwm_bl_data *pb)
 	 * assume that another driver will enable the backlight at the
 	 * appropriate time. Therefore, if it is disabled, keep it so.
 	 */
+
+	if (pb->soc_enablekl && gpiod_get_value_cansleep(pb->soc_enablekl) == 0)
+	        active = false;
+
 	return active ? FB_BLANK_UNBLANK: FB_BLANK_POWERDOWN;
 }
 
@@ -497,10 +546,23 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	pb->post_pwm_on_delay = data->post_pwm_on_delay;
 	pb->pwm_off_delay = data->pwm_off_delay;
 
+	of_property_read_u32(node, "enable_delay",
+					   &pb->enable_soc_enablekl_delay);
+	of_property_read_u32(node, "disable_delay",
+					   &pb->disable_soc_enablekl_delay);
+	pb->power_sequence_reverse = of_property_read_bool(node, "power-sequence-reverse");
+
 	pb->enable_gpio = devm_gpiod_get_optional(&pdev->dev, "enable",
 						  GPIOD_ASIS);
 	if (IS_ERR(pb->enable_gpio)) {
 		ret = PTR_ERR(pb->enable_gpio);
+		goto err_alloc;
+	}
+
+	pb->soc_enablekl = devm_gpiod_get_optional(&pdev->dev, "soc_enablekl",
+						  GPIOD_OUT_LOW);
+	if (IS_ERR(pb->soc_enablekl)) {
+		ret = PTR_ERR(pb->soc_enablekl);
 		goto err_alloc;
 	}
 

@@ -205,11 +205,13 @@ struct panel_simple {
 	ktime_t unprepared_time;
 
 	const struct panel_desc *desc;
+	struct backlight_device *backlight;
 
 	struct regulator *supply;
 	struct i2c_adapter *ddc;
 
 	struct gpio_desc *enable_gpio;
+	struct gpio_desc *bl_sys_en_gpio;
 	struct gpio_desc *reset_gpio;
 
 	struct edid *edid;
@@ -553,13 +555,21 @@ static int panel_simple_disable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
 
+	pr_info("panel_simple_disable: p->prepared = %d ++++\n", p->prepared);
 	if (!p->enabled)
 		return 0;
+
+	if (p->backlight) {
+		p->backlight->props.power = FB_BLANK_POWERDOWN;
+		p->backlight->props.state |= BL_CORE_FBBLANK;
+		backlight_update_status(p->backlight);
+	}
 
 	if (p->desc->delay.disable)
 		panel_simple_msleep(p->desc->delay.disable);
 
 	p->enabled = false;
+	pr_info("panel_simple_disable: p->prepared = %d ++++\n", p->prepared);
 
 	return 0;
 }
@@ -568,8 +578,12 @@ static int panel_simple_suspend(struct device *dev)
 {
 	struct panel_simple *p = dev_get_drvdata(dev);
 
+	pr_info("panel_simple_suspend ++++\n");
 	gpiod_set_value_cansleep(p->reset_gpio, 1);
 	gpiod_set_value_cansleep(p->enable_gpio, 0);
+
+	if(p->bl_sys_en_gpio)
+		gpiod_direction_output(p->bl_sys_en_gpio, 0);
 
 	panel_simple_regulator_disable(p);
 
@@ -580,6 +594,7 @@ static int panel_simple_suspend(struct device *dev)
 
 	kfree(p->edid);
 	p->edid = NULL;
+	pr_info("panel_simple_suspend ----\n");
 
 	return 0;
 }
@@ -589,6 +604,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int ret;
 
+	pr_info("panel_simple_unprepare: p->prepared = %d ++++\n", p->prepared);
 	/* Unpreparing when already unprepared is a no-op */
 	if (!p->prepared)
 		return 0;
@@ -610,6 +626,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 	if (ret < 0)
 		return ret;
 	p->prepared = false;
+	pr_info("panel_simple_unprepare: p->prepared = %d ----\n", p->prepared);
 
 	return 0;
 }
@@ -619,6 +636,7 @@ static int panel_simple_resume(struct device *dev)
 	struct panel_simple *p = dev_get_drvdata(dev);
 	int err;
 
+	pr_info("panel_simple_resume ++++\n");
 	panel_simple_wait(p->unprepared_time, p->desc->delay.unprepare);
 
 	err = panel_simple_regulator_enable(p);
@@ -629,10 +647,14 @@ static int panel_simple_resume(struct device *dev)
 
 	gpiod_set_value_cansleep(p->enable_gpio, 1);
 
+	if(p->bl_sys_en_gpio)
+		gpiod_direction_output(p->bl_sys_en_gpio, 1);
+
 	if (p->desc->delay.prepare)
 		panel_simple_msleep(p->desc->delay.prepare);
 
 	p->prepared_time = ktime_get_boottime();
+	pr_info("panel_simple_resume ----\n");
 
 	return 0;
 }
@@ -642,6 +664,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 	int ret;
 
+	pr_info("panel_simple_prepare: p->prepared = %d ++++\n", p->prepared);
 	/* Preparing when already prepared is a no-op */
 	if (p->prepared)
 		return 0;
@@ -675,6 +698,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 	}
 
 	p->prepared = true;
+	pr_info("panel_simple_prepare: p->prepared = %d ----\n", p->prepared);
 
 	return 0;
 }
@@ -683,13 +707,21 @@ static int panel_simple_enable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
 
+	pr_info("panel_simple_enable: p->prepared = %d ++++\n", p->prepared);
 	if (p->enabled)
 		return 0;
 
 	if (p->desc->delay.enable)
 		panel_simple_msleep(p->desc->delay.enable);
 
+	if (p->backlight) {
+		p->backlight->props.power = FB_BLANK_POWERDOWN;
+		p->backlight->props.state |= BL_CORE_FBBLANK;
+		backlight_update_status(p->backlight);
+	}
+
 	p->enabled = true;
+	pr_info("panel_simple_enable: p->prepared = %d ----\n", p->prepared);
 
 	return 0;
 }
@@ -906,10 +938,12 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	struct panel_simple *panel;
 	struct display_timing dt;
 	struct device_node *ddc;
+	struct device_node *backlight;
 	int connector_type;
 	u32 bus_flags;
 	int err;
 
+	pr_info("panel_simple_probe ++++\n");
 	panel = devm_kzalloc(dev, sizeof(*panel), GFP_KERNEL);
 	if (!panel)
 		return -ENOMEM;
@@ -925,11 +959,19 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		return err;
 	}
 
-	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable", GPIOD_ASIS);
+	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable", GPIOD_OUT_LOW);
 	if (IS_ERR(panel->enable_gpio)) {
 		err = PTR_ERR(panel->enable_gpio);
 		if (err != -EPROBE_DEFER)
 			dev_err(dev, "failed to get enable GPIO: %d\n", err);
+		return err;
+	}
+
+	panel->bl_sys_en_gpio = devm_gpiod_get_optional(dev, "bl_sys_en", GPIOD_OUT_HIGH);
+	if (IS_ERR(panel->bl_sys_en_gpio)) {
+		err = PTR_ERR(panel->bl_sys_en_gpio);
+		if (err != -EPROBE_DEFER)
+			dev_err(dev, "failed to get bl_sys_en GPIO: %d\n", err);
 		return err;
 	}
 
@@ -945,6 +987,17 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (err) {
 		dev_err(dev, "%pOF: failed to get orientation %d\n", dev->of_node, err);
 		return err;
+	}
+
+	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
+	if (backlight) {
+		panel->backlight = of_find_backlight_by_node(backlight);
+		of_node_put(backlight);
+
+		if (!panel->backlight) {
+			dev_err(dev, "failed to get backlihgt");
+			return -EPROBE_DEFER;
+		}
 	}
 
 	panel->power_invert = of_property_read_bool(dev->of_node, "power-invert");
@@ -1047,6 +1100,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	}
 
 	drm_panel_add(&panel->base);
+	pr_info("panel_simple_probe ----\n");
 
 	return 0;
 
@@ -5126,6 +5180,7 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	const struct of_device_id *id;
 	int err;
 
+	pr_info("panel_simple_dsi_probe ++++\n");
 	id = of_match_node(dsi_of_match, dsi->dev.of_node);
 	if (!id)
 		return -ENODEV;
@@ -5181,6 +5236,7 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 
 		drm_panel_remove(&panel->base);
 	}
+	pr_info("panel_simple_dsi_probe ----\n");
 
 	return err;
 }

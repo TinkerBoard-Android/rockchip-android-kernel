@@ -2253,6 +2253,7 @@ analogix_dp_probe(struct device *dev, struct analogix_dp_plat_data *plat_data)
 	struct resource *res;
 	int ret;
 
+	pr_info("analogix_dp_probe +++\n");
 	if (!plat_data) {
 		dev_err(dev, "Invalided input plat_data\n");
 		return ERR_PTR(-EINVAL);
@@ -2368,6 +2369,7 @@ analogix_dp_probe(struct device *dev, struct analogix_dp_plat_data *plat_data)
 	dp->bridge.driver_private = dp;
 	dp->bridge.funcs = &analogix_dp_bridge_funcs;
 
+	pr_info("analogix_dp_probe ---\n");
 	return dp;
 }
 EXPORT_SYMBOL_GPL(analogix_dp_probe);
