@@ -45,6 +45,7 @@ static int tb3n_rs9_probe(struct i2c_client *client)
 
 static void tb3n_rs9_shutdown(struct i2c_client *client)
 {
+	/*
         pr_info("set m2b_reset to high");
         gpio_request(M2B_RESET,"m2b_reset");
         pr_info("before M2B_RESET =%s \n", gpio_get_value(M2B_RESET)? "H":"L");
@@ -58,6 +59,7 @@ static void tb3n_rs9_shutdown(struct i2c_client *client)
         pr_info("before M2B_PWR_OFF_N =%s \n", gpio_get_value(M2B_PWR_OFF_N)? "H":"L");
         gpio_direction_output(M2B_PWR_OFF_N, 0);
         pr_info("after M2B_PWR_OFF_N =%s \n", gpio_get_value(M2B_PWR_OFF_N)? "H":"L");
+	*/
 }
 
 

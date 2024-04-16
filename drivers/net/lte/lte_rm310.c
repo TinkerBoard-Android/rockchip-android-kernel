@@ -49,21 +49,22 @@ static int modem_poweron_off(int on_off)
 				msleep(2000);
 			}
 			if (pdata->power_gpio) {
-				gpiod_direction_output(pdata->power_gpio, 0);
-				msleep(50);
 				gpiod_direction_output(pdata->power_gpio, 1);
-				msleep(400);
-				gpiod_direction_output(pdata->power_gpio, 0);
+				msleep(100);
+			}
+			if (pdata->reset_gpio) {
+				gpiod_direction_output(pdata->reset_gpio, 1);
+				msleep(50);
 			}
 		} else {
 			LOG("%s: 4g modem power down.\n", __func__);
+			if (pdata->reset_gpio) {
+				gpiod_direction_output(pdata->reset_gpio, 0);
+				msleep(150);
+			}
 			if (pdata->power_gpio) {
 				gpiod_direction_output(pdata->power_gpio, 0);
 				msleep(100);
-				gpiod_direction_output(pdata->power_gpio, 1);
-				msleep(1000);
-				gpiod_direction_output(pdata->power_gpio, 0);
-				msleep(400);
 			}
 			if (pdata->vbat_gpio)
 				gpiod_direction_output(pdata->vbat_gpio, 0);
@@ -122,20 +123,21 @@ static int modem_platdata_parse_dt(struct device *dev,
 	if (IS_ERR(data->vbat_gpio)) {
 		ret = PTR_ERR(data->vbat_gpio);
 		dev_err(dev, "failed to request 4G,vbat GPIO: %d\n", ret);
-		return ret;
-	}
-	data->power_gpio = devm_gpiod_get_optional(dev, "4G,power",
-						   GPIOD_OUT_HIGH);
-	if (IS_ERR(data->power_gpio)) {
-		ret = PTR_ERR(data->power_gpio);
-		dev_err(dev, "failed to request 4G,power GPIO: %d\n", ret);
-		return ret;
+		//return ret;
+		data->vbat_gpio = NULL;
 	}
 	data->reset_gpio = devm_gpiod_get_optional(dev, "4G,reset",
 						   GPIOD_OUT_LOW);
 	if (IS_ERR(data->reset_gpio)) {
 		ret = PTR_ERR(data->reset_gpio);
 		dev_err(dev, "failed to request 4G,reset GPIO: %d\n", ret);
+		return ret;
+	}
+	data->power_gpio = devm_gpiod_get_optional(dev, "4G,power",
+						   GPIOD_OUT_LOW);
+	if (IS_ERR(data->power_gpio)) {
+		ret = PTR_ERR(data->power_gpio);
+		dev_err(dev, "failed to request 4G,power GPIO: %d\n", ret);
 		return ret;
 	}
 	return 0;
@@ -152,6 +154,7 @@ static int lte_probe(struct platform_device *pdev)
 	struct lte_data *pdata;
 	struct task_struct *kthread;
 	int ret = -1;
+	LOG("%s: Start\n", __func__);
 
 	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
 	if (!pdata)
@@ -164,8 +167,6 @@ static int lte_probe(struct platform_device *pdev)
 	gpdata = pdata;
 	pdata->dev = &pdev->dev;
 
-	if (pdata->reset_gpio)
-		gpiod_direction_output(pdata->reset_gpio, 0);
 	kthread = kthread_run(modem_power_on_thread, NULL,
 			      "modem_power_on_thread");
 	if (IS_ERR(kthread)) {
@@ -181,37 +182,49 @@ err:
 
 static int lte_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	LOG("%s: Suspend\n", __func__);
+
 	return 0;
 }
 
 static int lte_resume(struct platform_device *pdev)
 {
+	struct lte_data *pdata = gpdata;
+	LOG("%s: Resume\n", __func__);
+
+	if (pdata) {
+		LOG("%s: 4g modem warn reset.\n", __func__);
+		if (pdata->reset_gpio) {
+			gpiod_direction_output(pdata->reset_gpio, 1);
+			msleep(400);
+			gpiod_direction_output(pdata->reset_gpio, 0);
+		}
+	}
 	return 0;
 }
 
 static int lte_remove(struct platform_device *pdev)
 {
-	struct lte_data *pdata = gpdata;
+	LOG("%s: Remove\n", __func__);
 
-	if (pdata->power_gpio) {
-		msleep(100);
-		gpiod_direction_output(pdata->power_gpio, 1);
-		msleep(750);
-		gpiod_direction_output(pdata->power_gpio, 0);
-	}
-	if (pdata->vbat_gpio)
-		gpiod_direction_output(pdata->vbat_gpio, 0);
-	gpdata = NULL;
+	modem_poweron_off(0);
 	return 0;
 }
 
 static const struct of_device_id modem_platdata_of_match[] = {
-	{ .compatible = "4g-modem-platdata" },
+	{ .compatible = "4g-modem-platdata", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, modem_platdata_of_match);
 
+static const struct platform_device_id modem_table[] = {
+        { "4g-modem-platdata", 0 },
+        { }
+};
+MODULE_DEVICE_TABLE(platform, modem_table);
+
 static struct platform_driver rm310_driver = {
+	.id_table	= modem_table,
 	.probe		= lte_probe,
 	.remove		= lte_remove,
 	.suspend	= lte_suspend,
@@ -225,6 +238,7 @@ static struct platform_driver rm310_driver = {
 static int __init rm310_init(void)
 {
 	int ret;
+	LOG("%s: Init\n", __func__);
 
 	modem_class = class_create(THIS_MODULE, "rk_modem");
 	ret =  class_create_file(modem_class, &class_attr_modem_status);
@@ -232,13 +246,14 @@ static int __init rm310_init(void)
 		LOG("Fail to create class modem_status.\n");
 	return platform_driver_register(&rm310_driver);
 }
+module_init(rm310_init);
 
 static void __exit rm310_exit(void)
 {
+	LOG("%s: Exit\n", __func__);
+
 	platform_driver_unregister(&rm310_driver);
 }
-
-late_initcall(rm310_init);
 module_exit(rm310_exit);
 
 MODULE_AUTHOR("xuxuehui <xxh@rock-chips.com>");
