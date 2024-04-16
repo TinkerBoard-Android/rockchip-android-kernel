@@ -19,7 +19,10 @@
 #include <linux/usb/cdc.h>
 #include <linux/usb/usbnet.h>
 #include <linux/usb/cdc-wdm.h>
+#include <linux/usb/quirks.h>
 #include <linux/u64_stats_sync.h>
+#include <linux/ctype.h>
+#include <linux/nls.h>
 
 /* This driver supports wwan (3G/LTE/?) devices using a vendor
  * specific management protocol called Qualcomm MSM Interface (QMI) -
@@ -134,6 +137,57 @@ static void qmimux_setup(struct net_device *dev)
 	dev->mtu             = 1500;
 	dev->needs_free_netdev = true;
 }
+
+struct netdev_adjacent {
+	struct net_device *dev;
+
+	/* upper master flag, there can only be one master device per list */
+	bool master;
+
+	/* lookup ignore flag */
+	bool ignore;
+
+	/* counter for the number of times this device was added to us */
+	u16 ref_nr;
+
+	/* private field for the users */
+	void *private;
+
+	struct list_head list;
+	struct rcu_head rcu;
+};
+
+/**
+ * netdev_upper_get_next_dev_rcu - Get the next dev from upper list
+ * @dev: device
+ * @iter: list_head ** of the current position
+ *
+ * Gets the next device from the dev's upper list, starting from iter
+ * position. The caller must hold RCU read lock.
+ */
+struct net_device *netdev_upper_get_next_dev_rcu(struct net_device *dev,
+						 struct list_head **iter)
+{
+	struct netdev_adjacent *upper;
+
+	WARN_ON_ONCE(!rcu_read_lock_held() && !lockdep_rtnl_is_held());
+
+	upper = list_entry_rcu((*iter)->next, struct netdev_adjacent, list);
+
+	if (&upper->list == &dev->adj_list.upper)
+		return NULL;
+
+	*iter = &upper->list;
+
+	return upper->dev;
+}
+
+/* iterate through upper list, must be called under RCU read lock */
+#define netdev_for_each_upper_dev_rcu(dev, updev, iter) \
+	for (iter = &(dev)->adj_list.upper, \
+	     updev = netdev_upper_get_next_dev_rcu(dev, &(iter)); \
+	     updev; \
+	     updev = netdev_upper_get_next_dev_rcu(dev, &(iter)))
 
 static struct net_device *qmimux_find_dev(struct usbnet *dev, u8 mux_id)
 {
@@ -741,6 +795,183 @@ static int qmi_wwan_change_dtr(struct usbnet *dev, bool on)
 				on ? 0x01 : 0x00, intf, NULL, 0);
 }
 
+int __usb_get_string(struct usb_device *dev, unsigned short langid,
+			  unsigned char index, void *buf, int size)
+{
+	int i;
+	int result;
+
+	if (size <= 0)		/* No point in asking for no data */
+		return -EINVAL;
+
+	for (i = 0; i < 3; ++i) {
+		/* retry on length 0 or stall; some devices are flakey */
+		result = usb_control_msg(dev, usb_rcvctrlpipe(dev, 0),
+			USB_REQ_GET_DESCRIPTOR, USB_DIR_IN,
+			(USB_DT_STRING << 8) + index, langid, buf, size,
+			USB_CTRL_GET_TIMEOUT);
+		if (result == 0 || result == -EPIPE)
+			continue;
+		if (result > 1 && ((u8 *) buf)[1] != USB_DT_STRING) {
+			result = -ENODATA;
+			continue;
+		}
+		break;
+	}
+	return result;
+}
+
+void __usb_try_string_workarounds(unsigned char *buf, int *length)
+{
+	int newlength, oldlength = *length;
+
+	for (newlength = 2; newlength + 1 < oldlength; newlength += 2)
+		if (!isprint(buf[newlength]) || buf[newlength + 1])
+			break;
+
+	if (newlength > 2) {
+		buf[0] = newlength;
+		*length = newlength;
+	}
+}
+
+int __usb_string_sub(struct usb_device *dev, unsigned int langid,
+			  unsigned int index, unsigned char *buf)
+{
+	int rc;
+
+	/* Try to read the string descriptor by asking for the maximum
+	 * possible number of bytes */
+	if (dev->quirks & USB_QUIRK_STRING_FETCH_255)
+		rc = -EIO;
+	else
+		rc = __usb_get_string(dev, langid, index, buf, 255);
+
+	/* If that failed try to read the descriptor length, then
+	 * ask for just that many bytes */
+	if (rc < 2) {
+		rc = __usb_get_string(dev, langid, index, buf, 2);
+		if (rc == 2)
+			rc = __usb_get_string(dev, langid, index, buf, buf[0]);
+	}
+
+	if (rc >= 2) {
+		if (!buf[0] && !buf[1])
+			__usb_try_string_workarounds(buf, &rc);
+
+		/* There might be extra junk at the end of the descriptor */
+		if (buf[0] < rc)
+			rc = buf[0];
+
+		rc = rc - (rc & 1); /* force a multiple of two */
+	}
+
+	if (rc < 2)
+		rc = (rc < 0 ? rc : -EINVAL);
+
+	return rc;
+}
+
+int __usb_get_langid(struct usb_device *dev, unsigned char *tbuf)
+{
+	int err;
+
+	if (dev->have_langid)
+		return 0;
+
+	if (dev->string_langid < 0)
+		return -EPIPE;
+
+	err = __usb_string_sub(dev, 0, 0, tbuf);
+
+	/* If the string was reported but is malformed, default to english
+	 * (0x0409) */
+	if (err == -ENODATA || (err > 0 && err < 4)) {
+		dev->string_langid = 0x0409;
+		dev->have_langid = 1;
+		dev_err(&dev->dev,
+			"language id specifier not provided by device, defaulting to English\n");
+		return 0;
+	}
+
+	/* In case of all other errors, we assume the device is not able to
+	 * deal with strings at all. Set string_langid to -1 in order to
+	 * prevent any string to be retrieved from the device */
+	if (err < 0) {
+		dev_info(&dev->dev, "string descriptor 0 read error: %d\n",
+					err);
+		dev->string_langid = -1;
+		return -EPIPE;
+	}
+
+	/* always use the first langid listed */
+	dev->string_langid = tbuf[2] | (tbuf[3] << 8);
+	dev->have_langid = 1;
+	dev_dbg(&dev->dev, "default language 0x%04x\n",
+				dev->string_langid);
+	return 0;
+}
+
+
+int __usb_string(struct usb_device *dev, int index, char *buf, size_t size)
+{
+	unsigned char *tbuf;
+	int err;
+
+	if (dev->state == USB_STATE_SUSPENDED)
+		return -EHOSTUNREACH;
+	if (size <= 0 || !buf)
+		return -EINVAL;
+	buf[0] = 0;
+	if (index <= 0 || index >= 256)
+		return -EINVAL;
+	tbuf = kmalloc(256, GFP_NOIO);
+	if (!tbuf)
+		return -ENOMEM;
+
+	err = __usb_get_langid(dev, tbuf);
+	if (err < 0)
+		goto errout;
+
+	err = __usb_string_sub(dev, dev->string_langid, index, tbuf);
+	if (err < 0)
+		goto errout;
+
+	size--;		/* leave room for trailing NULL char in output buffer */
+	err = utf16s_to_utf8s((wchar_t *) &tbuf[2], (err - 2) / 2,
+			UTF16_LITTLE_ENDIAN, buf, size);
+	buf[err] = 0;
+
+	if (tbuf[1] != USB_DT_STRING)
+		dev_dbg(&dev->dev,
+			"wrong descriptor type %02x for string %d (\"%s\")\n",
+			tbuf[1], index, buf);
+
+ errout:
+	kfree(tbuf);
+	return err;
+}
+
+int __usbnet_get_ethernet_addr(struct usbnet *dev, int iMACAddress)
+{
+	u8		addr[ETH_ALEN];
+	int 		tmp = -1, ret;
+	unsigned char	buf [13];
+
+	ret = usb_string(dev->udev, iMACAddress, buf, sizeof buf);
+	if (ret == 12)
+		tmp = hex2bin(addr, buf, 6);
+	if (tmp < 0) {
+		dev_dbg(&dev->udev->dev,
+			"bad MAC string %d fetch, %d\n", iMACAddress, tmp);
+		if (ret >= 0)
+			ret = -EINVAL;
+		return ret;
+	}
+	eth_hw_addr_set(dev->net, addr);
+	return 0;
+}
+
 static int qmi_wwan_bind(struct usbnet *dev, struct usb_interface *intf)
 {
 	int status;
@@ -785,7 +1016,7 @@ static int qmi_wwan_bind(struct usbnet *dev, struct usb_interface *intf)
 	/* errors aren't fatal - we can live with the dynamic address */
 	if (cdc_ether && cdc_ether->wMaxSegmentSize) {
 		dev->hard_mtu = le16_to_cpu(cdc_ether->wMaxSegmentSize);
-		usbnet_get_ethernet_addr(dev, cdc_ether->iMACAddress);
+		__usbnet_get_ethernet_addr(dev, cdc_ether->iMACAddress);
 	}
 
 	/* claim data interface and set it up */
@@ -945,6 +1176,16 @@ static const struct driver_info	qmi_wwan_info_quirk_dtr = {
 	.data           = QMI_WWAN_QUIRK_DTR,
 };
 
+static const struct driver_info qmi_wwan_info_quirk_dtr_rawip = {
+	.description    = "WWAN/QMI device",
+	.flags          = FLAG_WWAN | FLAG_SEND_ZLP | FLAG_NOARP,
+	.bind           = qmi_wwan_bind,
+	.unbind         = qmi_wwan_unbind,
+	.manage_power   = qmi_wwan_manage_power,
+	.rx_fixup       = qmi_wwan_rx_fixup,
+	.data           = QMI_WWAN_QUIRK_DTR,
+};
+
 #define HUAWEI_VENDOR_ID	0x12D1
 
 /* map QMI/wwan function by a fixed interface number */
@@ -976,7 +1217,7 @@ static const struct driver_info	qmi_wwan_info_quirk_dtr = {
 #define QMI_MATCH_FF_FF_FF(vend, prod) \
 	USB_DEVICE_AND_INTERFACE_INFO(vend, prod, USB_CLASS_VENDOR_SPEC, \
 				      USB_SUBCLASS_VENDOR_SPEC, 0xff), \
-	.driver_info = (unsigned long)&qmi_wwan_info_quirk_dtr
+	.driver_info = (unsigned long)&qmi_wwan_info_quirk_dtr_rawip
 
 static const struct usb_device_id products[] = {
 	/* 1. CDC ECM like devices match on the control interface */
@@ -1084,11 +1325,11 @@ static const struct usb_device_id products[] = {
 	},
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0125)},	/* Quectel EC25, EC20 R2.0  Mini PCIe */
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0306)},	/* Quectel EP06/EG06/EM06 */
+	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x030e)},   /* Quectel EM05GV2 */
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0512)},	/* Quectel EG12/EM12 */
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0620)},	/* Quectel EM160R-GL */
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0800)},	/* Quectel RM500Q-GL */
 	{QMI_MATCH_FF_FF_FF(0x2c7c, 0x0801)},	/* Quectel RM520N */
-
 	/* 3. Combined interface devices matching on interface number */
 	{QMI_FIXED_INTF(0x0408, 0xea42, 4)},	/* Yota / Megafon M100-1 */
 	{QMI_FIXED_INTF(0x05c6, 0x6001, 3)},	/* 4G LTE usb-modem U901 */
@@ -1422,7 +1663,6 @@ static const struct usb_device_id products[] = {
 	{QMI_QUIRK_SET_DTR(0x2c7c, 0x0191, 4)},	/* Quectel EG91 */
 	{QMI_QUIRK_SET_DTR(0x2c7c, 0x0195, 4)},	/* Quectel EG95 */
 	{QMI_FIXED_INTF(0x2c7c, 0x0296, 4)},	/* Quectel BG96 */
-	{QMI_QUIRK_SET_DTR(0x2c7c, 0x030e, 4)},	/* Quectel EM05GV2 */
 	{QMI_QUIRK_SET_DTR(0x2cb7, 0x0104, 4)},	/* Fibocom NL678 series */
 	{QMI_FIXED_INTF(0x0489, 0xe0b4, 0)},	/* Foxconn T77W968 LTE */
 	{QMI_FIXED_INTF(0x0489, 0xe0b5, 0)},	/* Foxconn T77W968 LTE with eSIM support*/
@@ -1508,6 +1748,7 @@ static int qmi_wwan_probe(struct usb_interface *intf,
 {
 	struct usb_device_id *id = (struct usb_device_id *)prod;
 	struct usb_interface_descriptor *desc = &intf->cur_altsetting->desc;
+	int status = 0;
 
 	/* Workaround to enable dynamic IDs.  This disables usbnet
 	 * blacklisting functionality.  Which, if required, can be
@@ -1546,7 +1787,17 @@ static int qmi_wwan_probe(struct usb_interface *intf,
 	if (desc->bNumEndpoints == 2)
 		return -ENODEV;
 
-	return usbnet_probe(intf, id);
+	status = usbnet_probe(intf, id);
+	if (status == 0) {
+		struct driver_info *info = (struct driver_info *)(id->driver_info);
+		if (info->flags & FLAG_NOARP) {
+			struct usbnet *dev = usb_get_intfdata(intf);
+			struct qmi_wwan_state *devinfo = (void *)&dev->data;
+			devinfo->flags |= QMI_WWAN_FLAG_RAWIP;
+			qmi_wwan_netdev_setup(dev->net);
+		}
+	}
+	return status;
 }
 
 static void qmi_wwan_disconnect(struct usb_interface *intf)
