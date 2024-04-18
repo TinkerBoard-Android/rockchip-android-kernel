@@ -116,6 +116,8 @@ static unsigned int at24_write_timeout = 25;
 module_param_named(write_timeout, at24_write_timeout, uint, 0);
 MODULE_PARM_DESC(at24_write_timeout, "Time (in ms) to try writes (default 25)");
 
+static struct kobject *eeprom_kobj;
+
 struct at24_chip_data {
 	u32 byte_len;
 	u8 flags;
@@ -462,6 +464,19 @@ static int at24_read(void *priv, unsigned int off, void *val, size_t count)
 	return 0;
 }
 
+void at24_read_eeprom(char *buf, unsigned int off, size_t count)
+{
+	struct at24_data *at24;
+
+	if (eeprom_kobj != NULL) {
+		at24 = dev_get_drvdata(container_of(eeprom_kobj, struct device, kobj));
+		at24_read(at24, off, buf, count);
+	}
+	else
+		pr_info("at24 read eeprom fail\n");
+}
+EXPORT_SYMBOL(at24_read_eeprom);
+
 static int at24_write(void *priv, unsigned int off, void *val, size_t count)
 {
 	struct at24_data *at24;
@@ -742,6 +757,7 @@ static int at24_probe(struct i2c_client *client)
 	nvmem_config.word_size = 1;
 	nvmem_config.size = byte_len;
 
+	eeprom_kobj = &client->dev.kobj;
 	i2c_set_clientdata(client, at24);
 
 	full_power = acpi_dev_state_d0(&client->dev);

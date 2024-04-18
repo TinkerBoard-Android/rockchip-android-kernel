@@ -49,6 +49,7 @@
 #include "dwmac1000.h"
 #include "dwxgmac2.h"
 #include "hwif.h"
+#include "eth_mac_tinker.h"
 
 /* As long as the interface is active, we keep the timestamping counter enabled
  * with fine resolution and binary rollover. This avoid non-monotonic behavior
@@ -1086,6 +1087,21 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 
 	if (priv->dma_cap.fpesel)
 		stmmac_fpe_link_state_handle(priv, true);
+}
+
+void set_led_configuration_f_vd_cg(struct phy_device *phydev) {
+	// To switch Page0xd04
+	phy_write(phydev, 31, 0x0d04);
+
+	//Disable EEELCR mode
+	phy_write(phydev, 17, 0x0000);
+
+	printk("%s: #### before setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
+	phy_write(phydev, 16, 0x8b68);
+	printk("%s: #### after setting led, Reg16 = 0x%x\n", __func__, phy_read(phydev, 16));
+
+	//switch to Page0
+	phy_write(phydev, 31, 0x0000);
 }
 
 static const struct phylink_mac_ops stmmac_phylink_mac_ops = {
@@ -2887,7 +2903,7 @@ static int stmmac_get_hw_features(struct stmmac_priv *priv)
 static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 {
 	u8 addr[ETH_ALEN];
-
+/*
 	if (!is_valid_ether_addr(priv->dev->dev_addr)) {
 		stmmac_get_umac_addr(priv, priv->hw, addr, 0);
 		if (is_valid_ether_addr(addr))
@@ -2902,6 +2918,23 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 		dev_info(priv->device, "device MAC address %pM\n",
 			 priv->dev->dev_addr);
 	}
+*/
+	if (!strcmp(dev_name(priv->device), "fe010000.ethernet"))
+		eth_mac_eeprom(addr, 1);
+	else
+		eth_mac_eeprom(addr, 0);
+
+	if (is_valid_ether_addr(addr))
+		eth_hw_addr_set(priv->dev, addr);
+	else if (likely(priv->plat->get_eth_addr))
+		priv->plat->get_eth_addr(priv->plat->bsp_priv,
+					 addr);
+	if (is_valid_ether_addr(addr))
+		eth_hw_addr_set(priv->dev, addr);
+	else
+		eth_hw_addr_random(priv->dev);
+	dev_info(priv->device, "device MAC address %pM\n",
+		 priv->dev->dev_addr);
 }
 
 /**
@@ -3826,6 +3859,7 @@ static int __stmmac_open(struct net_device *dev,
 				   __func__, ret);
 			goto init_phy_error;
 		}
+		set_led_configuration_f_vd_cg(dev->phydev);
 	}
 
 	/* Extra statistics */
@@ -7352,6 +7386,11 @@ int stmmac_dvr_probe(struct device *device,
 		netdev_err(ndev, "failed to setup phy (%d)\n", ret);
 		goto error_phy_setup;
 	}
+
+	if (!strcmp(dev_name(device), "fe2a0000.ethernet"))
+		strcpy(ndev->name, "eth0");
+	else if (!strcmp(dev_name(device), "fe010000.ethernet"))
+		strcpy(ndev->name, "eth1");
 
 	ret = register_netdev(ndev);
 	if (ret) {
