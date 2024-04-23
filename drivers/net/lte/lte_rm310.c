@@ -149,6 +149,12 @@ static int modem_power_on_thread(void *data)
 	return 0;
 }
 
+static int modem_power_off_thread(void *data)
+{
+	modem_poweron_off(0);
+	return 0;
+}
+
 static int lte_probe(struct platform_device *pdev)
 {
 	struct lte_data *pdata;
@@ -206,9 +212,22 @@ static int lte_resume(struct platform_device *pdev)
 static int lte_remove(struct platform_device *pdev)
 {
 	LOG("%s: Remove\n", __func__);
-
-	modem_poweron_off(0);
 	return 0;
+}
+
+static void lte_shutdown(struct platform_device *pdev)
+{
+	struct task_struct *kthread;
+	int ret = -1;
+	LOG("%s: Shutdown\n", __func__);
+
+	kthread = kthread_run(modem_power_off_thread, NULL,
+			"modem_power_off_thread");
+	if (IS_ERR(kthread)) {
+		LOG("%s: create modem_power_off_thread failed.\n",  __func__);
+		ret = PTR_ERR(kthread);
+		LOG("%s: error code = %d.\n", __func__, ret);
+	}
 }
 
 static const struct of_device_id modem_platdata_of_match[] = {
@@ -227,6 +246,7 @@ static struct platform_driver rm310_driver = {
 	.id_table	= modem_table,
 	.probe		= lte_probe,
 	.remove		= lte_remove,
+	.shutdown	= lte_shutdown,
 	.suspend	= lte_suspend,
 	.resume		= lte_resume,
 	.driver	= {
