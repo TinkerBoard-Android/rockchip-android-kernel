@@ -335,7 +335,6 @@
 		compatible = "wlan-platdata";
 		rockchip,grf = <&grf>;
 		wifi_chip_type = "ap6398s";
-		WIFI,poweren_gpio = <&gpio3 RK_PD5 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
 
@@ -358,6 +357,13 @@
 	status = "okay";
 };
 
+&can0 {
+	assigned-clocks = <&cru CLK_CAN0>;
+	assigned-clock-rates = <150000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&can0m0_pins>;
+	status = "okay";
+};
 &cpu0 {
 	cpu-supply = <&vdd_cpu>;
 };
@@ -1353,7 +1359,7 @@
 };
 
 &i2c1 {
-	status = "okay";
+	status = "disabled";
 
 	gt1x: gt1x@14 {
 		compatible = "goodix,gt1x";
