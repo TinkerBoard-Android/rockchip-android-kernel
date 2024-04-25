@@ -47,6 +47,34 @@
 
 #include "panel-simple.h"
 
+#if IS_ENABLED(CONFIG_DRM_I2C_LT9211)
+//extern void lt9211_loader_protect(bool on);
+extern void lt9211_bridge_enable(int t);
+extern void lt9211_bridge_disable(void);
+extern int lt9211_is_connected(void);
+extern int lt9211_is_probed(void);
+extern void lt9211_set_videomode(struct videomode vm);
+extern bool lt9211_test_pattern(void);
+extern void lt9211_lvds_pattern_config(void);
+//extern void lt9211_lvds_power_on(void);
+extern void lt9211_lvds_power_off(void);
+extern void lt9211_backlight_sys_enable(void);
+extern void lt9211_backlight_sys_disable(void);
+#else
+//static void lt9211_loader_protect(bool on) { return ; }
+static void lt9211_bridge_enable(int t) { return ; }
+static void lt9211_bridge_disable(void) { return ; }
+static int lt9211_is_connected(void) { return 0; }
+static int lt9211_is_probed(void) { return 0; }
+static void lt9211_set_videomode(struct videomode vm) { return ; }
+static bool lt9211_test_pattern(void) { return false; }
+static void lt9211_lvds_pattern_config(void) { return ; }
+//static void lt9211_lvds_power_on(void) { return ; }
+static void lt9211_lvds_power_off(void) { return ; }
+static void lt9211_backlight_sys_enable(void) { return ; }
+static void lt9211_backlight_sys_disable(void) { return ; }
+#endif
+
 enum panel_simple_cmd_type {
 	CMD_TYPE_DEFAULT,
 	CMD_TYPE_SPI
@@ -66,6 +94,16 @@ struct panel_cmd_desc {
 struct panel_cmd_seq {
 	struct panel_cmd_desc *cmds;
 	unsigned int cmd_cnt;
+};
+
+struct pwseq {
+	unsigned int t1;//VCC on to start lvds signal
+	unsigned int t2;//LVDS signal(start) to turn Backlihgt on or Backlight sys Enable
+	unsigned int t3;//Backlight sys Disable or Backlihgt(off) to stop lvds signal
+	unsigned int t4;//LVDS signal to turn VCC off
+	unsigned int t5;//VCC off to turn VCC on
+	unsigned int t6;//Backlight sys Enable to turn Backlight on
+	unsigned int t7;//Backlight off to Backlight sys Disable
 };
 
 /**
@@ -94,6 +132,9 @@ struct panel_desc {
 
 	/** @num_timings: Number of elements in timings array. */
 	unsigned int num_timings;
+
+	/** @pwseq_delay: delay for power sequence. */
+	struct pwseq pwseq_delay;
 
 	/** @bpc: Bits per color. */
 	unsigned int bpc;
@@ -555,9 +596,26 @@ static int panel_simple_disable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
 
-	pr_info("panel_simple_disable: p->prepared = %d ++++\n", p->prepared);
+	pr_info("panel_simple_disable: p->enabled = %d ++++\n", p->prepared);
 	if (!p->enabled)
 		return 0;
+
+	if (lt9211_is_connected()) {
+		if(p->desc->pwseq_delay.t3){
+			msleep(p->desc->pwseq_delay.t7);//Backlight off to Backlight sys Disable
+			lt9211_backlight_sys_disable();
+			msleep(p->desc->pwseq_delay.t3 - p->desc->pwseq_delay.t7);//Backlight sys Disable or backlight power off to stop lvds signal
+		}
+
+		lt9211_bridge_disable();
+		if(p->desc->pwseq_delay.t4)
+			msleep(p->desc->pwseq_delay.t4);//stop lvds signal to turn VCC off
+
+		lt9211_lvds_power_off();
+
+		if(p->desc->pwseq_delay.t5)
+			msleep(p->desc->pwseq_delay.t5);//lvds power off to turn on lvds power
+	}
 
 	if (p->backlight) {
 		p->backlight->props.power = FB_BLANK_POWERDOWN;
@@ -569,7 +627,7 @@ static int panel_simple_disable(struct drm_panel *panel)
 		panel_simple_msleep(p->desc->delay.disable);
 
 	p->enabled = false;
-	pr_info("panel_simple_disable: p->prepared = %d ++++\n", p->prepared);
+	pr_info("panel_simple_disable: p->enabled = %d ++++\n", p->prepared);
 
 	return 0;
 }
@@ -707,9 +765,18 @@ static int panel_simple_enable(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
 
-	pr_info("panel_simple_enable: p->prepared = %d ++++\n", p->prepared);
+	pr_info("panel_simple_enable: p->enabled = %d ++++\n", p->enabled);
 	if (p->enabled)
 		return 0;
+
+	if (lt9211_is_connected()) {
+		lt9211_bridge_enable(p->desc->pwseq_delay.t1);
+		if(p->desc->pwseq_delay.t2){
+			msleep(p->desc->pwseq_delay.t2 - p->desc->pwseq_delay.t6);//lvds signal to turn on backlight or Backlight sys Enable
+			lt9211_backlight_sys_enable();
+			msleep(p->desc->pwseq_delay.t6);//Backlight sys Enable to turn Backlight on
+		}
+	}
 
 	if (p->desc->delay.enable)
 		panel_simple_msleep(p->desc->delay.enable);
@@ -720,8 +787,11 @@ static int panel_simple_enable(struct drm_panel *panel)
 		backlight_update_status(p->backlight);
 	}
 
+	if (lt9211_is_connected() && lt9211_test_pattern())
+		lt9211_lvds_pattern_config();
+
 	p->enabled = true;
-	pr_info("panel_simple_enable: p->prepared = %d ----\n", p->prepared);
+	pr_info("panel_simple_enable: p->enabled = %d ----\n", p->enabled);
 
 	return 0;
 }
@@ -4810,6 +4880,8 @@ static int panel_simple_of_get_desc_data(struct device *dev,
 		of_property_read_u32(np, "width-mm", &desc->size.width);
 		of_property_read_u32(np, "height-mm", &desc->size.height);
 	}
+	pr_info("panel_simple_of_get_desc_data bpc=%u bus_format=0x%x, size.width=%u  size.height =%u bus_flags =0x%x\n",
+		 desc->bpc, desc->bus_format, desc->size.width, desc->size.height, desc->bus_flags );
 
 	of_property_read_u32(np, "prepare-delay-ms", &desc->delay.prepare);
 	of_property_read_u32(np, "enable-delay-ms", &desc->delay.enable);
@@ -4817,6 +4889,20 @@ static int panel_simple_of_get_desc_data(struct device *dev,
 	of_property_read_u32(np, "unprepare-delay-ms", &desc->delay.unprepare);
 	of_property_read_u32(np, "reset-delay-ms", &desc->delay.reset);
 	of_property_read_u32(np, "init-delay-ms", &desc->delay.init);
+
+	if (lt9211_is_connected()) {
+		of_property_read_u32(np, "t1", &desc->pwseq_delay.t1);
+		of_property_read_u32(np, "t2", &desc->pwseq_delay.t2);
+		of_property_read_u32(np, "t3", &desc->pwseq_delay.t3);
+		of_property_read_u32(np, "t4", &desc->pwseq_delay.t4);
+		of_property_read_u32(np, "t5", &desc->pwseq_delay.t5);
+		of_property_read_u32(np, "t6", &desc->pwseq_delay.t6);
+		of_property_read_u32(np, "t7", &desc->pwseq_delay.t7);
+
+		pr_info("panel_simple_dsi_of_get_desc_data t1=%d t2=%d t3=%d t4=%d t5=%d t6=%d t7=%d\n", 
+			desc->pwseq_delay.t1, desc->pwseq_delay.t2, desc->pwseq_delay.t3, desc->pwseq_delay.t4, 
+			desc->pwseq_delay.t5, desc->pwseq_delay.t6, desc->pwseq_delay.t7);
+	}
 
 	data = of_get_property(np, "panel-init-sequence", &len);
 	if (data) {
@@ -5168,7 +5254,17 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	if (!of_property_read_u32(np, "dsi,lanes", &val))
 		desc->lanes = val;
 
+	pr_info("panel_simple_dsi_of_get_desc_data flags=%lx format=0x%x lanes =%u\n", 
+		desc->flags, desc->format, desc->lanes);
+
 	return 0;
+}
+
+void lt9211_setup_desc(struct panel_desc_dsi *desc)
+{
+    struct videomode vm;
+    drm_display_mode_to_videomode(desc->desc.modes, &vm);
+    lt9211_set_videomode(vm);
 }
 
 static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
@@ -5179,13 +5275,20 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	struct panel_desc_dsi *d;
 	const struct of_device_id *id;
 	int err;
+	int dsi_id;
 
 	pr_info("panel_simple_dsi_probe ++++\n");
 	id = of_match_node(dsi_of_match, dsi->dev.of_node);
 	if (!id)
 		return -ENODEV;
 
+	if(lt9211_is_probed() > 1)
+		return -EPROBE_DEFER;
+
 	if (!id->data) {
+		dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
+		pr_info("panel_simple_dsi_probe dsi_id =%d\n", dsi_id);
+
 		d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
 		if (!d)
 			return -ENOMEM;
@@ -5195,6 +5298,10 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 			dev_err(dev, "failed to get desc data: %d\n", err);
 			return err;
 		}
+	}
+
+	if (lt9211_is_connected()){
+		lt9211_setup_desc(d);
 	}
 
 	desc = id->data ? id->data : d;
@@ -5230,9 +5337,20 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	dsi->format = desc->format;
 	dsi->lanes = desc->lanes;
 
+	/*
+		printk("panel_simple_dsi_probe lanes=%u format =%u flags=%lx \n",d->lanes, d->format, d->flags);
+		printk("panel_simple_dsi_probe %d %d %d %d %d \n", d->desc.modes->clock, d->desc.modes->hdisplay, 
+			d->desc.modes->hsync_start, d->desc.modes->hsync_end, d->desc.modes->htotal);
+		printk("panel_simple_dsi_probe %d %d %d %d %x\n", d->desc.modes->vdisplay, d->desc.modes->vsync_start, 
+			d->desc.modes->vsync_end, d->desc.modes->vtotal,  d->desc.modes->flags);
+		printk("panel_simple_dsi_probe bpc=%u width =%u height=%u\n", d->desc.bpc, d->desc.size.width, d->desc.size.height);
+		printk("panel_simple_dsi_probe lanes=%u format =%u mode_flags=%lx\n", dsi->lanes, dsi->format, dsi->mode_flags);
+	*/
+
 	err = mipi_dsi_attach(dsi);
 	if (err) {
 		struct panel_simple *panel = mipi_dsi_get_drvdata(dsi);
+		pr_info("failed to mipi_dsi_attach");
 
 		drm_panel_remove(&panel->base);
 	}
