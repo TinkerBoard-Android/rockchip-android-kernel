@@ -578,11 +578,6 @@
 	connect = <&vp1_out_dsi0>;
 };
 
-&route_edp {
-	status = "okay";
-	connect = <&vp0_out_edp>;
-};
-
 &sata2 {
 	status = "disabled";
 };
