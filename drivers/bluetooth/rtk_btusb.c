@@ -123,6 +123,10 @@ static patch_info fw_patch_table[] = {
 { 0x0BDA, 0xC82F, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE-VS */
 { 0x0BDA, 0xC822, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE */
 { 0x0BDA, 0xB00C, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE */
+{ 0x0B05, 0x185C, 0x8822, 0, 0, "mp_rtl8822b_fw", "rtl8822b_fw", "rtl8822b_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_3PLUS, MAX_PATCH_SIZE_25K}, /* RTL8822BE */
+{ 0x04CA, 0x4005, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE */
+{ 0x13D3, 0x3548, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE */
+{ 0x13D3, 0x3549, 0x8822, 0, 0, "mp_rtl8822c_fw", "rtl8822c_fw", "rtl8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_40K}, /* RTL8822CE */
 { 0x0BDA, 0xA82A, 0x8822, 0, 0, "mp_rtl8822e_8822c_fw", "rtl8822e_8822c_fw", "rtl8822e_8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_145K}, /* RTL8822EU */
 { 0x0BDA, 0xA82B, 0x8822, 0, 0, "mp_rtl8822e_8822c_fw", "rtl8822e_8822c_fw", "rtl8822e_8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_145K}, /* RTL8822EU */
 { 0x0BDA, 0xA822, 0x8822, 0, 0, "mp_rtl8822e_8822c_fw", "rtl8822e_8822c_fw", "rtl8822e_8822c_config", NULL, 0 ,CONFIG_MAC_OFFSET_GEN_4PLUS, MAX_PATCH_SIZE_145K}, /* RTL8822EU */
@@ -3029,6 +3033,20 @@ static struct usb_device_id btusb_table[] = {
     { .match_flags = USB_DEVICE_ID_MATCH_VENDOR |
                      USB_DEVICE_ID_MATCH_INT_INFO,
       .idVendor = 0x13d3,
+      .bInterfaceClass = 0xe0,
+      .bInterfaceSubClass = 0x01,
+      .bInterfaceProtocol = 0x01 },
+
+    { .match_flags = USB_DEVICE_ID_MATCH_VENDOR |
+                     USB_DEVICE_ID_MATCH_INT_INFO,
+      .idVendor = 0x0b05,
+      .bInterfaceClass = 0xe0,
+      .bInterfaceSubClass = 0x01,
+      .bInterfaceProtocol = 0x01 },
+
+    { .match_flags = USB_DEVICE_ID_MATCH_VENDOR |
+                     USB_DEVICE_ID_MATCH_INT_INFO,
+      .idVendor = 0x04ca,
       .bInterfaceClass = 0xe0,
       .bInterfaceSubClass = 0x01,
       .bInterfaceProtocol = 0x01 },
