@@ -94,6 +94,7 @@
 };
 
 &backlight {
+       status = "disabled";
        pwms = <&pwm3 0 1000000 0>;
        default-brightness-level = <200>;
        minimal-brightness-level = <26>;
