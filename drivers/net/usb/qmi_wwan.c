@@ -165,7 +165,7 @@ struct netdev_adjacent {
  * Gets the next device from the dev's upper list, starting from iter
  * position. The caller must hold RCU read lock.
  */
-struct net_device *netdev_upper_get_next_dev_rcu(struct net_device *dev,
+struct net_device *_netdev_upper_get_next_dev_rcu(struct net_device *dev,
 						 struct list_head **iter)
 {
 	struct netdev_adjacent *upper;
@@ -183,7 +183,7 @@ struct net_device *netdev_upper_get_next_dev_rcu(struct net_device *dev,
 }
 
 /* iterate through upper list, must be called under RCU read lock */
-#define netdev_for_each_upper_dev_rcu(dev, updev, iter) \
+#define _netdev_for_each_upper_dev_rcu(dev, updev, iter) \
 	for (iter = &(dev)->adj_list.upper, \
 	     updev = netdev_upper_get_next_dev_rcu(dev, &(iter)); \
 	     updev; \
@@ -196,7 +196,7 @@ static struct net_device *qmimux_find_dev(struct usbnet *dev, u8 mux_id)
 	struct net_device *ldev;
 
 	rcu_read_lock();
-	netdev_for_each_upper_dev_rcu(dev->net, ldev, iter) {
+	_netdev_for_each_upper_dev_rcu(dev->net, ldev, iter) {
 		priv = netdev_priv(ldev);
 		if (priv->mux_id == mux_id) {
 			rcu_read_unlock();
