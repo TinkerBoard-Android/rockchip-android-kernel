@@ -33,8 +33,6 @@
 #define RK817_CODEC_ALL	(RK817_CODEC_PLAYBACK |\
 	RK817_CODEC_CAPTURE | RK817_CODEC_INCALL)
 
-#define SPK_EN 115
-
 /*
  * DDAC L/R volume setting
  * 0db~-95db,0.375db/step,for example:
@@ -59,8 +57,8 @@
 #define CODEC_SET_HP 2
 
 #ifdef CONFIG_RK3568_TB3N
+#define SPK_EN 115
 extern int jack_connection_status;
-#endif
 
 static int spk_enable_init(void)
 {
@@ -85,6 +83,7 @@ err_free_gpio_spk:
 err_gpio_spk:
 	return ret;
 }
+#endif
 
 struct rk817_codec_priv {
 	struct snd_soc_component *component;
@@ -1283,7 +1282,6 @@ static int rk817_probe(struct snd_soc_component *component)
 	struct rk817_codec_priv *rk817 = snd_soc_component_get_drvdata(component);
 	int chip_name = 0;
 	int chip_ver = 0;
-	int ret = 0;
 
 	DBG("%s\n", __func__);
 
@@ -1293,7 +1291,7 @@ static int rk817_probe(struct snd_soc_component *component)
 		return -EINVAL;
 	}
 #ifdef CONFIG_RK3568_TB3N
-	ret = spk_enable_init();
+	int ret = spk_enable_init();
 	dev_warn(component->dev, "=====spk_enable_init======)\n");
 	if (ret)
                 dev_err(component->dev, "Request SPK_EN Failed (%d)\n", ret);
