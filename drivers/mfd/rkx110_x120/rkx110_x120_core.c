@@ -593,6 +593,7 @@ static const struct file_operations rk_serdes_rate_fops = {
 	.release        = single_release,
 };
 
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 static void rk_serdes_function_debugfs_init(struct rk_serdes *serdes)
 {
 	serdes->debugfs_rate = debugfs_create_file("rate", 0400, serdes->debugfs_root,
@@ -600,10 +601,11 @@ static void rk_serdes_function_debugfs_init(struct rk_serdes *serdes)
 	serdes->debugfs_rate = debugfs_create_file("clk", 0400, serdes->debugfs_root,
 						   NULL, &rk_serdes_clk_fops);
 }
+#endif
 
 static void rk_serdes_debugfs_init(struct rk_serdes *serdes)
 {
-#if defined(CONFIG_DEBUG_FS)
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 	serdes->debugfs_root =
 		debugfs_create_dir(dev_name(serdes->dev), debugfs_lookup("rkserdes", NULL));
 	serdes->debugfs_local = debugfs_create_dir("local", serdes->debugfs_root);
