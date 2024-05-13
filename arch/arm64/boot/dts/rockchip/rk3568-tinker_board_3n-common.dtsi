@@ -377,7 +377,8 @@
 	status = "okay";
 };
 &cpu0 {
-	cpu-supply = <&vdd_cpu>;
+	reg-name = "vdd_cpu";
+//	cpu-supply = <&vdd_cpu>;
 };
 
 &dfi {
@@ -840,6 +841,24 @@
 			regulator-off-in-suspend;
 		};
 	};
+
+        vdd_cpu_ext: syr828@41 {
+                compatible = "silergy,syr828";
+                reg = <0x41>;
+                vin-supply = <&vcc5v0_sys>;
+                regulator-compatible = "fan53555-reg";
+                regulator-name = "vdd_cpu";
+                regulator-min-microvolt = <712500>;
+                regulator-max-microvolt = <1390000>;
+                regulator-init-microvolt = <900000>;
+                regulator-ramp-delay = <2300>;
+                fcs,suspend-voltage-selector = <1>;
+                regulator-boot-on;
+                regulator-always-on;
+                regulator-state-mem {
+                        regulator-off-in-suspend;
+                };
+        };
 
 	rk809: pmic@20 {
 		compatible = "rockchip,rk809";

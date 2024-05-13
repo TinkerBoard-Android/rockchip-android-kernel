@@ -101,6 +101,9 @@ static const char *find_supply_name(struct device *dev)
 		goto node_put;
 	}
 
+        if (!(of_property_read_string(dev->of_node, "reg-name", (const char **)&name)))
+           goto node_put;
+
 	dev_dbg(dev, "no regulator for cpu%d\n", cpu);
 node_put:
 	of_node_put(np);
