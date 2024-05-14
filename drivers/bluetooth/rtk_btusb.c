@@ -46,7 +46,7 @@
 
 #define SUSPNED_DW_FW 0
 #define SET_WAKEUP_DEVICE 0
-#define TV_FW_CONFIG 1
+#define TV_FW_CONFIG 0
 
 
 static spinlock_t queue_lock;
@@ -1253,7 +1253,7 @@ static ssize_t btchr_read(struct file *file_p,
 
         ret = wait_event_interruptible(btchr_read_wait, !is_queue_empty());
         if (ret < 0) {
-            RTKBT_ERR("%s: wait event is signaled %d", __func__, ret);
+            RTKBT_ERR("%s: wait event is signaled %zd", __func__, ret);
             break;
         }
 
@@ -2043,7 +2043,7 @@ void rtk_update_altsettings(patch_info *patch_entry, const unsigned char* org_co
 
     if (config->data_len != org_config_len - sizeof(struct rtk_bt_vendor_config))
     {
-        RTKBT_ERR("rtk_update_altsettings: config len(%x) is not right(%x)", config->data_len, org_config_len-sizeof(struct rtk_bt_vendor_config));
+        RTKBT_ERR("rtk_update_altsettings: config len(%x) is not right(%lx)", config->data_len, org_config_len-sizeof(struct rtk_bt_vendor_config));
         return;
     }
 
@@ -4876,7 +4876,7 @@ static int btusb_resume(struct usb_interface *intf)
 {
     struct btusb_data *data = usb_get_intfdata(intf);
     struct hci_dev *hdev = data->hdev;
-    firmware_info *fw_info = data->fw_info;
+    //firmware_info *fw_info = data->fw_info;
     int err = 0;
 
     RTKBT_INFO("%s: Suspend count %d", __func__, data->suspend_count);
