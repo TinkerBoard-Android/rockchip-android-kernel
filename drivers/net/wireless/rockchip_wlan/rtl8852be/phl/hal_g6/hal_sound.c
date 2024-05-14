@@ -16,7 +16,6 @@
 
 #include "hal_headers.h"
 
-#ifdef CONFIG_PHL_CMD_BF
 struct csi_rpt_na {
 	u8 nr;
 	u8 nc;
@@ -127,7 +126,7 @@ u8 _get_bw_ru_end_idx(enum channel_width bw) {
 	case CHANNEL_WIDTH_160:
 	case CHANNEL_WIDTH_80_80:
 		ru_end_idx = HAL_NPDA_RU_IDX_END_160MHZ;
-		break;
+	break;
 	default:
 	break;
 	}
@@ -315,23 +314,6 @@ rtw_hal_snd_proc_pre_cfg_sta(
 	return hal_status;
 }
 
-/**
- * rtw_hal_snd_proc_pre_cfg
- * 	hw preconfiguration for a sounding sequence
- * input:
- * @hal: hal_info
- **/
-enum rtw_hal_status
-rtw_hal_snd_proc_pre_cfg(void *hal)
-{
-	enum rtw_hal_status hal_status = RTW_HAL_STATUS_FAILURE;
-	struct hal_info_t *hal_info = (struct hal_info_t *)hal;
-
-	/* 1. RF BFer Settings */
-	hal_status = rtw_hal_rf_bfer_cfg(hal_info);
-
-	return hal_status;
-}
 
 /**
  * rtw_hal_snd_proc_post_cfg
@@ -492,19 +474,18 @@ rtw_hal_snd_ndpa_sta_info_vht(struct rtw_phl_stainfo_t *psta_info,
 {
 	struct hal_vht_ndpa_sta_info *ndpa_sta =
 		(struct hal_vht_ndpa_sta_info *)ndpa;
-	u8 num_snd_dim = psta_info->rlink->protocol_cap.num_snd_dim;
-
-	if (rtw_phl_role_is_client_category(psta_info->wrole))
+	if (PHL_RTYPE_STATION == psta_info->wrole->type)
 		ndpa_sta->aid12 = 0; /* Target is an AP, AID = 0 */
 	else
 		ndpa_sta->aid12 = psta_info->aid;
 	ndpa_sta->feedback_type	= (mu == 0) ? HAL_NPDA_AC_SU : HAL_NPDA_AC_MU;
 	/* Nc shall alwary <= Nr */
-	if (psta_info->asoc_cap.max_nc > num_snd_dim)
-		ndpa_sta->nc = num_snd_dim;
-	else
+	if (psta_info->asoc_cap.max_nc >
+		psta_info->wrole->proto_role_cap.num_snd_dim) {
+		ndpa_sta->nc = psta_info->wrole->proto_role_cap.num_snd_dim;
+	} else {
 		ndpa_sta->nc = psta_info->asoc_cap.max_nc;
-
+	}
 	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "vht ndpa_sta aid12 0x%x ; fb 0x%x ; nc 0x%x\n",
 		  ndpa_sta->aid12, ndpa_sta->feedback_type, ndpa_sta->nc);
 }
@@ -518,11 +499,8 @@ rtw_hal_snd_ndpa_sta_info_he(struct rtw_phl_stainfo_t *psta_info,
 		(struct hal_he_ndpa_sta_info *)ndpa;
 	u16 ru_start = HAL_NPDA_RU_IDX_START;
 	u16 ru_end = _get_bw_ru_end_idx(bw);
-	u8 num_snd_dim_greater_80mhz =
-		psta_info->rlink->protocol_cap.num_snd_dim_greater_80mhz;
-	u8 num_snd_dim = psta_info->rlink->protocol_cap.num_snd_dim;
 
-	if (rtw_phl_role_is_client_category(psta_info->wrole))
+	if (PHL_RTYPE_STATION == psta_info->wrole->type)
 		ndpa_sta->aid = 0; /* Target is and AP, AID = 0 */
 	else
 		ndpa_sta->aid = (psta_info->aid&0x7FF);
@@ -543,16 +521,11 @@ rtw_hal_snd_ndpa_sta_info_he(struct rtw_phl_stainfo_t *psta_info,
 	}
 	ndpa_sta->disambiguation = 1;
 	/* Nc shall alwary <= Nr */
-	if ((CHANNEL_WIDTH_160 == bw) || (CHANNEL_WIDTH_80_80 == bw)) {
-		if (psta_info->asoc_cap.max_nc > num_snd_dim_greater_80mhz)
-			ndpa_sta->nc = num_snd_dim_greater_80mhz;
-		else
-			ndpa_sta->nc = psta_info->asoc_cap.max_nc;
+	if (psta_info->asoc_cap.max_nc >
+		psta_info->wrole->proto_role_cap.num_snd_dim) {
+		ndpa_sta->nc = psta_info->wrole->proto_role_cap.num_snd_dim;
 	} else {
-		if (psta_info->asoc_cap.max_nc > num_snd_dim)
-			ndpa_sta->nc = num_snd_dim;
-		else
-			ndpa_sta->nc = psta_info->asoc_cap.max_nc;
+		ndpa_sta->nc = psta_info->asoc_cap.max_nc;
 	}
 	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "HE NDPA : aid 0x%x fb_ng 0x%x cb 0x%x nc 0x%x \n",
 		  ndpa_sta->aid, ndpa_sta->fb_ng, ndpa_sta->cb, ndpa_sta->nc);
@@ -615,12 +588,11 @@ void rtw_hal_snd_vht_fwcmd_su(void *hal, u8 *buf, enum channel_width bw,
 	cmd->wd[0].ndpa = HAL_SND_PKT_NDPA_VHT;
 	/* NDP WD */
 	cmd->wd[1].disdatafb = 1;
-
-	if (1 == psta->rlink->protocol_cap.num_snd_dim)
+	if (1 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS2_MCS0;
-	else if (2 ==psta->rlink->protocol_cap.num_snd_dim)
+	else if (2 ==psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS3_MCS0;
-	else if (3 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (3 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS4_MCS0;
 	else
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS2_MCS0;
@@ -733,12 +705,11 @@ void rtw_hal_snd_vht_fwcmd_mu_pri(void *hal, u8 *buf, enum channel_width bw,
 	cmd->wd[0].ndpa = HAL_SND_PKT_NDPA_VHT;
 	/* NDP WD */
 	cmd->wd[1].disdatafb = 1;
-
-	if (1 == psta->rlink->protocol_cap.num_snd_dim)
+	if (1 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS2_MCS0;
-	else if (2 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (2 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS3_MCS0;
-	else if (3 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (3 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS4_MCS0;
 	else
 		cmd->wd[1].datarate = RTW_DATA_RATE_VHT_NSS2_MCS0;
@@ -789,12 +760,11 @@ void rtw_hal_snd_ax_fwcmd_nontb(void *hal, u8 *buf, enum channel_width bw,
 	cmd->wd[0].ndpa = HAL_SND_PKT_NDPA_HE;
 	/* NDP WD */
 	cmd->wd[1].disdatafb = 1;
-
-	if (1 == psta->rlink->protocol_cap.num_snd_dim)
+	if (1 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS2_MCS0;
-	else if (2 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (2 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS3_MCS0;
-	else if (3 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (3 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS4_MCS0;
 	else
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS2_MCS0;
@@ -832,9 +802,9 @@ void rtw_hal_snd_ax_fwcmd_tb_add_sta(void *hal, u8 *buf, u32 *ndpa_sta,
 	u8 mu = 0, ng = 4;
 	u32 rpt_size = 0;
 
-	if (ndpa_idx >= HAL_MAX_HE_SND_STA_NUM)
+	if (ndpa_idx > HAL_MAX_HE_SND_STA_NUM)
 		return;
-	if (bfrp_idx >= HAL_MAX_HE_BFRP_NUM)
+	if (bfrp_idx > HAL_MAX_HE_BFRP_NUM)
 		return;
 	cmd->macid[ndpa_idx] = sta->macid;
 	/* NDPA sta_info*/
@@ -869,7 +839,7 @@ void rtw_hal_snd_ax_fwcmd_tb_add_sta(void *hal, u8 *buf, u32 *ndpa_sta,
 		ng = 4;
 	}
 	rpt_size = _cal_he_csi_size(mu, sta->chandef.bw,
-				    (sta->rlink->protocol_cap.num_snd_dim + 1),
+				    (sta->wrole->proto_role_cap.num_snd_dim + 1),
 				    ((u8)ndpa->nc + 1), ng, (u8)ndpa->cb);
 	if (cmd->bfrp.he_para[bfrp_idx].f2p_info.csi_len_bfrp < (rpt_size/64))
 		cmd->bfrp.he_para[bfrp_idx].f2p_info.csi_len_bfrp =
@@ -965,12 +935,11 @@ void rtw_hal_snd_ax_fwcmd_tb_pri(void *hal, u8 *buf, enum channel_width bw,
 	cmd->wd[0].ndpa = HAL_SND_PKT_NDPA_HE;
 	/* NDP WD */
 	cmd->wd[1].disdatafb = 1;
-
-	if (1 == psta->rlink->protocol_cap.num_snd_dim)
+	if (1 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS2_MCS0;
-	else if (2 == psta->rlink->protocol_cap.num_snd_dim)
+	else if (2 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS3_MCS0;
-	else if(3 == psta->rlink->protocol_cap.num_snd_dim)
+	else if(3 == psta->wrole->proto_role_cap.num_snd_dim)
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS4_MCS0;
 	else
 		cmd->wd[1].datarate = RTW_DATA_RATE_HE_NSS2_MCS0;
@@ -1055,5 +1024,3 @@ rtw_hal_snd_send_fw_cmd(void *hal, u8 *cmd)
 	PHL_TRACE(COMP_PHL_SOUND, _PHL_INFO_, "<== rtw_hal_snd_send_fw_cmd \n");
 	return hstatus;
 }
-
-#endif

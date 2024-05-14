@@ -24,7 +24,6 @@
 #include "hw.h"
 #include "trxcfg.h"
 
-/*--------------------Define -------------------------------------------*/
 #define CCTL_NTX_PATH_EN	3
 #define CCTL_PATH_MAP_B		1
 #define CCTL_PATH_MAP_C		2
@@ -34,14 +33,6 @@
 #define CCTRL_CB		1
 #define CCTRL_CSI_PARA_EN	1
 #define CCTRL_CSI_PARA_EN_MSK	1
-
-/*--------------------Define MACRO--------------------------------------*/
-#define MAC_AX_ACTUAL_WMM_BAND BIT(1)
-#define MAC_AX_ACTUAL_WMM_DRV_WMM BIT(0)
-
-/*--------------------Define Enum---------------------------------------*/
-/*--------------------Define Struct-------------------------------------*/
-/*--------------------Function Prototype--------------------------------*/
 
 /**
  * @addtogroup Association
@@ -214,27 +205,6 @@ struct mac_role_tbl *mac_role_srch(struct mac_ax_adapter *adapter,
  * @{
  */
 /**
- * @brief role_srch_no_lock
- *
- * @param *adapter
- * @param macid
- * @return Please Place Description here.
- * @retval  mac_role_tbl
- */
-struct mac_role_tbl *role_srch_no_lock(struct mac_ax_adapter *adapter,
-				       u8 macid);
-/**
- * @}
- * @}
- */
-
-/**
- * @addtogroup Association
- * @{
- * @addtogroup Role_Related
- * @{
- */
-/**
  * @brief mac_role_srch_by_addr_cam
  *
  * @param *adapter
@@ -359,23 +329,4 @@ static u32 mac_fw_role_maintain(struct mac_ax_adapter *adapter,
  * @}
  */
 
-/**
- * @addtogroup Association
- * @{
- * @addtogroup Role_Related
- * @{
- */
-/**
- * @brief mac_role_sync
- *
- * @param *adapter
- * @param *info
- * @return Please Place Description here.
- * @retval u32
- */
-u32 mac_role_sync(struct mac_ax_adapter *adapter, struct mac_ax_role_info *info);
-/**
- * @}
- * @}
- */
 #endif

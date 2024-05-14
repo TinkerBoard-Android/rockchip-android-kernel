@@ -15,37 +15,32 @@
 #if defined(CONFIG_MP_INCLUDED)
 #include <rtw_efuse.h>
 
-static u8 rtw_efuse_cmd(_adapter *padapter,
+void rtw_efuse_cmd(_adapter *padapter,
 							struct rtw_efuse_phl_arg *pefuse_arg ,
 							enum rtw_efuse_phl_cmdid cmdid)
 {
 	u32 i = 0;
-	u8 ret = _FAIL;
 	pefuse_arg->mp_class = RTW_MP_CLASS_EFUSE;
 	pefuse_arg->cmd = cmdid;
 	pefuse_arg->cmd_ok = 0;
 
-
 	rtw_mp_set_phl_cmd(padapter, (void*)pefuse_arg, sizeof(struct rtw_efuse_phl_arg));
 
-	while (i <= 50) {
-		rtw_msleep_os(10);
+	while (i <= 10) {
+		rtw_msleep_os(50);
 		rtw_mp_get_phl_cmd(padapter, (void*)pefuse_arg, sizeof(struct rtw_efuse_phl_arg));
 		if (pefuse_arg->cmd_ok && pefuse_arg->status == RTW_PHL_STATUS_SUCCESS) {
 			RTW_INFO("%s,eFuse GET CMD OK !!!\n", __func__);
-			ret = _SUCCESS;
 			break;
 		} else {
 			rtw_msleep_os(10);
-			if (i > 50) {
+			if (i > 10) {
 				RTW_INFO("%s, eFuse GET CMD FAIL !!!\n", __func__);
 				break;
 			}
 			i++;
 		}
 	}
-
-	return ret;
 }
 
 u32 rtw_efuse_get_map_size(_adapter *padapter , u16 *size , enum rtw_efuse_phl_cmdid cmdid)
@@ -125,7 +120,7 @@ static u8 rtw_efuse_fake2map(_adapter *padapter, u8 efuse_type)
 	return res;
 }
 
-u8 rtw_efuse_read_map2shadow(_adapter *padapter, u8 efuse_type)
+static u8 rtw_efuse_read_map2shadow(_adapter *padapter, u8 efuse_type)
 {
 	struct rtw_efuse_phl_arg *efuse_arg = NULL;
 	u8 res = _SUCCESS;
@@ -198,77 +193,6 @@ static u8 rtw_efuse_renew_update(_adapter *padapter, u8 efuse_type)
 	return res;
 }
 
-static bool rtw_file_efuse_ismasked(_adapter *padapter, u16 offset, u8 *maskbuf)
-{
-	int r = offset / 16;
-	int c = (offset % 16) / 2;
-	int result = 0;
-
-	if (padapter->registrypriv.boffefusemask)
-		return _FALSE;
-
-	if (c < 4) /* Upper double word */
-		result = (maskbuf[r] & (0x10 << c));
-	else
-		result = (maskbuf[r] & (0x01 << (c - 4)));
-
-	return (result > 0) ? 0 : 1;
-}
-
-static u8 rtw_efuse_compare_data(_adapter *padapter,
-				u16 addr, u32 len, u8 *dst, u8 *src, u8 efuse_type)
-{
-	struct rtw_efuse_phl_arg *efuse_arg = NULL;
-	enum rtw_efuse_phl_cmdid cmdid = RTW_EFUSE_CMD_WIFI_GET_MASK_BUF;
-	u8 res = _FAIL;
-	u16 idx = 0;
-
-	efuse_arg = _rtw_malloc(sizeof(struct rtw_efuse_phl_arg));
-
-	if (efuse_arg) {
-		_rtw_memset((void *)efuse_arg, 0, sizeof(struct rtw_efuse_phl_arg));
-
-
-		if (efuse_type == RTW_EFUSE_WIFI)
-			cmdid = RTW_EFUSE_CMD_WIFI_GET_MASK_BUF;
-		else if (efuse_type == RTW_EFUSE_BT)
-			cmdid = RTW_EFUSE_CMD_BT_GET_MASK_BUF;
-
-		efuse_arg->status = 0;
-		efuse_arg->cmd_ok = 0;
-		efuse_arg->buf_len = 0;
-
-		if (rtw_efuse_cmd(padapter, efuse_arg, cmdid) == _SUCCESS) {
-
-			RTW_MAP_DUMP_SEL(RTW_DBGDUMP, "efuse mask buf:",
-				efuse_arg->poutbuf, efuse_arg->buf_len);
-
-			for (idx = 0; idx + addr < (addr + len); idx++) {
-					u16 chkaddr = idx + addr;
-
-				if (!rtw_file_efuse_ismasked(padapter, chkaddr, efuse_arg->poutbuf)) {
-					if (_rtw_memcmp((void *)dst + chkaddr , (void *)src + idx, 1)) {
-						RTW_INFO("mask cmp success addr: 0x%x cur dst: %02x <=> PG src:%02x\n",
-										idx, dst[chkaddr], src[idx]);
-						res = _SUCCESS;
-					} else {
-						RTW_INFO("mask cmp Fail addr: 0x%x cur dst: %02x <=> PG src:%02x\n",
-										chkaddr, dst[chkaddr], src[idx]);
-						res  = _FAIL;
-						break;
-					}
-				}
-			}
-		} else {
-			RTW_INFO("rtw_efuse_cmd:%d, status:%d,mask len: %d\n",
-				efuse_arg->cmd_ok, efuse_arg->status, efuse_arg->buf_len);
-			res  = _FAIL;
-		}
-	}
-	if (efuse_arg)
-		_rtw_mfree(efuse_arg, sizeof(struct rtw_efuse_phl_arg));
-	return res;
-}
 
 u8 rtw_efuse_map_read(_adapter * adapter, u16 addr, u16 cnts, u8 *data, u8 efuse_type)
 {
@@ -450,8 +374,6 @@ static u8 rtw_efuse_mask_file_load(_adapter *padapter, u8 *filepath, u8 efuse_ty
 	if (filepath) {
 		RTW_INFO("efuse file path %s len %zu", filepath, strlen(filepath));
 		efuse_arg = _rtw_malloc(sizeof(struct rtw_efuse_phl_arg));
-		efuse_arg->status == RTW_PHL_STATUS_FAILURE;
-
 		if (efuse_arg) {
 			_rtw_memset((void *)efuse_arg, 0, sizeof(struct rtw_efuse_phl_arg));
 			_rtw_memcpy(efuse_arg->pfile_path, filepath, strlen(filepath));
@@ -953,6 +875,8 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 	_adapter *padapter = (_adapter *)rtw_netdev_priv(dev);
 	struct dvobj_priv *dvobj = adapter_to_dvobj(padapter);
 
+	u8 ips_mode = IPS_NUM; /* init invalid value */
+	u8 lps_mode = PM_PS_MODE_NUM; /* init invalid value */
 	u32 i = 0, j = 0, jj = 0, kk = 0;
 	u8 *setdata = NULL;
 	u8 *shadowmap = NULL;
@@ -979,6 +903,16 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 		err = -ENOMEM;
 		goto exit;
 	}
+
+#ifdef CONFIG_LPS
+	lps_mode = pwrctrlpriv->power_mgnt;/* keep org value */
+	rtw_pm_set_lps(padapter, PM_PS_MODE_ACTIVE);
+#endif
+
+#ifdef CONFIG_IPS
+	ips_mode = pwrctrlpriv->ips_mode;/* keep org value */
+	rtw_pm_set_ips(padapter, IPS_NONE);
+#endif
 
 	pch = extra;
 	RTW_INFO("%s: in=%s\n", __FUNCTION__, extra);
@@ -1053,8 +987,7 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 				goto exit;
 			}
 			if (rtw_efuse_get_shadow_map(padapter, shadowmap, size,RTW_EFUSE_WIFI) == _SUCCESS) {
-
-				if (rtw_efuse_compare_data(padapter, addr, cnts, shadowmap, setdata, RTW_EFUSE_WIFI)) {
+				if (_rtw_memcmp((void *)shadowmap + addr , (void *)setdata, cnts)) {
 					RTW_INFO("%s: WiFi write map afterf compare success\n", __FUNCTION__);
 					sprintf(extra, "WiFi write map compare OK\n");
 					err = 0;
@@ -1134,8 +1067,7 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 				goto exit;
 			}
 			if (rtw_efuse_get_shadow_map(padapter, shadowmap, size,RTW_EFUSE_BT) == _SUCCESS) {
-
-				if (rtw_efuse_compare_data(padapter, addr, cnts, shadowmap, setdata, RTW_EFUSE_BT)) {
+				if (_rtw_memcmp((void *)shadowmap + addr , (void *)setdata, cnts)) {
 					RTW_INFO("%s: BT write map afterf compare success\n", __func__);
 					sprintf(extra, "BT write map compare OK\n");
 					err = 0;
@@ -1231,8 +1163,7 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 			goto exit;
 		}
 		if (rtw_efuse_map_read(padapter, 0x00, mapsize, map_pged, RTW_EFUSE_WIFI) == _SUCCESS) {
-
-			if (rtw_efuse_compare_data(padapter, 0x00, mapsize, map_pged, shadowmap, RTW_EFUSE_WIFI)) {
+			if (_rtw_memcmp((void *)map_pged , (void *)shadowmap, mapsize)) {
 				RTW_INFO("%s: WiFi write map afterf compare success\n", __func__);
 				sprintf(extra, "WiFi write map compare OK\n");
 			} else {
@@ -1291,8 +1222,7 @@ int rtw_ioctl_efuse_set(struct net_device *dev,
 		}
 
 		if (rtw_efuse_map_read(padapter, 0x00, mapsize, map_pged, RTW_EFUSE_BT) == _SUCCESS) {
-
-			if (rtw_efuse_compare_data(padapter, 0x00, mapsize, map_pged, shadowmap, RTW_EFUSE_BT)) {
+			if (_rtw_memcmp((void *)map_pged , (void *)shadowmap, mapsize)) {
 				RTW_INFO("%s: BT write map afterf compare success\n", __func__);
 				sprintf(extra, "BT write map compare OK\n");
 			} else {
@@ -1325,6 +1255,16 @@ exit:
 		rtw_mfree(shadowmap, size);
 
 	wrqu->length = strlen(extra);
+
+	if (padapter->registrypriv.mp_mode == 0) {
+#ifdef CONFIG_IPS
+		rtw_pm_set_ips(padapter, ips_mode);
+#endif /* CONFIG_IPS */
+
+#ifdef CONFIG_LPS
+		rtw_pm_set_lps(padapter, lps_mode);
+#endif /* CONFIG_LPS */
+	}
 
 	return err;
 }
@@ -1418,9 +1358,7 @@ int rtw_ioctl_efuse_bt_file_map_load(struct net_device *dev,
 			sprintf(extra, "BT efuse Map file file_read FAIL\n");
 		}
 	} else {
-		sprintf(extra, "BT efuse file readable FAIL\n"
-				"indicate the file path and directory to CMD next space,\n"
-				"CMD format:rtwpriv wlan0 bt_efuse_file /xx/xx/xx/efuse.map\n");
+		sprintf(extra, "BT efuse file readable FAIL\n");
 		RTW_INFO("%s BT rtw_is_file_readable fail!\n", __func__);
 	}
 
@@ -1452,9 +1390,7 @@ int rtw_ioctl_efuse_bt_file_mask_load(struct net_device *dev,
 			sprintf(extra, "BT efuse Mask file file_read FAIL\n");
 		}
 	} else {
-		sprintf(extra, "BT efuse file readable FAIL\n"
-			"indicate the file path and directory to CMD next space,\n"
-			"CMD format:rtwpriv wlan0 efuse_bt_mask /xx/xx/xx/efuse.mask\n");
+		sprintf(extra, "BT efuse file readable FAIL\n");
 		RTW_INFO("%s BT rtw_is_file_readable fail!\n", __func__);
 	}
 

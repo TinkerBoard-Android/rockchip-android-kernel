@@ -195,35 +195,6 @@ static enum rtw_phl_status phl_mp_config_set_modulation(
 	return RTW_PHL_STATUS_SUCCESS;
 }
 
-static enum rtw_phl_status phl_mp_config_set_trx_mode(struct mp_context *mp,
-                                                      struct mp_config_arg *arg)
-{
-	enum rtw_hal_status hal_status = RTW_HAL_STATUS_FAILURE;
-
-
-	if (arg->is_tmac_mode) {
-		mp->phl_com->drv_mode = RTW_DRV_MODE_MP_TMAC;
-	} else {
-		mp->phl_com->drv_mode = RTW_DRV_MODE_MP;
-	}
-
-	PHL_INFO("%s: %s mode\n", __FUNCTION__, (arg->is_tmac_mode) ? "TMAC" : "PMAC");
-
-	hal_status = rtw_hal_mp_config_set_trx_mode(mp, arg);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = hal_status;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
 static enum rtw_phl_status phl_mp_config_get_modulation(
 	struct mp_context *mp, struct mp_config_arg *arg)
 {
@@ -422,100 +393,6 @@ static enum rtw_phl_status phl_mp_config_trigger_fw_conflict(
 	return RTW_PHL_STATUS_SUCCESS;
 }
 
-static enum rtw_phl_status phl_mp_config_get_uuid(
-	struct mp_context *mp, struct mp_config_arg *arg)
-{
-	arg->uuid = rtw_hal_get_uuid(mp);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = RTW_HAL_STATUS_SUCCESS;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
-static enum rtw_phl_status phl_mp_config_set_regulation(
-	struct mp_context *mp, struct mp_config_arg *arg)
-{
-	rtw_hal_set_regulation(mp, arg);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = RTW_HAL_STATUS_SUCCESS;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
-static enum rtw_phl_status phl_mp_config_set_gpio(
-	struct mp_context *mp, struct mp_config_arg *arg)
-{
-	enum rtw_hal_status hal_status = RTW_HAL_STATUS_FAILURE;
-
-	hal_status = rtw_hal_mp_config_set_gpio(mp, arg);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = hal_status;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
-static enum rtw_phl_status phl_mp_config_switch_antenna(
-	struct mp_context *mp, struct mp_config_arg *arg)
-{
-	enum rtw_hal_status hal_status = RTW_HAL_STATUS_FAILURE;
-
-	hal_status = rtw_hal_mp_config_switch_antenna(mp, arg);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = RTW_HAL_STATUS_SUCCESS;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
-static enum rtw_phl_status phl_mp_config_set_bt_uart_en(struct mp_context *mp,
-                                                        struct mp_config_arg *arg)
-{
-	rtw_hal_set_bt_uart_en(mp, arg);
-
-	/* Record the result */
-	arg->cmd_ok = true;
-	arg->status = RTW_HAL_STATUS_SUCCESS;
-
-	/* Transfer to report */
-	mp->rpt = arg;
-	mp->rpt_len = sizeof(struct mp_config_arg);
-	mp->buf = NULL;
-	mp->buf_len = 0;
-
-	return RTW_PHL_STATUS_SUCCESS;
-}
-
 enum rtw_phl_status mp_config(struct mp_context *mp,struct mp_config_arg *arg)
 {
 	enum rtw_phl_status phl_status = RTW_PHL_STATUS_FAILURE;
@@ -564,11 +441,6 @@ enum rtw_phl_status mp_config(struct mp_context *mp,struct mp_config_arg *arg)
 			 __FUNCTION__);
 		phl_status = phl_mp_config_set_modulation(mp, arg);
 		break;
-	case MP_CONFIG_CMD_SET_TXRX_MODE:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_SET_TXRX_MODE\n",
-			 __FUNCTION__);
-		phl_status = phl_mp_config_set_trx_mode(mp, arg);
-		break;
 	case MP_CONFIG_CMD_GET_MODULATION:
 		PHL_INFO("%s: CMD = MP_CONFIG_CMD_GET_MODULATION\n",
 			 __FUNCTION__);
@@ -612,26 +484,6 @@ enum rtw_phl_status mp_config(struct mp_context *mp,struct mp_config_arg *arg)
 	case MP_CONFIG_CMD_TRIGGER_FW_CONFLICT:
 		PHL_INFO("%s: CMD = MP_CONFIG_CMD_GET_FW_RPT\n", __FUNCTION__);
 		phl_status = phl_mp_config_trigger_fw_conflict(mp, arg);
-		break;
-	case MP_CONFIG_CMD_GET_UUID:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_GET_UUID\n", __FUNCTION__);
-		phl_status = phl_mp_config_get_uuid(mp, arg);
-		break;
-	case MP_CONFIG_CMD_SET_REGULATION:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_SET_REGULATION\n", __FUNCTION__);
-		phl_status = phl_mp_config_set_regulation(mp, arg);
-		break;
-	case MP_CONFIG_CMD_SET_BT_UART:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_SET_BT_UART\n", __FUNCTION__);
-		phl_status = phl_mp_config_set_bt_uart_en(mp, arg);
-		break;
-	case MP_CONFIG_CMD_SWITCH_ANTENNA:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_SWITCH_ANTENNA\n", __FUNCTION__);
-		phl_status = phl_mp_config_switch_antenna(mp, arg);
-		break;
-	case MP_CONFIG_CMD_SET_GPIO:
-		PHL_INFO("%s: CMD = MP_CONFIG_CMD_SET_GPIO\n", __FUNCTION__);
-		phl_status = phl_mp_config_set_gpio(mp, arg);
 		break;
 	default:
 		PHL_WARN("%s: CMD NOT RECOGNIZED\n", __FUNCTION__);

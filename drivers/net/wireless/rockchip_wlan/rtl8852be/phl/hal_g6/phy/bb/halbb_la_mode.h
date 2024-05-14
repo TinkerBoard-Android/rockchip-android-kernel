@@ -29,57 +29,6 @@
 #define LA_CHK_PTRN_NUM	4
 /*@--------------------------[Enum]------------------------------------------*/
 
-enum la_run_mode_t {
-	LA_RUN_HERITAGE		= 0,
-	LA_RUN_FAST		= 1,
-	LA_RUN_MANUAL		= 2,
-	LA_RUN_RTL_TEST		= 3,
-	LA_RUN_GET_MORE		= 4,
-};
-
-enum la_state_trig_t {
-	LA_AND_DISABLE		= 0,
-	LA_CCK_CCA		= 1,
-	LA_OFDM_CCA		= 2,
-	LA_OFDM_VBON		= 3,
-	LA_RX_TD_STATE		= 4,
-	LA_RX_STATE_FEQ		= 5,
-	LA_NO_USE		= 6,
-	LA_MUX_STATE		= 7,
-	LA_PHYTXON		= 8,
-	LA_BFMX_NDP_STANDBY	= 9,
-	LA_BFMX_CSI_STANDBY	= 10,
-	LA_CCA_SPOOF		= 11,
-	LA_RXPKT_OK_MX		= 12,
-	LA_RXPKT_FAIL_MX	= 13,
-	LA_BRK			= 14,
-	LA_BRK_SEL		= 15,
-	LA_HE_TB_STANDBY	= 16,
-};
-
-enum la_hdr_sel_t {
-	LA_HDR_ORI		= 0,
-	LA_HDR_CCA		= 1,
-	LA_HDR_CCA_OFDM		= 2,
-	LA_HDR_CCA_CCK		= 3,
-	LA_HDR_AGC_RDY		= 4,
-	LA_HDR_AGC_RDY_HT	= 5,
-	LA_HDR_RXHT		= 6,
-	LA_HDR_RXVHT		= 7,
-	LA_HDR_RXHE_FULLBAND	= 8,
-	LA_HDR_RXHE_OFDMA	= 9,
-	LA_HDR_OFDM_VBON	= 10,
-	LA_HDR_RXPKT_OK_SYNC	= 11,
-	LA_HDR_RDRDY		= 12,
-	LA_HDR_CRC_OK		= 13,
-	LA_HDR_CRC_ERR		= 14
-};
-
-enum la_bb_trig_edge {
-	LA_P_EDGE		= 0,
-	LA_N_EDGE		= 1,
-};
-
 enum la_mac_polling_state {
 	LA_HW_IDLE		= 0,
 	LA_HW_START		= 1,
@@ -101,7 +50,7 @@ enum la_buff_mode_t {
 	LA_BUFF_192K	= 2,
 	LA_BUFF_256K	= 3,
 	LA_BUFF_320K	= 4,
-	LA_BUF_DISABLE	= 0xff
+	LA_BUF_DISABLE = 0xff
 };
 
 enum la_bb_smp_clk {
@@ -112,17 +61,14 @@ enum la_bb_smp_clk {
 	LA_SMP_CLK_5	= 4,
 	LA_SMP_CLK_2_5	= 5,
 	LA_SMP_CLK_1_25	= 6,
-	LA_SMP_CLK_160	= 7,
-	LA_SMP_CLK_320	= 8,
-	LA_SMP_DEFAULT,
-	LA_SMP_MAX
+	LA_SMP_CLK_160	= 7
 };
 
 enum la_dma_data_type_t {
 	DMA00_NRML_1s_14b	= 0,
-	DMA01_NRML_2s_12b	= 1, /*Dbgport 16-bit: dbg[N, N-15]*/
-	DMA02_NRML_2s_13b	= 2, /*Dbgport 12-bit: dbg[N, N-11]*/
-	DMA03_NRML_2s_14b	= 3, /*Dbgport 08-bit: dbg[N, N-07]*/
+	DMA01_NRML_2s_12b	= 1,
+	DMA02_NRML_2s_13b	= 2,
+	DMA03_NRML_2s_14b	= 3,
 	DMA04_NRML_3s_08b	= 4,
 	DMA05_NRML_3s_09b	= 5,
 	DMA06_NRML_3s_10b	= 6,
@@ -135,18 +81,11 @@ enum la_dma_data_type_t {
 	DMA13_MPHS_1s_3p_10b	= 13,
 	DMA14_MPHS_1s_4p_08b	= 14,
 	DMA15_MPHS_2s_2p_08b	= 15,
-	DMA16_DBG_BB_MNTR	= 16,
+	DMA16_DBG		= 16,
 	DMA17_DUAL_WB_1s_14b	= 17,
 	DMA18_DUAL_WB_2s_14b	= 18,
 	DMA19_DUAL_WB_3s_14b	= 19,
-	DMA20_DUAL_WB_4s_14b 	= 20,
-	DMA30_DBG_LA_SEL	= 30
-};
-
-enum la_trig_sign_t {
-	LA_UNSIGNED		= 0,
-	LA_SIGNED		= 1,
-	LA_NORM			= 2,
+	DMA20_DUAL_WB_4s_14b 	= 20
 };
 
 /*@--------------------------[Structure]-------------------------------------*/
@@ -159,10 +98,10 @@ struct la_ptrn_chk_info {
 
 struct la_print_info {
 	bool	is_la_print;
+	u8	print_len; /*0: all, 1:partial*/
 	u8	print_mode; /*0: hex, 1:unsign, 2:sign*/
 	u8	print_lsb;
 	u8	print_msb;
-	u8	print_buff_opt; /*print to 0:Debug Log, 1: CNSL Buff*/
 };
 
 struct la_dma_info {
@@ -175,15 +114,15 @@ struct la_dma_info {
 	u8 dma_b_src_sel;
 	u8 dma_c_src_sel;
 	u8 dma_d_src_sel;
-	enum la_hdr_sel_t dma_hdr_sel_63;
-	enum la_hdr_sel_t dma_hdr_sel_62;
-	enum la_hdr_sel_t dma_hdr_sel_61;
-	enum la_hdr_sel_t dma_hdr_sel_60;
+	u8 dma_hdr_sel_63;
+	u8 dma_hdr_sel_62;
+	u8 dma_hdr_sel_61;
+	u8 dma_hdr_sel_60;
 	bool dma_a_ck160_dly_en;
 	bool dma_b_ck160_dly_en;
 	bool dma_c_ck160_dly_en;
 	bool dma_d_ck160_dly_en;
-	enum phl_phy_idx dma_dbcc_phy_sel;
+	bool dma_dbgport_phy_sel;
 	enum la_dma_data_type_t dma_data_type;
 };
 
@@ -206,8 +145,8 @@ struct la_re_trig_info {
 	bool			la_re_and0_inv;
 };
 
-struct la_adv_trig_info { /*AND0~AND7*/
-	bool			adv_trig_en; /*SW ctrl value*/
+struct la_adv_trig_info {
+	bool			adv_trig_en;
 	/*AND1*/
 	u32			la_and1_mask; /*sel all 0 = disable*/
 	u32			la_and1_val;
@@ -217,27 +156,27 @@ struct la_adv_trig_info { /*AND0~AND7*/
 	bool			la_and2_inv;
 	u32			la_and2_val;
 	u32			la_and2_mask;
-	enum la_trig_sign_t	la_and2_sign; /*0: unsigned, 1:signed, 2:norm*/
+	u8			la_and2_sign; /*0: unsigned, 1:signed, 2:norm*/
 	/*AND3*/
 	bool			la_and3_en;
 	bool			la_and3_inv;
 	u32			la_and3_val;
 	u32			la_and3_mask;
-	enum la_trig_sign_t	la_and3_sign; /*0: unsigned, 1:signed, 2:norm*/
+	u8			la_and3_sign; /*0: unsigned, 1:signed, 2:norm*/
 	/*AND4*/
 	bool			la_and4_en;
 	u16			la_and4_rate; /*rate_idx*/
 	bool			la_and4_inv;
 	/*AND5*/
-	enum la_state_trig_t	la_and5_sel;
+	u8			la_and5_sel;
 	bool			la_and5_inv;
 	u8			la_and5_val;
 	/*AND6*/
-	enum la_state_trig_t	la_and6_sel;
+	u8			la_and6_sel;
 	bool			la_and6_inv;
 	u8			la_and6_val;
 	/*AND7*/
-	enum la_state_trig_t	la_and7_sel;
+	u8			la_and7_sel;
 	bool			la_and7_inv;
 	u8			la_and7_val;
 };
@@ -248,10 +187,8 @@ struct la_trig_mac_info {
 	u8	la_mac_and0_sel; /*0~2: cca, crc_er, crc_ok*/
 	u8	la_mac_and0_mac_sel; /*0: true mac, 1: pmac*/
 	bool	la_mac_and1_en;
-	u8	la_mac_and1_addr; /*LSB 8 Bits of target MAC ADDRESS*/
 	bool	la_mac_and2_en;
 	u8	la_mac_and2_frame_sel; /*6-bit mac hdr*/
-	u8	la_mac_uid;
 };
 
 struct la_mac_cfg_info {
@@ -288,8 +225,8 @@ struct bb_la_cr_info {
 	u32 dma_c_src_sel_m;
 	u32 dma_d_src_sel;
 	u32 dma_d_src_sel_m;
-	u32 la_smp_rt_sel;
-	u32 la_smp_rt_sel_m;
+	u32 la_smp_rate;
+	u32 la_smp_rate_m;
 	u32 rdrdy_3_phase_en;
 	u32 rdrdy_3_phase_en_m;
 	u32 la_trigger_edge;
@@ -308,8 +245,6 @@ struct bb_la_cr_info {
 	u32 dma_b_ck160_dly_en_m;
 	u32 dma_dbgport_phy_sel;
 	u32 dma_dbgport_phy_sel_m;
-	u32 dma_la_phy_sel;
-	u32 dma_la_phy_sel_m;
 	u32 dma_data_type;
 	u32 dma_data_type_m;
 	u32 r_dma_rdrdy;
@@ -372,16 +307,6 @@ struct bb_la_cr_info {
 	u32 la_mac_and1_en_m;
 	u32 la_mac_and2_en;
 	u32 la_mac_and2_en_m;
-	u32 la_target_frame_type_en;
-	u32 la_target_frame_type_en_m;
-	u32 la_mac_addr_en;
-	u32 la_mac_addr_en_m;
-	u32 la_mac_addr;
-	u32 la_mac_addr_m;
-	u32 la_mac_multi_user_uid;
-	u32 la_mac_multi_user_uid_m;
-	u32 la_mac_and2_frame_sel;
-	u32 la_mac_and2_frame_sel_m;
 	u32 la_mac_and0_sel;
 	u32 la_mac_and0_sel_m;
 	u32 la_mac_and0_en;
@@ -400,17 +325,14 @@ struct bb_la_cr_info {
 	u32 la_re_and1_val_m;
 	u32 la_re_and1_inv;
 	u32 la_re_and1_inv_m;
-	u32 la_adc_320up;
-	u32 la_adc_320up_m;
 };
 
 struct bb_la_mode_info {
 	struct bb_la_cr_info	bb_la_cr_i;
 	struct la_string_info	la_string_i;
 	enum la_mode_state_t	la_mode_state;
-	u32			la_dbg_port; /*[31:16]:DBG_IP, [15:0]:DBG_PORT*/
-	u32			la_count; /*curr value*/
-	u32			la_count_max;
+	u32			la_dbg_port;
+	u32			la_count;
 	u32			smp_number;
 	u32			txff_page;
 	bool			not_stop_trig; /*set impossible trigger condition*/
@@ -418,12 +340,8 @@ struct bb_la_mode_info {
 	/*[General setting]*/
 	u8			la_polling_cnt;
 	u8			la_trigger_cnt;
-	enum la_bb_trig_edge	la_trigger_edge;
-	enum la_bb_smp_clk	la_smp_rate; /*CR Setting*/
-	u16			la_smp_rate_log; /*20/40/80/160/320M, for debug log only*/
-#ifdef HALBB_LA_320M_PATCH
-	bool			la_1115_320up_clk_en;
-#endif
+	u8			la_trigger_edge; /*0: p-edge, 1: n-edge*/
+	enum la_bb_smp_clk	la_smp_rate;
 	/*[AND-0 sel]*/
 	bool			la_and0_disable;
 	u32			la_and0_bit_sel; /*And0 trigger bit sel*/
@@ -433,10 +351,7 @@ struct bb_la_mode_info {
 	struct la_trig_mac_info	la_trig_mac_i;
 	struct la_mac_cfg_info	la_mac_cfg_i; /*MAC CR Control*/
 	struct la_print_info	la_print_i;
-	bool la_ptrn_chk_en;
 	struct la_ptrn_chk_info la_ptrn_chk_i[LA_CHK_PTRN_NUM];
-	enum la_run_mode_t 	la_run_mode;
-	struct halbb_timer_info la_timer_i;
 };
 
 struct bb_info;
@@ -446,9 +361,6 @@ void halbb_la_run(struct bb_info *bb);
 void halbb_la_deinit(struct bb_info *bb);
 void halbb_la_init(struct bb_info *bb);
 void halbb_cr_cfg_la_init(struct bb_info *bb);
-void halbb_la_io_en(struct bb_info *bb);
-void halbb_la_timer_init(struct bb_info *bb);
-void halbb_la_callback(void *context);
 void halbb_la_cmd_dbg(struct bb_info *bb, char input[][16], u32 *_used, char *output,
 		  u32 *_out_len);
 #endif

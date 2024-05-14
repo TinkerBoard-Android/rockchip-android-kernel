@@ -14,6 +14,8 @@
  *****************************************************************************/
 #ifndef _PHL_STRUCT_H_
 #define _PHL_STRUCT_H_
+#define PHL_MACID_MAX_ARRAY_NUM 8 /* 8x32=256 */
+#define PHL_MACID_MAX_NUM (PHL_MACID_MAX_ARRAY_NUM * 32)
 
 #define PHL_STA_TID_NUM (16)    /* TODO: */
 
@@ -28,11 +30,7 @@ struct hci_info_t {
 	u8 *rxbd_buf;
 #if defined(PCIE_TRX_MIT_EN)
 	u8 fixed_mitigation; /*no watchdog dynamic setting*/
-	u8 rx_mit_counter_high;
-	u32 rx_mit_timer_high;
 #endif
-	void *wd_dma_pool;
-	void *h2c_dma_pool;
 #elif defined(CONFIG_USB_HCI)
 	u16 usb_bulkout_size;
 #elif defined(CONFIG_SDIO_HCI)
@@ -40,12 +38,6 @@ struct hci_info_t {
 #ifdef SDIO_TX_THREAD
 	_os_sema tx_thrd_sema;
 	_os_thread tx_thrd;
-#ifdef CONFIG_PHL_SDIO_TX_CB_THREAD
-#ifndef RTW_WKARD_SDIO_TX_USE_YIELD
-	_os_lock tx_buf_lock;
-	_os_event *tx_buf_event;
-#endif /* !RTW_WKARD_SDIO_TX_USE_YIELD */
-#endif /* CONFIG_PHL_SDIO_TX_CB_THREAD */
 #endif /* SDIO_TX_THREAD */
 #endif
 
@@ -58,13 +50,14 @@ struct hci_info_t {
 };
 
 
-#define MAX_PHL_RING_STATUS_NUMBER PHL_MACID_MAX_NUM
+#define MAX_PHL_RING_STATUS_NUMBER 64
 #define RX_REORDER_RING_NUMBER PHL_MACID_MAX_NUM
 #define PCIE_BUS_EFFICIENCY 4
 #define ETH_ALEN 6
 
 struct phl_ring_status {
 	_os_list list;
+	u16 macid;
 	u8 band;/*0 or 1*/
 	u8 wmm;/*0 or 1*/
 	u8 port;
@@ -110,7 +103,6 @@ struct phl_hci_trx_ops {
 		struct rtw_h2c_pkt *_h2c_pkt, u32 buf_len);
 	void (*trx_reset)(struct phl_info_t *phl, u8 type);
 	void (*trx_resume)(struct phl_info_t *phl, u8 type);
-	void (*tx_reset_hwband)(struct phl_info_t *phl_info, enum phl_band_idx band_idx);
 	void (*req_tx_stop)(struct phl_info_t *phl);
 	void (*req_rx_stop)(struct phl_info_t *phl);
 	bool (*is_tx_pause)(struct phl_info_t *phl);
@@ -119,6 +111,7 @@ struct phl_hci_trx_ops {
 	void *(*get_rxbd_buf)(struct phl_info_t *phl);
 	void (*recycle_rx_pkt)(struct phl_info_t *phl,
 			       struct rtw_phl_rx_pkt *phl_rx);
+	enum rtw_phl_status (*register_trx_hdlr)(struct phl_info_t *phl);
 	void (*rx_handle_normal)(struct phl_info_t *phl_info,
 						struct rtw_phl_rx_pkt *phl_rx);
 	void (*tx_watchdog)(struct phl_info_t *phl_info);
@@ -126,7 +119,6 @@ struct phl_hci_trx_ops {
 #ifdef CONFIG_PCI_HCI
 	enum rtw_phl_status (*recycle_busy_wd)(struct phl_info_t *phl);
 	enum rtw_phl_status (*recycle_busy_h2c)(struct phl_info_t *phl);
-	void (*return_tx_wps)(struct phl_info_t *phl);
 #endif
 
 #ifdef CONFIG_USB_HCI
@@ -138,11 +130,6 @@ struct phl_hci_trx_ops {
 #if defined(CONFIG_SDIO_HCI) && defined(CONFIG_PHL_SDIO_READ_RXFF_IN_INT)
 	enum rtw_phl_status (*recv_rxfifo)(struct phl_info_t *phl);
 #endif
-
-#ifdef CONFIG_PCI_HCI
-	void (*dump_wd_info)(struct phl_info_t *phl, u32 val);
-#endif
-
 };
 
 /**
@@ -169,58 +156,22 @@ struct phl_tid_ampdu_rx {
 	u16 buf_size;
 	u16 tid;
 	u8 started:1,
- 	   removed:1,
-	   sleep:1;
+	   removed:1;
 
 	void *drv_priv;
 	struct phl_info_t *phl_info;
 };
 
-#ifdef DEBUG_PHL_RX
-struct phl_rx_stats {
-	u32 rx_isr;
-	u32 phl_rx;
-	u32 rx_type_all;
-	u32 rx_type_wifi;
-	u32 rx_type_ppdu;
-	u32 rx_type_wp;
-	u32 rx_type_c2h;
-	u32 rx_amsdu;
-
-	u32 rx_dont_reorder;
-	u32 rx_put_reorder;
-
-	u32 rx_drop_get;
-	u32 rx_rdy_fail;
-	u32 rxbd_fail;
-	u32 rx_drop_reorder;
-	u32 reorder_seq_less;
-	u32 reorder_dup;
-#ifdef PHL_RXSC_AMPDU
-	u32 rxsc_ampdu[3];
-#endif
-
-	u32 rx_pkt_core;
-	u32 rx_pktsz_phl;
-	u32 rx_pktsz_core;
-#ifdef CONFIG_DYNAMIC_RX_BUF
-	u32 rxbuf_empty;
-#endif
-};
-#endif /* DEBUG_PHL_RX */
-
 struct macid_ctl_t {
 	_os_lock lock;
 	/*  used macid bitmap share for all wifi role */
 	u32 used_map[PHL_MACID_MAX_ARRAY_NUM];
-	u32 used_mld_map[PHL_MACID_MAX_ARRAY_NUM];
-	u32 used_legacy_map[PHL_MACID_MAX_ARRAY_NUM];
 	/* record bmc macid bitmap for all wifi role */
 	u32 bmc_map[PHL_MACID_MAX_ARRAY_NUM];
 	/* record used macid bitmap for each wifi role */
 	u32 wifi_role_usedmap[MAX_WIFI_ROLE_NUMBER][PHL_MACID_MAX_ARRAY_NUM];
 	/* record bmc TX macid for wifi role */
-	u16 wrole_bmc[MAX_WIFI_ROLE_NUMBER][RTW_RLINK_MAX];
+	u16 wrole_bmc[MAX_WIFI_ROLE_NUMBER];
 	/* record total stainfo by macid */
 	struct rtw_phl_stainfo_t *sta[PHL_MACID_MAX_NUM];
 	u16 max_num;
@@ -234,14 +185,6 @@ struct stainfo_ctl_t {
 	struct phl_queue free_sta_queue;
 };
 
-struct mld_ctl_t {
-	struct phl_info_t *phl_info;
-	u8 *allocated_mld_buf;
-	int allocated_mld_sz;
-	u8 *mld_buf;
-	struct phl_queue free_mld_queue;
-};
-
 struct phl_h2c_pkt_pool {
 	struct rtw_h2c_pkt *h2c_pkt_buf;
 	struct phl_queue idle_h2c_pkt_cmd_list;
@@ -251,31 +194,20 @@ struct phl_h2c_pkt_pool {
 	_os_lock recycle_lock;
 };
 
-struct gtimer_ctx {
-	u8 en;
-	u8 timer_type;
-	u32 duration;
+#ifdef CONFIG_RTW_ACS
+
+#ifndef MAX_CHANNEL_NUM
+#define	MAX_CHANNEL_NUM		42
+#endif
+
+struct auto_chan_sel {
+	u8 clm_ratio[MAX_CHANNEL_NUM];
+	u8 nhm_pwr[MAX_CHANNEL_NUM];
+	u8 curr_idx;
+	u16 chset[MAX_CHANNEL_NUM];
 };
+#endif
 
-#define _GT3_ENABLE 1
-#define _GT3_DISABLE 0
-
-#define _GT3_TYPE_SH_TASK 1
-
-struct lifetime_ctx {
-	u8 hw_band;
-	u8 en;
-	u16 val;
-};
-
-#define _LIFETIME_ENABLE 1
-#define _LIFETIME_DISABLE 0
-
-struct power_offset_ctx {
-	u8 hw_band;
-	s8 ofst_mode;
-	s8 ofst_bw;
-};
 
 enum phl_tx_status {
 	PHL_TX_STATUS_IDLE = 0,
@@ -298,8 +230,6 @@ enum data_ctrl_mdl {
 	DATA_CTRL_MDL_CMD_CTRLER = BIT0,
 	DATA_CTRL_MDL_SER = BIT1,
 	DATA_CTRL_MDL_PS = BIT2,
-	DATA_CTRL_MDL_MRC = BIT3,
-	DATA_CTRL_MDL_ECSA = BIT4,
 	DATA_CTRL_MDL_MAX = BIT7
 };
 
@@ -315,36 +245,22 @@ enum data_ctrl_err_code {
 	CTRL_ERR_MAX = 0xFF
 };
 
-#ifdef CONFIG_POWER_SAVE
-struct phl_ps_info {
-	bool init;
-	_os_atomic tx_ntfy;
-};
-#endif
-
 #define PHL_CTRL_TX BIT0
 #define PHL_CTRL_RX BIT1
-#define PHL_CTRL_IN_PIPE BIT2
-#define PHL_CTRL_OUT_PIPE BIT3
-#define POLL_SW_TX_PAUSE_MAX_MS 500
-#define POLL_SW_RX_PAUSE_MAX_MS 500
-
-#if defined(CONFIG_VW_REFINE) || defined(CONFIG_ONE_TXQ)
-#define WP_MAX_CNT 4096
-#define WP_USED_SEQ 0xFFFF
-#endif
+#define POLL_SW_TX_PAUSE_CNT 100
+#define POLL_SW_TX_PAUSE_MS 5
+#define POLL_SW_RX_PAUSE_CNT 100
+#define POLL_SW_RX_PAUSE_MS 5
 
 struct phl_info_t {
 	struct macid_ctl_t macid_ctrl;
 	struct stainfo_ctl_t sta_ctrl;
-	struct mld_ctl_t mld_ctrl;
 
 	struct rtw_regulation regulation;
 
 	struct rtw_phl_com_t *phl_com;
 	struct rtw_phl_handler phl_tx_handler;
 	struct rtw_phl_handler phl_rx_handler;
-	struct rtw_phl_handler phl_ser_handler;
 	struct rtw_phl_handler phl_event_handler;
 	struct rtw_phl_rx_ring phl_rx_ring;
 	_os_atomic phl_sw_tx_sts;
@@ -383,8 +299,14 @@ struct phl_info_t {
 	void *cmd_fsm;
 	void *cmd_obj;
 
+	void *scan_fsm;
+	void *scan_obj;
+
 	void *ser_fsm;
 	void *ser_obj;
+
+	void *btc_fsm;
+	void *btc_obj;
 
 	void *snd_fsm;
 #endif /*CONFIG_FSM*/
@@ -399,35 +321,16 @@ struct phl_info_t {
 #ifdef PHL_RX_BATCH_IND
 	u8 rx_new_pending;
 #endif
-#ifdef DEBUG_PHL_RX
-	struct phl_rx_stats rx_stats;
-	u32 cnt_rx_pktsz;
-#endif
 
 	struct phl_wow_info wow_info;
 
-#ifdef CONFIG_POWER_SAVE
-	struct phl_ps_info ps_info;
-#endif
-
 #ifdef CONFIG_RTW_ACS
-	void *acs_info;
+	struct auto_chan_sel acs;
 #endif
 
 #ifdef CONFIG_PHL_TEST_SUITE
 	void *trx_test;
 #endif
-
-	struct gtimer_ctx gt3_ctx;
-	struct lifetime_ctx lt_ctx;
-	struct power_offset_ctx pwr_ofst_ctx;
-
-#if defined(CONFIG_VW_REFINE) || defined(CONFIG_ONE_TXQ)
-	u16 free_wp[WP_MAX_CNT];
-	u16 fw_ptr, fr_ptr;  /* wp management r/w ptr */
-#endif
-	u8 use_onetxring;
-
 };
 
 #define phl_to_drvpriv(_phl)		(_phl->phl_com->drv_priv)
@@ -443,8 +346,5 @@ struct phl_info_t {
 
 #define phl_to_p2pps_info(_phl)	(((_phl)->phl_com->p2pps_info))
 #define get_role_idx(_wrole) (_wrole->id)
-
-#define phl_to_mld_ctrl(_phlinfo) (&(_phlinfo->mld_ctrl))
-#define get_rlink(_wrole, _idx) (&(_wrole->rlink[_idx]))
 
 #endif /*_PHL_STRUCT_H_*/

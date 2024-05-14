@@ -13,6 +13,7 @@
  *
  *****************************************************************************/
 #define _HAL_TRX_8852BE_C_
+#include "../../hal_headers.h"
 #include "../rtl8852b_hal.h"
 #include "hal_trx_8852be.h"
 
@@ -374,8 +375,8 @@ static u32 _hal_get_bd_idx_reg_8852be(u8 dma_ch)
  * returns the mapping hw dma channel defined by XXX_QUEUE_IDX_8852BE
  * if the input parameter is unknown value, returns ACH0_QUEUE_IDX_8852BE
  */
-static u8 hal_mapping_hw_tx_chnl_8852be(struct hal_info_t *hal,
-		u16 macid, enum rtw_phl_ring_cat cat, u8 band)
+static u8 hal_mapping_hw_tx_chnl_8852be(u16 macid, enum rtw_phl_ring_cat cat,
+					u8 band)
 {
 	u8 dma_ch = 0;
 
@@ -421,36 +422,6 @@ static u8 hal_mapping_hw_tx_chnl_8852be(struct hal_info_t *hal,
 	return dma_ch;
 }
 
-static void hal_query_txch_map_8852be(enum phl_band_idx band, void *ch_map)
-{
-	struct mac_ax_txdma_ch_map *txch_map = (struct mac_ax_txdma_ch_map *)ch_map;
-
-	if(band == HW_BAND_0) {
-		txch_map->ch0 = MAC_AX_PCIE_ENABLE;
-		txch_map->ch1 = MAC_AX_PCIE_ENABLE;
-		txch_map->ch2 = MAC_AX_PCIE_ENABLE;
-		txch_map->ch3 = MAC_AX_PCIE_ENABLE;
-
-		txch_map->ch8 = MAC_AX_PCIE_ENABLE;
-		txch_map->ch9 = MAC_AX_PCIE_ENABLE;
-	}
-
-	txch_map->ch4 = MAC_AX_PCIE_IGNORE;
-	txch_map->ch5 = MAC_AX_PCIE_IGNORE;
-	txch_map->ch6 = MAC_AX_PCIE_IGNORE;
-	txch_map->ch7 = MAC_AX_PCIE_IGNORE;
-
-	txch_map->ch10 = MAC_AX_PCIE_IGNORE;
-	txch_map->ch11 = MAC_AX_PCIE_IGNORE;
-
-	txch_map->ch12 = MAC_AX_PCIE_IGNORE;
-}
-
-static u8 hal_query_txch_hwband_8852be(u8 dma_ch)
-{
-	u8 band = 0;
-	return band;
-}
 
 /**
  * this function will return available txbd number of target dma channel
@@ -482,7 +453,7 @@ static u16 hal_get_avail_txbd_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx,
 		*hw_idx = (u16)((tmp32 >> 16) & 0x0FFF);
 
 		avail_txbd = hal_calc_avail_wptr(*hw_idx, *host_idx,
-						 bus_cap->txbd_num);
+						 (u16)bus_cap->txbd_num);
 		PHL_TRACE(COMP_PHL_XMIT, _PHL_DEBUG_,
 			  "hal_get_avail_txbd_8852be => dma_ch %d, host_idx %d, "
 			  "hw_idx %d, avail_txbd %d\n",
@@ -490,48 +461,6 @@ static u16 hal_get_avail_txbd_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx,
 	}
 
 	return avail_txbd;
-}
-
-static u16 hal_get_rxbd_num_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx)
-{
-	u16 res = 0;
-
-	if (ch_idx == MAC_AX_RX_CH_RXQ)
-		res = (u16)hal_com->bus_cap.rxbd_num;
-	else if (ch_idx == MAC_AX_RX_CH_RPQ)
-		res = (u16)hal_com->bus_cap.rpbd_num;
-	else
-		PHL_ERR("[%s] Invalid rx ch idx:%d\n", __func__, ch_idx);
-
-	return res;
-}
-
-static u16 hal_get_rxbuf_num_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx)
-{
-	u16 res = 0;
-
-	if (ch_idx == MAC_AX_RX_CH_RXQ)
-		res = (u16)hal_com->bus_cap.rxbuf_num;
-	else if (ch_idx == MAC_AX_RX_CH_RPQ)
-		res = (u16)hal_com->bus_cap.rpbuf_num;
-	else
-		PHL_ERR("[%s] Invalid rx ch idx:%d\n", __func__, ch_idx);
-
-	return res;
-}
-
-static u16 hal_get_rxbuf_size_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx)
-{
-	u16 res = 0;
-
-	if (ch_idx == MAC_AX_RX_CH_RXQ)
-	 res = (u16)hal_com->bus_cap.rxbuf_size;
-	else if (ch_idx == MAC_AX_RX_CH_RPQ)
-	 res = (u16)hal_com->bus_cap.rpbuf_size;
-	else
-	 PHL_ERR("[%s] Invalid rx ch idx:%d\n", __func__, ch_idx);
-
-	return res;
 }
 
 /**
@@ -545,10 +474,10 @@ static u16 hal_get_rxbuf_size_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx)
 static u16 hal_get_avail_rxbd_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx,
 				     u16 *host_idx, u16 *hw_idx)
 {
+ 	struct bus_cap_t *bus_cap = &hal_com->bus_cap;
 	u16 avail_rxbd = 0;
 	u32 tmp32 = 0, reg = 0;
 	u8 rx_dma_ch = 0;
-	u16 rxbd_num = hal_get_rxbd_num_8852be(hal_com, ch_idx);
 
 	rx_dma_ch = RX_QUEUE_IDX_8852BE + ch_idx;
 
@@ -562,11 +491,13 @@ static u16 hal_get_avail_rxbd_8852be(struct rtw_hal_com_t *hal_com, u8 ch_idx,
 		*host_idx = (u16)(tmp32 & 0x0FFF);
 		*hw_idx = (u16)((tmp32 >> 16) & 0x0FFF);
 
-		avail_rxbd = hal_calc_avail_rptr(*host_idx, *hw_idx, rxbd_num);
+		avail_rxbd = hal_calc_avail_rptr(*host_idx, *hw_idx,
+						 (u16)bus_cap->rxbd_num);
 	}
 
 	return avail_rxbd;
 }
+
 
 void _hal_fill_wp_seq_field_8852be(u8 *seq_info, u16 wp_seq)
 {
@@ -624,38 +555,25 @@ static u8 tid_ind[] = {
 };
 
 static enum rtw_hal_status
-_hal_txsc_update_wd_8852be(struct hal_info_t *hal,
+_hal_txsc_update_wd(struct hal_info_t *hal,
 						struct rtw_phl_pkt_req *req, u32 *wd_len)
 {
-	enum rtw_hal_status hstatus = RTW_HAL_STATUS_FAILURE;
-	struct rtw_xmit_req *tx_req = req->tx_req;
-	struct rtw_t_meta_data *mdata = &tx_req->mdata;
-	u8 dma_ch;
+	struct rtw_xmit_req *tx_req = req ? req->tx_req : NULL;
+	struct rtw_t_meta_data	*mdata;
 	u32 *wd_words;
-	u32 w0, w2, w3, w7, w10;
+	u32 w0, w2, w3;
 
-#ifdef CONFIG_RTW_TXSC_USE_HW_SEQ
-	/* HW SEQ EN policy. Temporarily map TID to 4 Q and use QSEL as HWSEQ index. */
-	if (mdata->hw_seq_mode) {
-		static const u8 tid_2_qsel[8] = {0, 1, 1, 0, 2, 2, 3, 3};
-		mdata->hw_ssn_sel = tid_2_qsel[mdata->tid];
-	}
-#endif /* CONFIG_RTW_TXSC_USE_HW_SEQ */
-	dma_ch = hal_mapping_hw_tx_chnl_8852be(hal, mdata->macid,
-						mdata->cat,
-						mdata->band);
-	if (mdata->dma_ch != dma_ch) {
-		PHL_WARN("DMA channel mismatch! (%u/%u/M%u/T%u)\n",
-			 dma_ch, mdata->dma_ch, mdata->macid, mdata->tid);
-	}
+	if (NULL == tx_req)
+		return RTW_HAL_STATUS_FAILURE;
 
-	if (req->wd_seq_offset == 0) {
-		hstatus = rtw_hal_mac_fill_txdesc(hal->mac,
-		                                  tx_req,
-		                                  req->wd_page,
-		                                  wd_len);
-		req->wd_len = req->wd_seq_offset = (u8)*wd_len;
+	if (req->wd_len == 0) {
+		rtw_hal_mac_ax_fill_txdesc(hal->mac, tx_req, req->wd_page,
+								   wd_len);
+		req->wd_len = (u8)*wd_len;
 	} else {
+		mdata = &tx_req->mdata;
+		mdata->dma_ch = hal_mapping_hw_tx_chnl_8852be(mdata->macid, mdata->tid, mdata->band);
+
 		wd_words = (u32 *)req->wd_page;
 		w0 = le32_to_cpu(wd_words[0])
 				 & ~((AX_TXD_HW_SSN_SEL_MSK << AX_TXD_HW_SSN_SEL_SH)
@@ -664,11 +582,6 @@ _hal_txsc_update_wd_8852be(struct hal_info_t *hal,
 				 & ~(AX_TXD_TID_IND
 					 | (AX_TXD_QSEL_MSK << AX_TXD_QSEL_SH)
 					 | (AX_TXD_TXPKTSIZE_MSK << AX_TXD_TXPKTSIZE_SH));
-		w7 = le32_to_cpu(wd_words[7])
-					& ~(AX_TXD_DATA_RTY_LOWEST_RATE_MSK
-					<< AX_TXD_DATA_RTY_LOWEST_RATE_SH);
-		w10 = le32_to_cpu(wd_words[10])
-					& ~(AX_TXD_RTS_EN | AX_TXD_HW_RTS_EN | AX_TXD_CTS2SELF | (AX_TXD_CCA_RTS_MSK << AX_TXD_CCA_RTS_SH));
 
 		/* Update SSN SEL, DMA CH, QSEL, and TID indicator in WD cache */
 		w0 |= (((mdata->hw_ssn_sel & AX_TXD_HW_SSN_SEL_MSK) << AX_TXD_HW_SSN_SEL_SH)
@@ -689,31 +602,10 @@ _hal_txsc_update_wd_8852be(struct hal_info_t *hal,
 		w2 |= (mdata->pktlen & AX_TXD_TXPKTSIZE_MSK) << AX_TXD_TXPKTSIZE_SH;
 		wd_words[2] = cpu_to_le32(w2);
 
-		w7 |= (mdata->data_rty_lowest_rate
-				& AX_TXD_DATA_RTY_LOWEST_RATE_MSK)
-				<< AX_TXD_DATA_RTY_LOWEST_RATE_SH;
-		wd_words[7] = cpu_to_le32(w7);
-
-		if (mdata->rts_en)
-			w10 |= AX_TXD_RTS_EN;
-
-		if (mdata->cts2self)
-			w10 |= AX_TXD_CTS2SELF;
-
-		if (mdata->rts_cca_mode)
-			w10 |= ((mdata->rts_cca_mode & AX_TXD_CCA_RTS_MSK) << AX_TXD_CCA_RTS_SH);
-
-		if (mdata->hw_rts_en)
-			w10 |= AX_TXD_HW_RTS_EN;
-
-		wd_words[10] = cpu_to_le32(w10);
-
-		*wd_len = req->wd_seq_offset;
-
-		hstatus = RTW_HAL_STATUS_SUCCESS;
+		*wd_len = req->wd_len;
 	}
 
-	return hstatus;
+	return RTW_HAL_STATUS_SUCCESS;
 }
 #endif
 
@@ -729,26 +621,25 @@ hal_update_wd_8852be(struct hal_info_t *hal,
 	enum rtw_hal_status hstatus = RTW_HAL_STATUS_SUCCESS;
 	struct rtw_hal_com_t *hal_com = hal->hal_com;
 	struct bus_hw_cap_t *bus_hw_cap = &hal_com->bus_hw_cap;
-	struct rtw_xmit_req *tx_req = req ? req->tx_req : NULL;
+	struct rtw_xmit_req *tx_req = NULL;
 	struct rtw_pkt_buf_list *pkt_list = NULL;
 	u32 wd_len = 0, seq_ofst = 0, addr_info_ofst = 0;
 	u16 wp_seq = 0;
 	u8 i = 0, wp_num = 0, mpdu_ls = 0, msdu_ls = 0, tid_indic = 0;
 	FUNCIN_WSTS(hstatus);
 	do {
-		if (NULL == req || NULL == tx_req)
+		if (NULL == req)
 			break;
 
+		tx_req = req->tx_req;
 		pkt_list = (struct rtw_pkt_buf_list *)tx_req->pkt_list;
 
 #ifdef CONFIG_PHL_TXSC
-		hstatus = _hal_txsc_update_wd_8852be(hal, req, &wd_len);
+		_hal_txsc_update_wd(hal, req, &wd_len);
 #else
 		/* connect with halmac */
-		hstatus = rtw_hal_mac_fill_txdesc(hal->mac,
-		                                  tx_req,
-		                                  req->wd_page,
-		                                  &wd_len);
+		rtw_hal_mac_ax_fill_txdesc(hal->mac, tx_req, req->wd_page,
+						&wd_len);
 #endif
 		tid_indic = _hal_get_tid_indic_8852be(tx_req->mdata.tid);
 
@@ -808,12 +699,11 @@ hal_update_txbd_8852be(struct hal_info_t *hal,
 	enum rtw_hal_status hstatus = RTW_HAL_STATUS_SUCCESS;
 	struct rtw_hal_com_t *hal_com = hal->hal_com;
 	struct bus_hw_cap_t *bus_hw_cap = &hal_com->bus_hw_cap;
-	struct dvobj_priv *pobj = (struct dvobj_priv *)hal_com->drv_priv;
-	struct pci_dev *pdev = dvobj_to_pci(pobj)->ppcidev;
 	u8 *ring_head = 0;
 	u8 *target_txbd = 0;
-	u16 host_idx = 0;
-	u16 txbd_num = hal_com->bus_cap.txbd_num;
+	u16 host_idx = 0, txbd_host_idx = 0, hw_idx = 0;
+	u16 avail_txbd = 0, wcnt = 0;
+	u16 txbd_num = (u16)hal_com->bus_cap.txbd_num;
 
 	do {
 		if (NULL == wd_page)
@@ -823,12 +713,17 @@ hal_update_txbd_8852be(struct hal_info_t *hal,
 
 		/* connect with halmac */
 		host_idx = txbd_ring[ch_idx].host_idx;
+		avail_txbd = hal_get_avail_txbd_8852be(hal->hal_com, ch_idx,
+							&txbd_host_idx, &hw_idx);
+
+		wcnt = (wd_num > avail_txbd) ? avail_txbd : wd_num;
 
 		PHL_TRACE(COMP_PHL_XMIT, _PHL_DEBUG_,
-		          "hal_update_txbd_8852be => ch_idx %d, wd_num %d\n",
-			  ch_idx, wd_num);
+			  "hal_update_txbd_8852be => ch_idx %d, host_idx %d, "
+			  "hw_idx %d, avail_txbd %d, wcnt %d\n",
+			  ch_idx, txbd_host_idx, hw_idx, avail_txbd, wcnt);
 
-		while (wd_num > 0) {
+		while (wcnt > 0) {
 
 			ring_head = txbd_ring[ch_idx].vir_addr;
 			target_txbd = ring_head + (host_idx *
@@ -842,11 +737,11 @@ hal_update_txbd_8852be(struct hal_info_t *hal,
 							wd_page->phy_addr_h);
 			host_idx = (host_idx + 1) % txbd_num;
 			wd_page->host_idx = host_idx;
-			wd_num--;
+			wcnt--;
 
 			//multi wd page in one update txbd
 			#if 0//S_TODO
-			if(wd_num > 0){
+			if(wcnt > 0){
 				wd_page = list_first_entry(wd_page->list,
 								struct rtw_wd_page,
 								wd_page->list);
@@ -857,10 +752,6 @@ hal_update_txbd_8852be(struct hal_info_t *hal,
 		}
 
 		txbd_ring[ch_idx].host_idx = host_idx;
-
-		if (txbd_ring[ch_idx].cache == CACHE_ADDR)
-			pci_cache_wback(pdev, (dma_addr_t *)&txbd_ring[ch_idx].phy_addr_l, txbd_ring[ch_idx].buf_len, DMA_TO_DEVICE);
-
 	} while (false);
 
 	return hstatus;
@@ -890,6 +781,12 @@ hal_trigger_txdma_8852be(struct hal_info_t *hal,
 			  "hal_trigger_txdma_8852be => dma_ch %d, host_idx %d.\n",
 			  ch_idx, txbd_ring[ch_idx].host_idx);
 		hal_write16(hal->hal_com, txbd_reg, txbd_ring[ch_idx].host_idx);
+		#ifdef CONFIG_DBG_H2C_TX
+		if (tx_dma_ch == FWCMD_QUEUE_IDX_8852BE)
+			PHL_INFO("%s: 0x%x -> 0x%x\n", __func__,
+					_hal_get_bd_idx_reg_8852be(FWCMD_QUEUE_IDX_8852BE),
+					hal_read32(hal->hal_com, _hal_get_bd_idx_reg_8852be(FWCMD_QUEUE_IDX_8852BE)));
+		#endif /* CONFIG_DBG_H2C_TX */
 		hstatus = RTW_HAL_STATUS_SUCCESS;
 	} while (false);
 
@@ -932,112 +829,77 @@ u8 hal_get_fwcmd_queue_idx_8852be(void)
 	return FWCMD_QUEUE_IDX_8852BE;
 }
 
-static u8 hal_check_rxrdy_8852be(struct rtw_phl_com_t *phl_com,
-				 struct rtw_rx_buf *rx_buf,
+static u8 hal_check_rxrdy_8852be(struct rtw_phl_com_t *phl_com, u8 *rxbd_info,
 				 u8 ch_idx)
 {
-	u8 *rxbd_info = rx_buf->vir_addr;
-	u8 res = false;
 	struct hal_spec_t *hal_spec = &phl_com->hal_spec;
+	u8 res = false;
 	u16 tag = 0, target_tag = 0;
-	int read_cnt = 0;
-	#ifdef PHL_DMA_NONCOHERENT
-	u8 cache = rx_buf->cache;
-	void *drv_priv = phl_com->drv_priv;
-	#endif /* PHL_DMA_NONCOHERENT */
+	u16 read_cnt = 0;
 
-	if (rxbd_info == NULL) {
-		PHL_TRACE(COMP_PHL_DBG, _PHL_WARNING_,
-			  "[WARNING] input rx bd info is NULL!\n");
-		return false;
-	}
-
-	if (hal_spec->rx_tag[ch_idx] == 0x1fff)
-		target_tag = 1;
-	else
-		target_tag = hal_spec->rx_tag[ch_idx] + 1;
-
-	#if defined(PHL_DMA_NONCOHERENT) \
-	    && defined(HAL_TO_NONCACHE_ADDR)
-	/* Use non-cache address to polling RXBD info if available */
-	if (cache == CACHE_ADDR)
-		rxbd_info = (u8 *)HAL_TO_NONCACHE_ADDR(rxbd_info);
-	#endif /* HAL_TO_NONCACHE_ADDR */
-
-	while (read_cnt < RX_TAG_POLLING_TIMES) {
-		u32 rxbd_info_32;
-
-		/* Invalidate cache for RXBD info before polling
-		 * RX tag from it if required */
-		#if defined(PHL_DMA_NONCOHERENT) \
-		    && !defined(HAL_TO_NONCACHE_ADDR)
-		if (cache == CACHE_ADDR) {
-			_os_cache_inv(drv_priv,
-			              &rx_buf->phy_addr_l,
-			              &rx_buf->phy_addr_h,
-			              hal_spec->rx_bd_info_sz,
-			              DMA_FROM_DEVICE);
-		}
-		#endif /* PHL_DMA_NONCOHERENT */
-
-		rxbd_info_32 = le32_to_cpu(*(volatile u32 *)rxbd_info);
-
-		read_cnt++;
-		/* tag: RXBD_INFO[28:16] */
-		tag = (u16)((rxbd_info_32 >> 16) & 0x1FFF);
-
-		if (tag == target_tag) {
-			res = true;
+	do {
+		if (rxbd_info == NULL) {
+			PHL_TRACE(COMP_PHL_DBG, _PHL_WARNING_,
+					"[WARNING] input rx bd info is NULL!\n");
+			res = false;
 			break;
 		}
-	}
 
-	if (true == res) {
-		hal_spec->rx_tag[ch_idx] = tag;
-	} else {
-		PHL_TRACE_LMT(COMP_PHL_DBG, _PHL_WARNING_, "[WARNING] polling Rx Tag fail, tag = %d, target_tag = %d\n",
-					tag, target_tag);
-	}
+		tag = (u16)GET_RX_BD_INFO_TAG(rxbd_info);
 
-	/* RX ready. Ensure cache is cleared for RX payload. */
-	#if defined(PHL_DMA_NONCOHERENT)
-	/* ToDo: Add $ clear flag to prevent from unecessary $ clear as
-	   fresh mapped RX buffer should be $ chean. For now, considering
-	   RX buffer recycle, $ is always cleared for RX DMA length
-	    right after RX ready to  minimize $ clear cost. */
-	if ((res == true) && cache == CACHE_ADDR) {
-		u16 pld_size = (u16)GET_RX_BD_INFO_HW_W_SIZE(rxbd_info);
-
-		if (pld_size != 0)
-			_os_cache_inv(drv_priv,
-			              &rx_buf->phy_addr_l,
-			              &rx_buf->phy_addr_h,
-			              pld_size,
-			              DMA_FROM_DEVICE);
+		if (hal_spec->rx_tag[ch_idx] == 0x1fff ||
+			hal_spec->rx_tag[ch_idx] == 0)
+			target_tag = 1;
 		else
-			PHL_ERR("RX zero length payload.\n");
-	}
-	#endif /* PHL_DMA_NONCOHERENT */
+			target_tag = hal_spec->rx_tag[ch_idx] + 1;
+
+		while (read_cnt < 10000) {
+
+			read_cnt++;
+
+			tag = (u16)GET_RX_BD_INFO_TAG(rxbd_info);
+
+			if (tag == target_tag) {
+				res = true;
+				break;
+			}
+		}
+
+		if (true == res) {
+			hal_spec->rx_tag[ch_idx] = tag;
+		} else {
+			PHL_TRACE(COMP_PHL_DBG, _PHL_WARNING_, "[WARNING] polling Rx Tag fail, tag = %d, target_tag = %d\n",
+					tag, target_tag);
+#ifdef RTW_WKARD_98D_RXTAG
+			if (tag) {
+				hal_spec->rx_tag[ch_idx] = tag;
+				res = true;
+			}
+#endif
+		}
+
+	} while (false);
 
 	return res;
 }
 
 
+
 u16 hal_handle_rx_report_8852be(struct hal_info_t *hal, u8 *rp, u16 len,
 				u8 *sw_retry, u8 *dma_ch, u16 *wp_seq,
-				u8 *macid, u8 *ac_queue, u8 *txsts)
+				u8 *txsts)
 {
 	u8 polluted = false;
 	u16 rsize = 0;
+	u16 macid = 0;
 	u8 tid = 0, qsel_value = 0, band = 0, tid_indic = 0;
 
 	do {
 		if (len < RX_RP_PACKET_SIZE)
 			break;
 
-		*macid = (u8)GET_RX_RP_PKT_MAC_ID(rp);
+		macid = (u8)GET_RX_RP_PKT_MAC_ID(rp);
 		qsel_value = (u8)GET_RX_RP_PKT_QSEL(rp);
-		*ac_queue = qsel_value % RTW_MAX_AC_QUEUE_NUM;
 		*txsts = (u8)GET_RX_RP_PKT_TX_STS(rp);
 		*wp_seq = (u16)GET_RX_RP_PKT_PCIE_SEQ(rp);
 		polluted = (u8)GET_RX_RP_PKT_POLLUTED(rp);
@@ -1047,11 +909,11 @@ u16 hal_handle_rx_report_8852be(struct hal_info_t *hal, u8 *rp, u16 len,
 		tid_indic = (*wp_seq & WP_TID_INDIC_RESERVED_BIT) ? 1 : 0;
 		*wp_seq &= (WP_RESERVED_SEQ);
 		tid = hal_qsel_to_tid_8852be(hal, qsel_value, tid_indic);
-		*dma_ch = hal_mapping_hw_tx_chnl_8852be(hal, *macid, tid, band);
+		*dma_ch = hal_mapping_hw_tx_chnl_8852be(macid, tid, band);
 
 		PHL_TRACE(COMP_PHL_DBG, _PHL_DEBUG_, "Get recycle report: qsel = %d, macid = %d, wp_seq = 0x%x, tid_indic = %d,"
 			" tid = %d, band = %d, dma_ch = %d\n",
-			qsel_value, *macid, *wp_seq, tid_indic, tid, band, *dma_ch);
+			qsel_value, macid, *wp_seq, tid_indic, tid, band, *dma_ch);
 
 		if (TX_STATUS_TX_DONE != *txsts) {
 			*sw_retry = true;
@@ -1199,14 +1061,14 @@ static u8 hal_handle_rxbd_info_8852be(struct hal_info_t *hal,
  */
 static enum rtw_hal_status
 hal_update_rxbd_8852be(struct hal_info_t *hal, struct rx_base_desc *rxbd,
-		       struct rtw_rx_buf *rx_buf, u8 ch_idx)
+		       struct rtw_rx_buf *rx_buf)
 {
 	enum rtw_hal_status hstatus = RTW_HAL_STATUS_SUCCESS;
 	struct rtw_hal_com_t *hal_com = hal->hal_com;
 	struct bus_hw_cap_t *bus_hw_cap = &hal_com->bus_hw_cap;
 	u8 *ring_head = NULL;
 	u8 *target_rxbd = NULL;
-	u16 rxbd_num = hal_get_rxbd_num_8852be(hal_com, ch_idx);
+	u16 rxbd_num = (u16)hal_com->bus_cap.rxbd_num;
 
 	do {
 		if (NULL == rxbd)
@@ -1300,11 +1162,11 @@ static void _hal_tx_init_bd_ram_8852be(struct hal_info_t *hal)
 static void _hal_trx_init_bd_num_8852be(struct hal_info_t *hal)
 {
 	struct rtw_hal_com_t *hal_com = hal->hal_com;
-	u16 txbd_num = hal_com->bus_cap.txbd_num;
-	u16 rxbd_num = 0;
+	u16 txbd_num = (u16)hal_com->bus_cap.txbd_num;
+	u16 rxbd_num = (u16)hal_com->bus_cap.rxbd_num;
 	u32 reg = 0;
 	u16 value = 0;
-	u8 i = 0, ch_idx = 0;
+	u8 i = 0;
 
 	for (i = 0; i < TX_DMA_CHANNEL_ENTRY_8852BE; i++) {
 		/*if (FWCMD_QUEUE_IDX_8852BE == i)
@@ -1323,9 +1185,6 @@ static void _hal_trx_init_bd_num_8852be(struct hal_info_t *hal)
 		 i < RX_QUEUE_IDX_8852BE + RX_DMA_CHANNEL_ENTRY_8852BE; i++) {
 		 /*if (FWCMD_QUEUE_IDX_8852BE == i)
 			 continue;*/
-
-		 ch_idx = (u8)(i - RX_QUEUE_IDX_8852BE);
-		 rxbd_num = hal_get_rxbd_num_8852be(hal_com, ch_idx);
 
 		 value = rxbd_num & B_AX_DESC_NUM_MSK;
 
@@ -1528,7 +1387,7 @@ static enum rtw_hal_status hal_trx_init_8852be(struct hal_info_t *hal, u8 *txbd_
 	enum rtw_hal_status hstatus = RTW_HAL_STATUS_SUCCESS;
 	/* Set AMPDU max agg number to 128 */
 	/* CR setting*/
-	rtw_hal_mac_set_hw_ampdu_cfg(hal, 0, 0x80, 0xA0);
+	rtw_hal_mac_set_hw_ampdu_cfg(hal, 0, 0x7F, 0xAB);
 	return hstatus;
 }
 
@@ -1539,15 +1398,10 @@ void hal_trx_ops_init_8852be(void)
 	ops.deinit = hal_trx_deinit_8852be;
 	ops.query_tx_res = hal_get_avail_txbd_8852be;
 	ops.query_rx_res = hal_get_avail_rxbd_8852be;
-	ops.get_rxbd_num = hal_get_rxbd_num_8852be;
-	ops.get_rxbuf_num = hal_get_rxbuf_num_8852be;
-	ops.get_rxbuf_size = hal_get_rxbuf_size_8852be;
 	ops.cfg_wow_txdma = hal_cfg_wow_txdma_8852be;
 	ops.poll_txdma_idle = hal_poll_txdma_idle_8852be;
 	ops.map_hw_tx_chnl = hal_mapping_hw_tx_chnl_8852be;
 	ops.qsel_to_tid = hal_qsel_to_tid_8852be;
-	ops.query_txch_hwband = hal_query_txch_hwband_8852be;
-	ops.query_txch_map = hal_query_txch_map_8852be;
 	ops.query_txch_num = hal_query_txch_num_8852be;
 	ops.query_rxch_num = hal_query_rxch_num_8852be;
 	ops.update_wd = hal_update_wd_8852be;

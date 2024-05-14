@@ -244,7 +244,7 @@ inline void *dbg_rtw_zvmalloc(u32 sz, const enum mstat_f flags, const char *func
 	return p;
 }
 
-inline void dbg_rtw_vmfree(void *pbuf, u32 sz, const enum mstat_f flags, const char *func, const int line)
+inline void dbg_rtw_vmfree(void *pbuf, const enum mstat_f flags, u32 sz, const char *func, const int line)
 {
 
 	if (match_mstat_sniff_rules(flags, sz))
@@ -295,7 +295,7 @@ inline void *dbg_rtw_zmalloc(u32 sz, const enum mstat_f flags, const char *func,
 	return p;
 }
 
-inline void dbg_rtw_mfree(void *pbuf, u32 sz, const enum mstat_f flags, const char *func, const int line)
+inline void dbg_rtw_mfree(void *pbuf, const enum mstat_f flags, u32 sz, const char *func, const int line)
 {
 	if (match_mstat_sniff_rules(flags, sz))
 		RTW_INFO("DBG_MEM_ALLOC %s:%d %s(%d)\n", func, line, __FUNCTION__, (sz));
@@ -1167,48 +1167,5 @@ int hexstr2bin(const char *hex, u8 *buf, size_t len)
 		ipos += 2;
 	}
 	return 0;
-}
-
-void ustrs_add(char **ustrs, int *ustrs_len, const char *str)
-{
-	char *tmp_ustrs;
-	int tmp_ustrs_len;
-
-	if (!str || !strlen(str))
-		return;
-
-	tmp_ustrs = *ustrs;
-	tmp_ustrs_len = *ustrs_len;
-	if (tmp_ustrs) {
-		const char *pos;
-
-		/* search for same string */
-		for (pos = tmp_ustrs; pos < tmp_ustrs + tmp_ustrs_len; pos += strlen(pos) + 1) {
-			if (strcmp(pos, str) == 0)
-				return;
-		}
-
-		/* no match, realloc and add */
-		tmp_ustrs = rtw_malloc(tmp_ustrs_len + strlen(str) + 1);
-		if (!tmp_ustrs) {
-			rtw_warn_on(1);
-			return;
-		}
-		_rtw_memcpy((void *)tmp_ustrs, *ustrs, tmp_ustrs_len);
-		_rtw_memcpy((void *)(tmp_ustrs + tmp_ustrs_len), str, strlen(str) + 1);
-		rtw_mfree((void *)*ustrs, tmp_ustrs_len);
-		*ustrs = tmp_ustrs;
-		*ustrs_len += strlen(str) + 1;
-
-	} else {
-		tmp_ustrs = rtw_malloc(strlen(str) + 1);
-		if (!tmp_ustrs) {
-			rtw_warn_on(1);
-			return;
-		}
-		_rtw_memcpy((void *)tmp_ustrs, str, strlen(str) + 1);
-		*ustrs = tmp_ustrs;
-		*ustrs_len = strlen(str) + 1;
-	}
 }
 

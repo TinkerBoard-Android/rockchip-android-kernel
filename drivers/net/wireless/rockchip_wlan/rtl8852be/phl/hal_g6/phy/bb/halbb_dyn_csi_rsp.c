@@ -104,7 +104,7 @@ void halbb_dcr_config_ch_info_he(struct bb_info *bb) {
 	} else if (bw == CHANNEL_WIDTH_40) {
 		cfg->ch_i_grp_num_he = 2;
 	} else { /*if (bw == CHANNEL_WIDTH_20)*/
-		if (bb->ic_type & (BB_RTL8852B | BB_RTL8851B))
+		if (bb->ic_type == BB_RTL8852B)
 			cfg->ch_i_grp_num_he = 1;
 		else
 			cfg->ch_i_grp_num_he = 2;
@@ -114,13 +114,14 @@ void halbb_dcr_config_ch_info_he(struct bb_info *bb) {
 	cfg->ch_i_cmprs = 1;
 	cfg->ch_i_ele_bitmap = 0x303; /*Nr X Nc: 2 X 2*/
 
+	halbb_cfg_ch_info_cr(bb, cfg);
 }
 
 bool halbb_dcr_get_ch_raw_info(struct bb_info *bb, bool is_csi_en)
 {	
 	struct bf_ch_raw_info *bf = &bb->bb_cmn_hooker->bf_ch_raw_i;
 	struct bb_ch_info_physts_info *ch_physts = &bb->bb_ch_rpt_i.bb_ch_info_physts_i;
-	bool rpt = false;
+	bool get_ch_rpt_success = false;
 	
 	if (is_csi_en) {
 		BB_DBG(bb, DBG_DCR, "CSI Rsp enable need to disable for CH Est.\n");
@@ -129,10 +130,10 @@ bool halbb_dcr_get_ch_raw_info(struct bb_info *bb, bool is_csi_en)
 		halbb_delay_ms(bb, bf->ch_est_dly);
 	}
 
-	rpt = halbb_ch_info_wait_from_physts(bb, bf->get_phy_sts_dly, bf->get_phy_sts_dly*5, HE_PKT, false);
+	get_ch_rpt_success = halbb_ch_info_wait_from_physts(bb, bf->get_phy_sts_dly, bf->get_phy_sts_dly, HE_PKT);
 
-	if (rpt && ch_physts->ch_info_len < 200)
-		rpt = false;
+	if (get_ch_rpt_success && ch_physts->ch_info_len < 200)
+		get_ch_rpt_success = false;
 
 	if (is_csi_en) {
 		BB_DBG(bb, DBG_DCR, "Restore CSI Rsp.\n");
@@ -140,7 +141,7 @@ bool halbb_dcr_get_ch_raw_info(struct bb_info *bb, bool is_csi_en)
 		rtw_hal_mac_ax_init_bf_role(bb->hal_com, 0, bb->bb_phy_idx);
 	}
 
-	return rpt;
+	return get_ch_rpt_success;
 }
 
 bool halbb_dcr_en(struct bb_info *bb, bool en){
@@ -156,12 +157,12 @@ bool halbb_dcr_en(struct bb_info *bb, bool en){
 
 	if (en) {
 		//Allocate Buffer
-		//ret = halbb_ch_info_buf_alloc(bb);
-		//if (ret) {
+		ret = halbb_ch_info_buf_alloc(bb);
+		if (ret) {
 			bf->dyn_csi_rsp_en = true;
-		//}
+		}
 	} else {
-		//halbb_ch_info_buf_rls(bb);
+		halbb_ch_info_buf_rls(bb);
 		halbb_dcr_reset(bb);
 		bf->dyn_csi_rsp_en = false;
 	}
@@ -376,18 +377,6 @@ void halbb_dyn_csi_rsp_main(struct bb_info *bb)
 		ret = dcr_csi_rsp_en;
 	}
 	halbb_csi_rsp_rlt(bb, is_csi_rsp_en);
-}
-
-bool halbb_dcr_rssi_chk(struct bb_info *bb)
-{
-	u8 rssi_min = bb->bb_ch_i.rssi_min >> 1;
-	bool csi_enable = true;
-
-	/*When RSSI below -75 dBm, CSI feedback turned off*/
-	if (rssi_min < 35)
-		csi_enable = false;
-
-	return csi_enable;
 }
 
 void halbb_dyn_csi_rsp_dbg(struct bb_info *bb, char input[][16], 

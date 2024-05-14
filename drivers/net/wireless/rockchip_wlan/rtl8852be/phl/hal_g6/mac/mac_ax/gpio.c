@@ -402,7 +402,7 @@ u32 mac_set_led_mode(struct mac_ax_adapter *adapter,
 	case MAC_AX_LED_MODE_SW_CTRL_OD:
 		/* use SW IO to control LED */
 		ret = mac_set_sw_gpio_mode(adapter,
-					   RTW_AX_SW_IO_MODE_OUTPUT_OD, 8);
+					   MAC_AX_SW_IO_MODE_OUTPUT_OD, 8);
 		if (ret)
 			PLTFM_MSG_ERR("%s: config SW GPIO fail: %d",
 				      __func__, ret);
@@ -410,7 +410,7 @@ u32 mac_set_led_mode(struct mac_ax_adapter *adapter,
 	case MAC_AX_LED_MODE_SW_CTRL_PP:
 		/* use SW IO to control LED */
 		ret = mac_set_sw_gpio_mode(adapter,
-					   RTW_AX_SW_IO_MODE_OUTPUT_PP, 8);
+					   MAC_AX_SW_IO_MODE_OUTPUT_PP, 8);
 		if (ret)
 			PLTFM_MSG_ERR("%s: config SW GPIO fail: %d",
 				      __func__, ret);
@@ -427,7 +427,7 @@ u32 mac_set_led_mode(struct mac_ax_adapter *adapter,
 	}
 
 	val = SET_CLR_WORD(val, tmp, B_AX_LED2CM);
-	val = val & ~(B_AX_LED2_EN);
+	val = val & ~(B_AX_GPIO13_14_WL_CTRL_EN);
 	MAC_REG_W32(R_AX_LED_CFG, val);
 
 END:
@@ -467,15 +467,6 @@ u32 _mac_set_sw_gpio_mode(struct mac_ax_adapter *adapter,
 	} else if (gpio >= 8 && gpio <= 15) {
 		reg = R_AX_GPIO_EXT_CTRL + 2;
 		gpio = gpio - 8;
-#if MAC_AX_8852C_SUPPORT || MAC_AX_8192XB_SUPPORT || MAC_AX_8851E_SUPPORT || MAC_AX_8852D_SUPPORT
-	} else if (gpio >= 16 && gpio <= 18 &&
-		   (is_chip_id(adapter, MAC_AX_CHIP_ID_8852C) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8851E) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8852D))) {
-		reg = R_AX_GPIO_16_TO_18_EXT_CTRL + 2;
-		gpio = gpio - 16;
-#endif
 	} else {
 		PLTFM_MSG_ERR("%s: Wrong GPIO num: %d", __func__, gpio);
 		return MACNOITEM;
@@ -492,7 +483,7 @@ u32 _mac_set_sw_gpio_mode(struct mac_ax_adapter *adapter,
 }
 
 u32 mac_set_sw_gpio_mode(struct mac_ax_adapter *adapter,
-			 enum rtw_gpio_mode mode, u8 gpio)
+			 enum mac_ax_sw_io_mode mode, u8 gpio)
 {
 	struct mac_ax_ops *mac_ops = adapter->ops;
 	struct mac_ax_gpio_info *gpio_info = &adapter->gpio_info;
@@ -505,14 +496,14 @@ u32 mac_set_sw_gpio_mode(struct mac_ax_adapter *adapter,
 	}
 
 	switch (mode) {
-	case RTW_AX_SW_IO_MODE_INPUT:
+	case MAC_AX_SW_IO_MODE_INPUT:
 		ret = _mac_set_sw_gpio_mode(adapter, 0, gpio);
 		break;
-	case RTW_AX_SW_IO_MODE_OUTPUT_OD:
+	case MAC_AX_SW_IO_MODE_OUTPUT_OD:
 		ret = _mac_set_sw_gpio_mode(adapter, 0, gpio);
 		gpio_info->sw_io_output[gpio] = MAC_AX_SW_IO_OUT_OD;
 		break;
-	case RTW_AX_SW_IO_MODE_OUTPUT_PP:
+	case MAC_AX_SW_IO_MODE_OUTPUT_PP:
 		ret = _mac_set_sw_gpio_mode(adapter, 1, gpio);
 		gpio_info->sw_io_output[gpio] = MAC_AX_SW_IO_OUT_PP;
 		break;
@@ -550,21 +541,9 @@ u32 mac_sw_gpio_ctrl(struct mac_ax_adapter *adapter,
 
 		if (gpio <= 7) {
 			reg = R_AX_GPIO_PIN_CTRL + 1;
-		} else if (gpio >= 8 && gpio <= 15) {
+		} else {
 			reg = R_AX_GPIO_EXT_CTRL + 1;
 			gpio = gpio - 8;
-#if MAC_AX_8852C_SUPPORT || MAC_AX_8192XB_SUPPORT || MAC_AX_8851E_SUPPORT || MAC_AX_8852D_SUPPORT
-		} else if (gpio >= 16 && gpio <= 18 &&
-			   (is_chip_id(adapter, MAC_AX_CHIP_ID_8852C) ||
-			    is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB) ||
-			    is_chip_id(adapter, MAC_AX_CHIP_ID_8851E) ||
-			    is_chip_id(adapter, MAC_AX_CHIP_ID_8852D))) {
-			reg = R_AX_GPIO_16_TO_18_EXT_CTRL + 1;
-			gpio = gpio - 16;
-#endif
-		} else {
-			PLTFM_MSG_ERR("%s: Wrong GPIO num: %d", __func__, gpio);
-			return MACNOITEM;
 		}
 
 		ctrl = (high == 0) ? 0 : 1;
@@ -585,7 +564,7 @@ enum rtw_mac_gfunc mac_get_gpio_status(struct mac_ax_adapter *adapter,
 	u8 val;
 	enum rtw_mac_gfunc curr = RTW_MAC_GPIO_INVALID;
 
-	while (list && list->func != RTW_MAC_GPIO_LAST) {
+	while (list->func != RTW_MAC_GPIO_LAST) {
 		/* first fit list*/
 		if (curr != list->func &&
 		    list->offset >= R_AX_GPIO0_7_FUNC_SEL &&
@@ -688,15 +667,6 @@ u32 mac_get_gpio_val(struct mac_ax_adapter *adapter, u8 gpio, u8 *val)
 	} else if (gpio >= 8 && gpio <= 15) {
 		reg = R_AX_GPIO_EXT_CTRL;
 		gpio = gpio - 8;
-#if MAC_AX_8852C_SUPPORT || MAC_AX_8192XB_SUPPORT || MAC_AX_8851E_SUPPORT || MAC_AX_8852D_SUPPORT
-	} else if (gpio >= 16 && gpio <= 18 &&
-		   (is_chip_id(adapter, MAC_AX_CHIP_ID_8852C) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8851E) ||
-		    is_chip_id(adapter, MAC_AX_CHIP_ID_8852D))) {
-		reg = R_AX_GPIO_16_TO_18_EXT_CTRL;
-		gpio = gpio - 16;
-#endif
 	} else {
 		PLTFM_MSG_ERR("%s: Wrong GPIO num: %d", __func__, gpio);
 		return MACNOITEM;
@@ -714,102 +684,30 @@ u32 mac_get_wl_dis_gpio(struct mac_ax_adapter *adapter, u8 *gpio)
 #define MAC_AX_HCI_SEL_PCIE_UART 2
 #define MAC_AX_HCI_SEL_PCIE_USB 3
 #define MAC_AX_HCI_SEL_SDIO_MULT 4
-#define MAC_AX_HCI_SEL_RSVD 5
-#define MAC_AX_HCI_SEL_PCIE_GEN1_UART 6
-#define MAC_AX_HCI_SEL_PCIE_GEN1_USB 7
+#define MAC_AX_HCI_SEL_PCIE_G1_UART 6
+#define MAC_AX_HCI_SEL_PCIE_G1_USB 7
 	struct mac_ax_intf_ops *ops = adapter_to_intf_ops(adapter);
 	u32 val;
 
 	val = MAC_REG_R32(R_AX_SYS_STATUS1);
 	val = GET_FIELD(val, B_AX_HCI_SEL_V4);
 
-#if MAC_AX_8852A_SUPPORT
-	/* In AP, */
-	/*   MAC_AX_HCI_SEL_PCIE_UART and MAC_AX_HCI_SEL_SDIO_UART */
-	/*   are only supported in 2G eFEM, not in 5G/5G 6G*/
-	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852A)) {
-		switch (val) {
-#ifdef PHL_FEATURE_AP
-		case MAC_AX_HCI_SEL_PCIE_UART:
-		case MAC_AX_HCI_SEL_SDIO_UART:
-			*gpio = 9;
-			break;
-#else
-		case MAC_AX_HCI_SEL_USB_MULT:
-		case MAC_AX_HCI_SEL_PCIE_UART:
-		case MAC_AX_HCI_SEL_PCIE_USB:
-			*gpio = 9;
-			break;
-		case MAC_AX_HCI_SEL_SDIO_UART:
-			*gpio = 15;
-			break;
-#endif
-		default:
-			PLTFM_MSG_ERR("%s: Wrong HCI\n", __func__);
-			return MACNOITEM;
-		}
+	switch (val) {
+	case MAC_AX_HCI_SEL_SDIO_UART:
+	case MAC_AX_HCI_SEL_USB_MULT:
+	case MAC_AX_HCI_SEL_PCIE_UART:
+	case MAC_AX_HCI_SEL_PCIE_USB:
+	case MAC_AX_HCI_SEL_PCIE_G1_UART:
+	case MAC_AX_HCI_SEL_PCIE_G1_USB:
+		*gpio = 9;
+		break;
+	case MAC_AX_HCI_SEL_SDIO_MULT:
+		*gpio = 15;
+		break;
+	default:
+		PLTFM_MSG_ERR("%s: Wrong HCI\n", __func__);
+		return MACNOITEM;
 	}
-#endif
-
-#if MAC_AX_8852B_SUPPORT || MAC_AX_8851B_SUPPORT
-	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852B) ||
-	    is_chip_id(adapter, MAC_AX_CHIP_ID_8851B)) {
-		switch (val) {
-		case MAC_AX_HCI_SEL_USB_MULT:
-		case MAC_AX_HCI_SEL_PCIE_UART:
-		case MAC_AX_HCI_SEL_PCIE_USB:
-		case MAC_AX_HCI_SEL_PCIE_GEN1_UART:
-		case MAC_AX_HCI_SEL_PCIE_GEN1_USB:
-			*gpio = 9;
-			break;
-		case MAC_AX_HCI_SEL_SDIO_UART:
-		case MAC_AX_HCI_SEL_SDIO_MULT:
-			*gpio = 15;
-			break;
-		default:
-			PLTFM_MSG_ERR("%s: Wrong HCI\n", __func__);
-			return MACNOITEM;
-		}
-	}
-#endif
-
-#if MAC_AX_8852C_SUPPORT || MAC_AX_8851E_SUPPORT || MAC_AX_8852D_SUPPORT
-	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852C) ||
-	    is_chip_id(adapter, MAC_AX_CHIP_ID_8851E) ||
-	    is_chip_id(adapter, MAC_AX_CHIP_ID_8852D)) {
-		switch (val) {
-		case MAC_AX_HCI_SEL_PCIE_USB:
-		case MAC_AX_HCI_SEL_PCIE_GEN1_UART:
-		case MAC_AX_HCI_SEL_PCIE_GEN1_USB:
-			*gpio = 9;
-			break;
-		case MAC_AX_HCI_SEL_SDIO_UART:
-		case MAC_AX_HCI_SEL_SDIO_MULT:
-			*gpio = 17;
-			break;
-		default:
-			PLTFM_MSG_ERR("%s: Wrong HCI\n", __func__);
-			return MACNOITEM;
-		}
-	}
-#endif
-
-#if MAC_AX_8192XB_SUPPORT
-	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB)) {
-		switch (val) {
-		case MAC_AX_HCI_SEL_USB_MULT: /* USB */
-		case MAC_AX_HCI_SEL_PCIE_USB: /* PCIE */
-			*gpio = 9;
-			break;
-		case MAC_AX_HCI_SEL_SDIO_MULT: /* SDIO */
-			*gpio = 15;
-			break;
-		default:
-			PLTFM_MSG_ERR("%s: Wrong HCI\n", __func__);
-			return MACNOITEM;
-		}
-	}
-#endif
 
 	return MACSUCCESS;
 }
@@ -826,26 +724,12 @@ u32 mac_get_wl_dis_val(struct mac_ax_adapter *adapter, u8 *val)
 		return ret;
 	}
 
-	ret = ops->set_sw_gpio_mode(adapter, RTW_AX_SW_IO_MODE_INPUT, gpio);
+	ret = ops->set_sw_gpio_mode(adapter, MAC_AX_SW_IO_MODE_INPUT, gpio);
 	if (ret != MACSUCCESS) {
 		PLTFM_MSG_ERR("%s: Set SW output mode fail\n", __func__);
 		return ret;
 	}
 
-	return ops->get_gpio_val(adapter, gpio, val);
-}
-
-u32 mac_get_uart_fw_dbg_gpio(struct mac_ax_adapter *adapter, u8 *uart_tx_gpio, u8 *uart_rx_gpio)
-{
-	if (adapter->gpio_info.uart_tx_gpio == 0xFF &&
-	    adapter->gpio_info.uart_rx_gpio == 0xFF) {
-		/* not initialized*/
-		return MACNOTSUP;
-	}
-
-	*uart_tx_gpio = adapter->gpio_info.uart_tx_gpio;
-	*uart_rx_gpio = adapter->gpio_info.uart_rx_gpio;
-
-	return MACSUCCESS;
+	return mac_get_gpio_val(adapter, gpio, val);
 }
 

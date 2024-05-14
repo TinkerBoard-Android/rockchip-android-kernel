@@ -20,10 +20,7 @@ struct rtw_hw_cfg_tab {
 };
 
 enum rtw_hal_status
-rtw_hal_restore_sta_entry(struct rtw_phl_com_t* phl_com, void *hal,
-                          struct rtw_phl_stainfo_t *sta, bool is_connect);
-
-enum rtw_hal_status
-rtw_hal_init_tmp_entry(void *hal, u8 tmp_entry_num, u8 std_entry_num);
+rtw_hal_update_sta_entry(void *hal, struct rtw_phl_stainfo_t *sta,
+							bool is_connect);
 
 #endif  /*_HAL_STA_H_*/

@@ -40,8 +40,6 @@ rtw_efuse_get_info(void *efuse, enum rtw_efuse_info info_type, void *value,
 
 void rtw_efuse_process(void *efuse, char *ic_name);
 
-bool rtw_efuse_is_processed(void *efuse);
-
 enum rtw_hal_status
 rtw_efuse_logicmap_buf_load(void *efuse, u8* buf, bool is_limit);
 
@@ -60,7 +58,7 @@ enum rtw_hal_status
 rtw_efuse_shadow_update(void *efuse, bool is_limit);
 
 enum rtw_hal_status
-rtw_efuse_shadow2buf(void *efuse, u8 *destbuf, u16 buflen, u8 is_limit);
+rtw_efuse_shadow2buf(void *efuse, u8 *destbuf, u16 buflen);
 
 enum rtw_hal_status
 rtw_efuse_file_map_load(void *efuse, char *file_path, u8 is_limit);
@@ -88,9 +86,6 @@ rtw_efuse_get_shadowmap_from_to_str(void *efuse);
 
 enum rtw_hal_status
 rtw_efuse_get_offset_mask(void *efuse, u16 offset, u8 *mask);
-
-enum rtw_hal_status
-rtw_efuse_get_mask_buf(void *efuse, u8 *destbuf, u32 *buflen);
 
 /* BT EFUSE */
 enum rtw_hal_status
@@ -129,19 +124,12 @@ rtw_efuse_bt_get_avl(void *efuse, u32 *size);
 enum rtw_hal_status
 rtw_efuse_bt_get_offset_mask(void *efuse, u16 offset, u8 *mask);
 
-enum rtw_hal_status
-rtw_efuse_bt_get_mask_buf(void *efuse, u8 *destbuf, u32 *buflen);
+enum rtw_hal_status rtw_efuse_bt_read_hidden(void *efuse, u32 addr, u32 size, u8 *val);
 
-enum rtw_hal_status
-rtw_efuse_bt_read_hidden(void *efuse, u32 addr, u32 size, u8 *val);
+enum rtw_hal_status rtw_efuse_bt_write_hidden(void *efuse, u32 addr, u8 val);
 
-enum rtw_hal_status
-rtw_efuse_bt_write_hidden(void *efuse, u32 addr, u8 val);
+enum rtw_hal_status rtw_efuse_read_phy_wifi(void *efuse, u32 addr, u32 size, u8 *data, u8 type);
 
-enum rtw_hal_status
-rtw_efuse_read_phy_wifi(void *efuse, u32 addr, u32 size, u8 *data, u8 type);
-
-enum rtw_hal_status
-rtw_efuse_renew(void *efuse, u8 type);
+enum rtw_hal_status rtw_efuse_renew(void *efuse, u8 type);
 
 #endif /* _HAL_EFUSE_EXPORT_H_ */

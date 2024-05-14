@@ -258,7 +258,7 @@ u32 mac_sw_gpio_ctrl(struct mac_ax_adapter *adapter,
  * @retval u32
  */
 u32 mac_set_sw_gpio_mode(struct mac_ax_adapter *adapter,
-			 enum rtw_gpio_mode mode, u8 gpio);
+			 enum mac_ax_sw_io_mode mode, u8 gpio);
 /**
  * @}
  * @}
@@ -314,27 +314,5 @@ u32 mac_cfg_wps(struct mac_ax_adapter *adapter,
  */
 u32 mac_get_gpio_val(struct mac_ax_adapter *adapter, u8 gpio, u8 *val);
 u32 mac_get_wl_dis_val(struct mac_ax_adapter *adapter, u8 *val);
-
-/**
- * @addtogroup HCI
- * @{
- * @addtogroup GPIO
- * @{
- */
-
-/**
- * @brief mac_get_uart_fw_dbg_gpio
- *
- * @param *adapter
- * @param uart_tx_pin
- * @param uart_rx_pin
- * @return Please Place Description here.
- * @retval u32
- */
-u32 mac_get_uart_fw_dbg_gpio(struct mac_ax_adapter *adapter, u8 *uart_tx_gpio, u8 *uart_rx_gpio);
-/**
- * @}
- * @}
- */
 
 #endif

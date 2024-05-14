@@ -676,17 +676,12 @@ struct ieee80211_snap_hdr {
 #define WLAN_EID_FAST_BSS_TRANSITION 55
 #define WLAN_EID_TIMEOUT_INTERVAL 56
 #define WLAN_EID_RIC_DATA 57
-#define WLAN_EID_SUPPORT_OP_CLASS 59
-#define WLAN_EID_ECSA 60
 #define WLAN_EID_HT_OPERATION 61
 #define WLAN_EID_SECONDARY_CHANNEL_OFFSET 62
-#define WLAN_EID_MULTIPLE_BSSID 71
 #define WLAN_EID_20_40_BSS_COEXISTENCE 72
 #define WLAN_EID_20_40_BSS_INTOLERANT 73
 #define WLAN_EID_OVERLAPPING_BSS_SCAN_PARAMS 74
 #define WLAN_EID_MMIE 76
-#define WLAN_EID_NON_TX_BSSID_CAP 83
-#define WLAN_EID_MULTI_BSSID_IDX 85
 #define WLAN_EID_MESH_CONFIG 113
 #define WLAN_EID_MESH_ID 114
 #define WLAN_EID_MPM 117
@@ -701,11 +696,9 @@ struct ieee80211_snap_hdr {
 #define WLAN_EID_GENERIC (WLAN_EID_VENDOR_SPECIFIC)
 #define WLAN_EID_VHT_CAPABILITY 191
 #define WLAN_EID_VHT_OPERATION 192
-#define WLAN_EID_VHT_WIDE_BW_CHSWITCH 194
-#define WLAN_EID_VHT_TX_POWER_ENVELOPE 195
+#define WLAN_EID_WIDE_BANDWIDTH_CHANNEL_SWITCH 194
 #define WLAN_EID_CHANNEL_SWITCH_WRAPPER 196
 #define WLAN_EID_VHT_OP_MODE_NOTIFY 199
-#define WLAN_EID_RSNX 244
 #define WLAN_EID_EXTENSION 255
 #define WLAN_EID_EXT_OWE_DH_PARAM 32
 
@@ -713,7 +706,6 @@ struct ieee80211_snap_hdr {
 #define WLAN_EID_EXTENSION_HE_CAPABILITY	35
 #define WLAN_EID_EXTENSION_HE_OPERATION	36
 #define WLAN_EID_EXTENSION_HE_MU_EDCA	38
-#define WLAN_EID_EXT_HE_6G_CAP 59
 
 #define WLAN_EID_EXT_CAP_MAX_LEN 10
 
@@ -755,19 +747,6 @@ struct ieee80211_snap_hdr {
 #define IEEE80211_OFDM_RATE_36MB		0x48
 #define IEEE80211_OFDM_RATE_48MB		0x60
 #define IEEE80211_OFDM_RATE_54MB		0x6C
-/* Supported rates membership selectors */
-#ifndef BSS_MEMBERSHIP_SELECTOR_HT_PHY
-#define BSS_MEMBERSHIP_SELECTOR_HT_PHY		127
-#endif
-#ifndef BSS_MEMBERSHIP_SELECTOR_VHT_PHY
-#define BSS_MEMBERSHIP_SELECTOR_VHT_PHY		126
-#endif
-#ifndef BSS_MEMBERSHIP_SELECTOR_HE_PHY
-#define BSS_MEMBERSHIP_SELECTOR_HE_PHY		122
-#endif
-#ifndef BSS_MEMBERSHIP_SELECTOR_SAE_H2E
-#define BSS_MEMBERSHIP_SELECTOR_SAE_H2E		123
-#endif
 #define IEEE80211_BASIC_RATE_MASK		0x80
 
 #define IEEE80211_CCK_RATE_1MB_MASK		(1<<0)
@@ -807,10 +786,6 @@ struct ieee80211_snap_hdr {
 #define IEEE80211_NUM_CCK_RATES	            4
 #define IEEE80211_OFDM_SHIFT_MASK_A         4
 
-enum subelement_of_multiple_bssid_id {
-	MBSSID_NONTRANSMITTED_BSSID_PROFILE_ID = 0,
-	MBSSID_VENDOR_SPECIFIC_ID = 221
-};
 
 enum MGN_RATE {
 	MGN_1M		= 0x02,
@@ -1075,22 +1050,6 @@ typedef enum _RATE_SECTION {
 	VHT_2SS = VHT_2SSMCS0_2SSMCS9,
 	VHT_3SS = VHT_3SSMCS0_3SSMCS9,
 	VHT_4SS = VHT_4SSMCS0_4SSMCS9,
-	HE_1SSMCS0_1SSMCS11 = 10,
-	HE_2SSMCS0_2SSMCS11 = 11,
-	HE_3SSMCS0_3SSMCS11 = 12,
-	HE_4SSMCS0_4SSMCS11 = 13,
-	HE_1SS = HE_1SSMCS0_1SSMCS11,
-	HE_2SS = HE_2SSMCS0_2SSMCS11,
-	HE_3SS = HE_3SSMCS0_3SSMCS11,
-	HE_4SS = HE_4SSMCS0_4SSMCS11,
-	DCM_1SSMCS0_1SSMC4 = 14,
-	DCM_2SSMCS0_2SSMC4 = 15,
-	DCM_3SSMCS0_3SSMC4 = 16,
-	DCM_4SSMCS0_4SSMC4 = 17,
-	DCM_1SS = DCM_1SSMCS0_1SSMC4,
-	DCM_2SS = DCM_2SSMCS0_2SSMC4,
-	DCM_3SS = DCM_3SSMCS0_3SSMC4,
-	DCM_4SS = DCM_4SSMCS0_4SSMC4,
 	RATE_SECTION_NUM,
 } RATE_SECTION;
 
@@ -1102,8 +1061,6 @@ const char *rate_section_str(u8 section);
 #define IS_OFDM_RATE_SECTION(section) ((section) == OFDM)
 #define IS_HT_RATE_SECTION(section) ((section) >= HT_1SS && (section) <= HT_4SS)
 #define IS_VHT_RATE_SECTION(section) ((section) >= VHT_1SS && (section) <= VHT_4SS)
-#define IS_HE_RATE_SECTION(section) ((section) >= HE_1SS && (section) <= HE_4SS)
-#define IS_DCM_RATE_SECTION(section) ((section) >= DCM_1SS && (section) <= DCM_4SS)
 
 #define IS_1T_RATE_SECTION(section) ((section) == CCK || (section) == OFDM || (section) == HT_1SS || (section) == VHT_1SS)
 #define IS_2T_RATE_SECTION(section) ((section) == HT_2SS || (section) == VHT_2SS)
@@ -1120,7 +1077,6 @@ extern u8 mgn_rates_vht1ss[];
 extern u8 mgn_rates_vht2ss[];
 extern u8 mgn_rates_vht3ss[];
 extern u8 mgn_rates_vht4ss[];
-extern u8 mgn_rates_offset[];
 
 struct rate_section_ent {
 	u8 tx_num; /* value of RF_TX_NUM */
@@ -1348,7 +1304,6 @@ struct ieee80211_txb {
 #define MAX_OWE_IE_LEN (128)
 #define MAX_P2P_IE_LEN (256)
 #define MAX_WFD_IE_LEN (128)
-#define MAX_RSNX_IE_LEN (16)
 
 #define NETWORK_EMPTY_ESSID (1<<0)
 #define NETWORK_HAS_OFDM    (1<<1)
@@ -1700,9 +1655,8 @@ enum rtw_ieee80211_channel_flags {
 
 /* Represent channel details, subset of ieee80211_channel */
 struct rtw_ieee80211_channel {
-	u8 band; /*enum band_type band;*//* enum ieee80211_band band; or enum nl80211_band band; */
-	/* u32 center_freq; */
-	/* u16 freq_offset; */
+	/* enum ieee80211_band band; */
+	/* u16 center_freq; */
 	u16 hw_value;
 	u32 flags;
 	/* int max_antenna_gain; */
@@ -1712,13 +1666,10 @@ struct rtw_ieee80211_channel {
 	/* u32 orig_flags; */
 	/* int orig_mag; */
 	/* int orig_mpwr; */
-	/* enum nl80211_dfs_state dfs_state; */
-	/* unsigned long dfs_state_entered; */
-	/* unsigned int dfs_cac_ms; */
 };
 
 #define CHAN_FMT \
-	"band:%d, " \
+	/*"band:%d, "*/ \
 	/*"center_freq:%u, "*/ \
 	"hw_value:%u, " \
 	"flags:0x%08x" \
@@ -1731,9 +1682,9 @@ struct rtw_ieee80211_channel {
 	/*"orig_mpwr:%d\n"*/
 
 #define CHAN_ARG(channel) \
-	(channel)->band \
+	/*(channel)->band*/ \
 	/*, (channel)->center_freq*/ \
-	, (channel)->hw_value \
+	(channel)->hw_value \
 	, (channel)->flags \
 	/*, (channel)->max_antenna_gain*/ \
 	/*, (channel)->max_power*/ \
@@ -1800,8 +1751,6 @@ struct rtw_ieee802_11_elems {
 	u8 *he_capabilities;
 	u8 he_capabilities_len;
 	u8 *he_operation;
-	u8 *he_6g_band_cap;
-	u8 he_6g_band_cap_len;
 	u8 he_operation_len;
 	u8 *rm_en_cap;
 	u8 rm_en_cap_len;
@@ -1819,14 +1768,6 @@ struct rtw_ieee802_11_elems {
 	u8 *tbtx_cap;
 	u8 tbtx_cap_len;
 #endif
-#ifdef CONFIG_STA_MULTIPLE_BSSID
-	u8 *mbssid;
-	u8 mbssid_len;
-
-	/* exist in nontransmitted bssid profile */
-	u8 *non_tx_bssid_cap;
-	u8 non_tx_bssid_cap_len;
-#endif
 };
 
 typedef enum { ParseOK = 0, ParseUnknown = 1, ParseFailed = -1 } ParseRes;
@@ -1834,12 +1775,6 @@ typedef enum { ParseOK = 0, ParseUnknown = 1, ParseFailed = -1 } ParseRes;
 ParseRes rtw_ieee802_11_parse_elems(u8 *start, uint len,
 				struct rtw_ieee802_11_elems *elems,
 				int show_errors);
-
-#ifdef CONFIG_STA_MULTIPLE_BSSID
-ParseRes rtw_ieee802_11_override_elems_by_mbssid(
-	u8 *mbssid_ie, uint mbssid_ie_len, u8 mbssid_idx, struct rtw_ieee802_11_elems *elems
-	, int show_errors);
-#endif
 
 u8 *rtw_set_fixed_ie(unsigned char *pbuf, unsigned int len, unsigned char *source, unsigned int *frlen);
 u8 *rtw_set_ie(u8 *pbuf, sint index, uint len, const u8 *source, uint *frlen);
@@ -1874,12 +1809,9 @@ u8 rtw_update_rate_bymode(WLAN_BSSID_EX *pbss_network, u32 mode);
 
 u8 *rtw_get_ie_ex(const u8 *in_ie, uint in_len, u8 eid, const u8 *oui, u8 oui_len, u8 *ie, uint *ielen);
 u8 rtw_ies_update_ie(u8 *ies, uint *ies_len, uint ies_offset, u8 eid, const u8 *content, u8 content_len);
-u8 rtw_ies_update_ie_ex(u8 *ies, uint *ies_len, uint ies_offset, u8 eid_ex, const u8 *content, u8 content_len);
-u8 rtw_ies_add_ie(u8 *ies, uint *ies_len, uint ies_offset, u8 eid,
-		  const u8 *content, u8 content_len);
 int rtw_ies_remove_ie(u8 *ies, uint *ies_len, uint offset, u8 eid, u8 *oui, u8 oui_len);
 
-void rtw_set_supported_rate(u8 *SupportedRates, uint mode, u8 ch, enum band_type band);
+void rtw_set_supported_rate(u8 *SupportedRates, uint mode, u8 ch) ;
 
 #define GET_RSN_CAP_MFP_OPTION(cap)	LE_BITS_TO_2BYTE(((u8 *)(cap)), 6, 2)
 
@@ -1960,11 +1892,14 @@ void dump_ht_cap_ie_content(void *sel, const u8 *buf, u32 buf_len);
 
 void dump_wps_ie(void *sel, const u8 *ie, u32 ie_len);
 
-RTW_FUNC_2G_5G_ONLY void rtw_ies_get_chbw(u8 *ies, int ies_len, u8 *ch, u8 *bw, u8 *offset, u8 ht, u8 vht);
-u8 *rtw_ies_get_he_6g_op_info_ie(u8 *ies, int ies_len);
-void rtw_ies_get_bchbw(u8 *ies, int ies_len, enum band_type *band, u8 *chan, u8 *bw,
-	u8 *offset, u8 *freq0, u8 *freq1, u8 ht, u8 vht, u8 he);
-void rtw_bss_get_chbw(WLAN_BSSID_EX *bss, enum band_type *band, u8 *ch, u8 *bw, u8 *offset, u8 ht, u8 vht, u8 he);
+void rtw_ies_get_chbw(u8 *ies, int ies_len, u8 *ch, u8 *bw, u8 *offset, u8 ht, u8 vht);
+
+void rtw_bss_get_chbw(WLAN_BSSID_EX *bss, u8 *ch, u8 *bw, u8 *offset, u8 ht, u8 vht);
+
+bool rtw_is_chbw_grouped(u8 ch_a, u8 bw_a, u8 offset_a
+	, u8 ch_b, u8 bw_b, u8 offset_b);
+void rtw_sync_chbw(u8 *req_ch, u8 *req_bw, u8 *req_offset
+	, u8 *g_ch, u8 *g_bw, u8 *g_offset);
 
 u32 rtw_get_p2p_merged_ies_len(u8 *in_ie, u32 in_len);
 int rtw_p2p_merge_ies(u8 *in_ie, u32 in_len, u8 *merge_ie);

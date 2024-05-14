@@ -13,10 +13,6 @@
  *
  *****************************************************************************/
 #include "drv_types.h"
-#ifdef CONFIG_RTW_DEDICATED_CMA_POOL
-#include <linux/platform_device.h>
-extern struct platform_device *g_pldev;
-#endif
 
 #ifdef CONFIG_PLATFORM_AML_S905
 extern struct device * g_pcie_reserved_mem_dev;
@@ -27,12 +23,17 @@ void pci_cache_wback(struct pci_dev *hwdev,
 			dma_addr_t *bus_addr, size_t size, int direction)
 {
 	if (NULL != hwdev && NULL != bus_addr) {
-#ifdef CONFIG_PLATFORM_AML_S905_V1
+#ifdef CONFIG_PLATFORM_AML_S905
 		if (g_pcie_reserved_mem_dev)
 			hwdev->dev.dma_mask = NULL;
 #endif
-	  	dma_sync_single_for_device(&hwdev->dev, *bus_addr, size,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+	  	pci_dma_sync_single_for_device(hwdev, *bus_addr, size,
 					direction);
+#else
+		dma_sync_single_for_device(&hwdev->dev, *bus_addr, size,
+					   direction);
+#endif
 	} else
 		RTW_ERR("pcie hwdev handle or bus addr is NULL!\n");
 }
@@ -40,11 +41,15 @@ void pci_cache_inv(struct pci_dev *hwdev,
 			dma_addr_t *bus_addr, size_t size, int direction)
 {
 	if (NULL != hwdev && NULL != bus_addr) {
-#ifdef CONFIG_PLATFORM_AML_S905_V1
+#ifdef CONFIG_PLATFORM_AML_S905
 		if (g_pcie_reserved_mem_dev)
 			hwdev->dev.dma_mask = NULL;
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+		pci_dma_sync_single_for_cpu(hwdev, *bus_addr, size, direction);
+#else
 		dma_sync_single_for_cpu(&hwdev->dev, *bus_addr, size, direction);
+#endif
 	} else
 		RTW_ERR("pcie hwdev handle or bus addr is NULL!\n");
 }
@@ -53,11 +58,15 @@ void pci_get_bus_addr(struct pci_dev *hwdev,
 			size_t size, int direction)
 {
 	if (NULL != hwdev) {
-#ifdef CONFIG_PLATFORM_AML_S905_V1
+#ifdef CONFIG_PLATFORM_AML_S905
 		if (g_pcie_reserved_mem_dev)
 			hwdev->dev.dma_mask = NULL;
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+		*bus_addr = pci_map_single(hwdev, vir_addr, size, direction);
+#else
 		*bus_addr = dma_map_single(&hwdev->dev, vir_addr, size, direction);
+#endif
 	} else {
 		RTW_ERR("pcie hwdev handle is NULL!\n");
 		*bus_addr = (dma_addr_t)virt_to_phys(vir_addr);
@@ -68,11 +77,15 @@ void pci_unmap_bus_addr(struct pci_dev *hwdev,
 			dma_addr_t *bus_addr, size_t size, int direction)
 {
 	if (NULL != hwdev && NULL != bus_addr) {
-#ifdef CONFIG_PLATFORM_AML_S905_V1
+#ifdef CONFIG_PLATFORM_AML_S905
 		if (g_pcie_reserved_mem_dev)
 			hwdev->dev.dma_mask = NULL;
 #endif
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 16, 0)
+		pci_unmap_single(hwdev, *bus_addr, size, direction);
+#else
 		dma_unmap_single(&hwdev->dev, *bus_addr, size, direction);
+#endif
 	} else
 		RTW_ERR("pcie hwdev handle or bus addr is NULL!\n");
 }
@@ -97,16 +110,12 @@ void *pci_alloc_noncache_mem(struct pci_dev *pdev,
 	void *vir_addr = NULL;
 	struct device *dev = NULL;
 
-#ifdef CONFIG_RTW_DEDICATED_CMA_POOL
-	if (NULL != g_pldev){
-		dev = &g_pldev->dev;
-#else
 	if (NULL != pdev) {
 		dev = &pdev->dev;
 #ifdef CONFIG_PLATFORM_AML_S905
 		if (g_pcie_reserved_mem_dev)\
 			dev = g_pcie_reserved_mem_dev;
-#endif
+
 #endif
 		vir_addr = dma_alloc_coherent(dev,
 				size, bus_addr,
@@ -119,6 +128,27 @@ void *pci_alloc_noncache_mem(struct pci_dev *pdev,
 
 	return vir_addr;
 }
+
+struct dma_pool *pci_create_dma_pool(struct pci_dev *pdev, char *name, size_t size)
+{
+	return dma_pool_create(name, &pdev->dev, size, 2, 0);
+}
+
+void *pci_zalloc_pool_mem(struct pci_dev *pdev, struct dma_pool *pool, dma_addr_t *bus_addr)
+{
+	return dma_pool_zalloc(pool, (in_atomic() ? GFP_ATOMIC : GFP_KERNEL), bus_addr);
+}
+
+void pci_free_pool_mem(struct pci_dev *pdev, struct dma_pool *pool, void *vir_addr, dma_addr_t *bus_addr)
+{
+	return dma_pool_free(pool, vir_addr, *bus_addr);
+}
+
+void pci_destory_dma_pool(struct pci_dev *pdev, struct dma_pool *pool)
+{
+	dma_pool_destroy(pool);
+}
+
 void pci_free_cache_mem(struct pci_dev *pdev,
 		void *vir_addr, dma_addr_t *bus_addr,
 		size_t size, int direction)
@@ -134,16 +164,11 @@ void pci_free_noncache_mem(struct pci_dev *pdev,
 {
 	struct device *dev = NULL;
 
-#ifdef CONFIG_RTW_DEDICATED_CMA_POOL
-	if (NULL != g_pldev){
-		dev = &g_pldev->dev;
-#else
-	if (NULL != pdev){
+	if (NULL != pdev) {
 		dev = &pdev->dev;
 #ifdef CONFIG_PLATFORM_AML_S905
 	if (g_pcie_reserved_mem_dev)
 		dev = g_pcie_reserved_mem_dev;
-#endif
 #endif
 		dma_free_coherent(dev, size, vir_addr, *bus_addr);
 	}

@@ -81,7 +81,6 @@ struct rtw_payload {
 	_os_list list;
 	u32 test_id;
 	struct rtw_pkt_buf_list pkt;
-	u8 cache;
 	void *os_rsvd[1];
 };
 
@@ -190,7 +189,7 @@ enum rtw_phl_status rtw_phl_trx_testsuite(void *phl,
 					struct rtw_trx_test_param *test_param);
 
 #else /*!CONFIG_PHL_TEST_SUITE*/
-#define phl_trx_test_init(phl) RTW_PHL_STATUS_SUCCESS
+#define phl_trx_test_init(phl)
 #define phl_trx_test_deinit(phl)
 #define rtw_phl_trx_default_param(phl, test_param)
 #define rtw_phl_trx_testsuite(phl, test_param) RTW_PHL_STATUS_SUCCESS

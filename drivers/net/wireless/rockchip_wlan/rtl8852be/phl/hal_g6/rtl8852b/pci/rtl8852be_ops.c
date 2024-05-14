@@ -35,12 +35,9 @@ void hal_set_ops_8852be(struct rtw_phl_com_t *phl_com,
 #endif /* CONFIG_WOWLAN */
 	ops->hal_mp_init = hal_mp_init_8852be;
 	ops->hal_mp_deinit = hal_mp_deinit_8852be;
-	ops->hal_mp_path_chk = hal_mp_path_chk_8852be;
 
 	ops->hal_hci_configure = hal_hci_cfg_8852be;
 	ops->init_default_value = hal_init_default_value_8852be;
-	ops->init_int_default_value = hal_init_int_default_value_8852be;
-	ops->disable_interrupt_isr = hal_disable_int_isr_8852be;
 	ops->enable_interrupt = hal_enable_int_8852be;
 	ops->disable_interrupt = hal_disable_int_8852be;
 	ops->recognize_interrupt = hal_recognize_int_8852be;
@@ -48,8 +45,5 @@ void hal_set_ops_8852be(struct rtw_phl_com_t *phl_com,
 	ops->interrupt_handler = hal_int_hdler_8852be;
 	ops->restore_interrupt = hal_restore_int_8852be;
 	ops->restore_rx_interrupt = hal_rx_int_restore_8852be;
-#ifdef PHL_RXSC_ISR
-	ops->check_rpq_isr = hal_rx_rpq_int_check_8852be;
-#endif
 }
 

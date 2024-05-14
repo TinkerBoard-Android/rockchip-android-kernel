@@ -18,33 +18,17 @@
 #ifdef CONFIG_PCI_HCI
 void hal_pci_set_io_ops(struct rtw_hal_com_t *hal, struct hal_io_ops *pops);
 
-#ifdef CONFIG_RTL8851B
-#include "rtl8851b/rtl8851b.h"
-#endif
-
 #ifdef CONFIG_RTL8852A
 #include "rtl8852a/rtl8852a.h"
 #endif
 
-#if defined(CONFIG_RTL8852B) || defined(CONFIG_RTL8852BP)
+#ifdef CONFIG_RTL8852B
 #include "rtl8852b/rtl8852b.h"
 #endif
 
 #ifdef CONFIG_RTL8852C
 #include "rtl8852c/rtl8852c.h"
 #endif
-
-#if defined(CONFIG_RTL8832BR) || defined(CONFIG_RTL8192XB)
-#include "rtl8192xb/rtl8192xb.h"
-#endif
-
-/* Times to polling RX DMA finish tag in RXBD info */
-#ifndef PHL_DMA_NONCOHERENT
-#define RX_TAG_POLLING_TIMES	(10000)
-#else /* PHL_DMA_NONCOHERENT */
-/* Cache handling for coherence takes time. Polling less */
-#define RX_TAG_POLLING_TIMES	(100)
-#endif /* PHL_DMA_NONCOHERENT */
 
 static inline void hal_set_ops_pci(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal)
@@ -56,9 +40,8 @@ static inline void hal_set_ops_pci(struct rtw_phl_com_t *phl_com,
 	}
 #endif
 
-#if defined(CONFIG_RTL8852B) || defined(CONFIG_RTL8852BP)
-	if (hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8852B ||
-	    hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8852BP) {
+#ifdef CONFIG_RTL8852B
+	if (hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8852B) {
 		hal_set_ops_8852be(phl_com, hal);
 		hal_hook_trx_ops_8852be(phl_com, hal);
 	}
@@ -68,21 +51,6 @@ static inline void hal_set_ops_pci(struct rtw_phl_com_t *phl_com,
 	if (hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8852C) {
 		hal_set_ops_8852ce(phl_com, hal);
 		hal_hook_trx_ops_8852ce(phl_com, hal);
-	}
-#endif
-
-#ifdef CONFIG_RTL8851B
-	if (hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8851B) {
-		hal_set_ops_8851be(phl_com, hal);
-		hal_hook_trx_ops_8851be(phl_com, hal);
-	}
-#endif
-
-#if defined(CONFIG_RTL8832BR) || defined(CONFIG_RTL8192XB)
-	if (hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8192XB ||
-	    hal_get_chip_id(hal->hal_com) == CHIP_WIFI6_8832BR) {
-		hal_set_ops_8192xbe(phl_com, hal);
-		hal_hook_trx_ops_8192xbe(phl_com, hal);
 	}
 #endif
 

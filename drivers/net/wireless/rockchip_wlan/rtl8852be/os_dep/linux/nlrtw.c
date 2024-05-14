@@ -52,7 +52,6 @@ enum nlrtw_attrs {
 	NLRTW_ATTR_OP_CHANNEL,
 	NLRTW_ATTR_OP_TXPWR_MAX,
 	NLRTW_ATTR_IF_OPMODES,
-	NLRTW_ATTR_CHANNEL_BAND,
 
 	__NLRTW_ATTR_AFTER_LAST,
 	NUM_NLRTW_ATTR = __NLRTW_ATTR_AFTER_LAST,
@@ -343,17 +342,15 @@ err_out:
 }
 
 #ifdef CONFIG_DFS_MASTER
-static int _rtw_nlrtw_radar_event(struct rf_ctl_t *rfctl, u8 band_idx, enum nlrtw_radar_event evt_type, u8 band, u8 cch, u8 bw)
+static int _rtw_nlrtw_radar_event(_adapter *adapter, enum nlrtw_radar_event evt_type, u8 cch, u8 bw)
 {
-	struct dvobj_priv *dvobj = rfctl_to_dvobj(rfctl);
 	struct sk_buff *skb = NULL;
 	void *msg_header = NULL;
 	struct wiphy *wiphy;
 	u8 i;
 	int ret;
 
-	/* TODO: hwband specific wiphy mapping */
-	wiphy = dvobj_to_wiphy(dvobj);
+	wiphy = adapter_to_wiphy(adapter);
 	if (!wiphy) {
 		ret = -EINVAL;
 		goto err_out;
@@ -379,10 +376,6 @@ static int _rtw_nlrtw_radar_event(struct rf_ctl_t *rfctl, u8 band_idx, enum nlrt
 		goto err_out;
 
 	ret = nla_put_u8(skb, NLRTW_ATTR_RADAR_EVENT, (uint8_t)evt_type);
-	if (ret != 0)
-		goto err_out;
-
-	ret = nla_put_u8(skb, NLRTW_ATTR_CHANNEL_BAND, band);
 	if (ret != 0)
 		goto err_out;
 
@@ -415,35 +408,29 @@ err_out:
 	return ret;
 }
 
-int rtw_nlrtw_radar_detect_event(struct rf_ctl_t *rfctl, u8 band_idx, u8 cch, u8 bw)
+int rtw_nlrtw_radar_detect_event(_adapter *adapter, u8 cch, u8 bw)
 {
-	return _rtw_nlrtw_radar_event(rfctl, band_idx, NLRTW_RADAR_DETECTED, BAND_ON_5G, cch, bw);
+	return _rtw_nlrtw_radar_event(adapter, NLRTW_RADAR_DETECTED, cch, bw);
 }
 
-int rtw_nlrtw_cac_finish_event(struct rf_ctl_t *rfctl, u8 band_idx, u8 ifbmp, u8 cch, u8 bw)
+int rtw_nlrtw_cac_finish_event(_adapter *adapter, u8 cch, u8 bw)
 {
-	if (ifbmp != 0xFF)
-		return 0;
-	/* only accept all iface event */
-	return _rtw_nlrtw_radar_event(rfctl, band_idx, NLRTW_RADAR_CAC_FINISHED, BAND_ON_5G, cch, bw);
+	return _rtw_nlrtw_radar_event(adapter, NLRTW_RADAR_CAC_FINISHED, cch, bw);
 }
 
-int rtw_nlrtw_cac_abort_event(struct rf_ctl_t *rfctl, u8 band_idx, u8 ifbmp, u8 cch, u8 bw)
+int rtw_nlrtw_cac_abort_event(_adapter *adapter, u8 cch, u8 bw)
 {
-	if (ifbmp != 0xFF)
-		return 0;
-	/* only accept all iface event */
-	return _rtw_nlrtw_radar_event(rfctl, band_idx, NLRTW_RADAR_CAC_ABORTED, BAND_ON_5G, cch, bw);
+	return _rtw_nlrtw_radar_event(adapter, NLRTW_RADAR_CAC_ABORTED, cch, bw);
 }
 
-int rtw_nlrtw_nop_finish_event(struct rf_ctl_t *rfctl, u8 band_idx, u8 band, u8 cch, u8 bw)
+int rtw_nlrtw_nop_finish_event(_adapter *adapter, u8 cch, u8 bw)
 {
-	return _rtw_nlrtw_radar_event(rfctl, band_idx, NLRTW_RADAR_NOP_FINISHED, band, cch, bw);
+	return _rtw_nlrtw_radar_event(adapter, NLRTW_RADAR_NOP_FINISHED, cch, bw);
 }
 
-int rtw_nlrtw_nop_start_event(struct rf_ctl_t *rfctl, u8 band_idx, u8 band, u8 cch, u8 bw)
+int rtw_nlrtw_nop_start_event(_adapter *adapter, u8 cch, u8 bw)
 {
-	return _rtw_nlrtw_radar_event(rfctl, band_idx, NLRTW_RADAR_NOP_STARTED, band, cch, bw);
+	return _rtw_nlrtw_radar_event(adapter, NLRTW_RADAR_NOP_STARTED, cch, bw);
 }
 #endif /* CONFIG_DFS_MASTER */
 

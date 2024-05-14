@@ -21,10 +21,7 @@ enum rtw_hal_status rtw_hal_efuse_init(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal_info);
 void rtw_hal_efuse_deinit(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal_info);
-void rtw_hal_efuse_process(struct rtw_phl_com_t *phl_com,
-                           struct hal_info_t *hal_info,
-                           char *ic_name
-);
+void rtw_hal_efuse_process(struct hal_info_t *hal_info, char *ic_name);
 enum rtw_hal_status
 rtw_hal_efuse_shadow_load(struct hal_info_t *hal_info, bool is_limit);
 enum rtw_hal_status
@@ -36,7 +33,7 @@ rtw_hal_efuse_shadow_write(struct hal_info_t *hal_info, u8 byte_count,
 enum rtw_hal_status
 rtw_hal_efuse_shadow_update(struct hal_info_t *hal_info, bool is_limit);
 enum rtw_hal_status rtw_hal_efuse_shadow2buf(struct hal_info_t *hal_info,
-	u8 *pbuf, u16 buflen,u8 is_limit);
+	u8 *pbuf, u16 buflen);
 enum rtw_hal_status rtw_hal_efuse_file_map_load(struct hal_info_t *hal_info,
 	char *file_path, u8 is_limit);
 enum rtw_hal_status rtw_hal_efuse_file_mask_load(struct hal_info_t *hal_info,
@@ -53,8 +50,6 @@ enum rtw_hal_status rtw_hal_efuse_get_shadowmap_from(struct hal_info_t *hal_info
 	u8 *val);
 enum rtw_hal_status rtw_hal_efuse_get_offset_mask(struct hal_info_t *hal_info,
 	u16 offset, u8 *mask);
-enum rtw_hal_status rtw_hal_efuse_get_mask_buf(struct hal_info_t *hal_info,
-	u8 *mask, u32 *buflen);
 
 
 /* BT EFUSE */
@@ -91,9 +86,6 @@ enum rtw_hal_status rtw_hal_efuse_bt_get_avl(struct hal_info_t *hal_info,
 
 enum rtw_hal_status rtw_hal_efuse_bt_get_offset_mask(struct hal_info_t *hal_info,
 	u16 offset, u8 *mask);
-
-enum rtw_hal_status rtw_hal_efuse_bt_get_mask_buf(struct hal_info_t *hal_info,
-	u8 *mask, u32 *buflen);
 
 enum rtw_hal_status rtw_hal_efuse_bt_read_hidden(
 	struct hal_info_t *hal_info, u32 addr, u32 size, u8 *val);

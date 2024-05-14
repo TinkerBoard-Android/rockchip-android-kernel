@@ -16,7 +16,6 @@
 #include "../gpio.h"
 #include "../../mac_reg.h"
 #include "gpio_8852b.h"
-#if MAC_AX_8852B_SUPPORT
 
 /* GPIO0 definition */
 #define GPIO0_BT_GPIO0_8852B	\
@@ -1880,28 +1879,6 @@ END:
 	return ret;
 }
 
-u32 mac_gpio_init_8852b(struct mac_ax_adapter *adapter)
-{
-	bool is_fpga = false;
-
-#if MAC_AX_FEATURE_HV
-	if (adapter->env == HV_AX_FPGA)
-		is_fpga = true;
-	else
-		is_fpga = false;
-#elif MAC_AX_FPGA_TEST
-	is_fpga = true;
-#endif
-	if (is_fpga) {
-		adapter->gpio_info.uart_tx_gpio = 13;
-		adapter->gpio_info.uart_rx_gpio = 11;
-	} else {
-		adapter->gpio_info.uart_tx_gpio = 12;
-		adapter->gpio_info.uart_rx_gpio = 11;
-	}
-	return MACSUCCESS;
-}
-
 u32 mac_set_gpio_func_8852b(struct mac_ax_adapter *adapter,
 			    enum rtw_mac_gfunc func, s8 gpio_cfg)
 {
@@ -1934,17 +1911,3 @@ u32 mac_set_gpio_func_8852b(struct mac_ax_adapter *adapter,
 
 	return MACSUCCESS;
 }
-
-u32 mac_get_gpio_status_8852b(struct mac_ax_adapter *adapter,
-			      enum rtw_mac_gfunc *func, u8 gpio)
-{
-	if (gpio > RTW_MAC_GPIO_MAX) {
-		PLTFM_MSG_ERR("The GPIO number is wrong: %d", gpio);
-		return MACGPIONUM;
-	}
-
-	*func = mac_get_gpio_status(adapter, PIN_LIST_8852B[gpio]);
-
-	return MACSUCCESS;
-}
-#endif /* #if MAC_AX_8852B_SUPPORT */

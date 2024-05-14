@@ -29,8 +29,7 @@ enum halrf_rfk_type {
 	RF_BTC_TXGAPK		= 3,
 	RF_BTC_DACK		= 4,
 	RF_BTC_RXDCK		= 5,
-	RF_BTC_TSSI		= 6,
-	RF_BTC_CHLK		= 7
+	RF_BTC_TSSI		= 6
 };
 
 enum halrf_rfk_process {
@@ -39,39 +38,6 @@ enum halrf_rfk_process {
 	RFK_ONESHOT_START	= 2,
 	RFK_ONESHOT_STOP	= 3
 };
-
-enum adc_ck {
-	ADC_NA	= 0,
-	ADC_480M	= 1,
-	ADC_960M	= 2,
-	ADC_1920M	= 3,
-};
-
-enum dac_ck {
-	DAC_40M	= 0,
-	DAC_80M	= 1,
-	DAC_120M	= 2,
-	DAC_160M	= 3,
-	DAC_240M	= 4,
-	DAC_320M	= 5,
-	DAC_480M	= 6,
-	DAC_960M	= 7,
-};
-
-enum halrf_event_idx {
-	RF_EVENT_PWR_TRK = 0,
-	RF_EVENT_IQK = 1,
-	RF_EVENT_DPK = 2,
-	RF_EVENT_TXGAPK = 3,
-	RF_EVENT_DACK = 4
-};
-
-enum halrf_event_func {
-	RF_EVENT_OFF = 0,
-	RF_EVENT_ON = 1,
-	RF_EVENT_TRIGGER = 2
-};
-
 
 /*@--------------------------[Structure]-------------------------------------*/
  
@@ -111,21 +77,11 @@ void halrf_fast_chl_sw_backup(struct rf_info *rf, u8 chl_index, u8 t_index);
 void halrf_fast_chl_sw_reload(struct rf_info *rf, u8 chl_index, u8 t_index);
 
 /*FW Offload*/
-void halrf_write_fwofld_start(struct rf_info *rf);
-void halrf_write_fwofld_trigger(struct rf_info *rf);
-void halrf_write_fwofld_end(struct rf_info *rf);
-
+void halrf_wreg_fw(struct rf_info *rf, u32 addr, u32 mask, u32 val);
+void halrf_wrf_fw(struct rf_info *rf,
+			  enum rf_path path, u32 addr, u32 mask, u32 val);
+void halrf_wmac_fw(struct rf_info *rf, enum phl_phy_idx phy,
+			u32 addr, u32 mask, u32 val);
+void halrf_write_fw_final(struct rf_info *rf);
 void  halrf_quick_check_rf(void *rf_void);
-
-/*MCC function*/
-void halrf_mcc_info_init(void *rf_void, enum phl_phy_idx phy);
-void halrf_mcc_get_ch_info(void *rf_void, enum phl_phy_idx phy);
-void  halrf_watchdog_stop(struct rf_info *rf, bool is_stop);
-/*DBCC*/
-void halrf_chlk_backup_dbcc(struct rf_info *rf, enum phl_phy_idx phy);
-void halrf_chlk_reload_dbcc(struct rf_info *rf, enum phl_phy_idx phy, u8 idx);
-bool halrf_chlk_reload_check_dbcc(struct rf_info *rf, enum phl_phy_idx phy);
-void halrf_reset_io_count(struct rf_info *rf);
-void halrf_common_setting_chl_rfk(struct rf_info *rf, enum phl_phy_idx phy, bool is_before_k);
-bool halrf_is_under_cac(struct rf_info *rf, enum phl_phy_idx phy);
 #endif

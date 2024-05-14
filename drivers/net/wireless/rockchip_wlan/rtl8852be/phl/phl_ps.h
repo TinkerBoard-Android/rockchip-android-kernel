@@ -21,31 +21,20 @@ enum phl_ps_mode {
 	PS_MODE_IPS
 };
 
-#define PS_MACID_NONE 0xFFFF
-
-enum phl_ps_ps_int_cfg_step {
-	PS_ENTER_CFG_INT_PRE_PHASE,
-	PS_ENTER_CFG_INT_POST_PHASE,
-	PS_LEAVE_CFG_INT_PRE_PHASE,
-	PS_LEAVE_CFG_INT_POST_PHASE,
-	PS_LEAVE_CFG_INT_MAX
-};
-
 /* use to configure specific pwr mode along with pwr lvl and others */
 struct ps_cfg {
 	/* common */
 	u8 ps_mode;
 	u8 cur_pwr_lvl;
 	u8 pwr_lvl;
-	u16 macid;
 	/* lps */
 	bool pwr_cfg; /* whether to configure pwr lvl */
 	bool proto_cfg; /* whether to configure protocol */
+	u16 macid;
 	u32 *token;
 	u8 listen_bcn_mode;
 	u8 awake_interval;
 	u8 smart_ps_mode;
-	u8 bcnnohit_en;
 };
 
 #define _get_ps_cap(_phl_info) (&_phl_info->phl_com->dev_cap.ps_cap)
@@ -56,18 +45,10 @@ const char *phl_ps_ps_mode_to_str(u8 ps_mode);
 const char *phl_ps_pwr_lvl_to_str(u8 pwr_lvl);
 u8 phl_ps_judge_pwr_lvl(u8 ps_cap, u8 ps_mode, u8 ps_en);
 
-enum rtw_phl_status
-phl_ps_ips_cfg(struct phl_info_t *phl_info, struct ps_cfg *cfg, u8 ips_en);
 enum rtw_phl_status phl_ps_lps_cfg(struct phl_info_t *phl_info, struct ps_cfg *cfg, u8 lps_en);
 enum rtw_phl_status phl_ps_cfg_pwr_lvl(struct phl_info_t *phl_info, u8 ps_mode, u8 cur_pwr_lvl, u8 req_pwr_lvl);
 
 enum rtw_phl_status phl_ps_enter_ps(struct phl_info_t *phl_info, struct ps_cfg *cfg);
 enum rtw_phl_status phl_ps_leave_ps(struct phl_info_t *phl_info, struct ps_cfg *cfg);
-
-bool phl_ps_sta_in_lps(struct phl_info_t *phl, struct rtw_phl_stainfo_t *sta);
-
-void
-phl_ps_sta_ext_trx_nty(struct phl_info_t *phl, u16 macid);
-
 #endif
 #endif /* _PHL_PS_H_ */

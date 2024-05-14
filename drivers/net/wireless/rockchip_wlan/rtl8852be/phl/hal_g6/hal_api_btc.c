@@ -135,8 +135,7 @@ static void _copy_btmsg(struct rtw_hal_com_t *hal_com,
 	_os_spinlock(d, &msg->lock, _bh, NULL);
 	msg->cnt++;
 	msg->len = len;
-	if (len <= RTW_BTC_OVERWRITE_BUF_LEN)
-		_os_mem_cpy(d, &msg->latest[0], buf, len);
+	_os_mem_cpy(d, &msg->latest[0], buf, len);
 	_os_spinunlock(d, &msg->lock, _bh, NULL);
 }
 
@@ -154,8 +153,7 @@ static bool _fw_evnt_enq(struct rtw_hal_com_t *hal_com,
 	entry->c2h_class = cls;
 	entry->c2h_func = func;
 	entry->len = len;
-	if (len <= RTW_PHL_BTC_FWINFO_BUF)
-		_os_mem_cpy(d, &entry->buf[0], buf, len);
+	_os_mem_cpy(d, &entry->buf[0], buf, len);
 	_msg_enq(hal_com, &fmsg->waitq, entry);
 
 	return true;
@@ -228,10 +226,9 @@ void rtw_hal_btc_deinit(struct rtw_phl_com_t *phl_com,
 /* called by non-hal layers */
 /**********************/
 void rtw_hal_btc_update_role_info_ntfy(void *hinfo,  u8 role_id,
-				       struct rtw_wifi_role_t *wrole,
-				       struct rtw_wifi_role_link_t *rlink,
-				       struct rtw_phl_stainfo_t *sta,
-				       enum link_state lstate)
+						struct rtw_wifi_role_t *wrole,
+						struct rtw_phl_stainfo_t *sta,
+						enum role_state rstate)
 {
 	struct hal_info_t *h = (struct hal_info_t *)hinfo;
 	struct btc_t *btc = (struct btc_t *)h->btc;
@@ -243,10 +240,18 @@ void rtw_hal_btc_update_role_info_ntfy(void *hinfo,  u8 role_id,
 
 	if (role_id >= MAX_WIFI_ROLE_NUMBER)
 		return;
-	PHL_TRACE(COMP_PHL_BTC, _PHL_INFO_, "%s: link_state(%s,%d), hw_band(%d), rid(%d), macid(%d)\n",
-		__FUNCTION__, rtw_phl_get_lstate_str(lstate), lstate,
-		rlink->hw_band, role_id, sta->macid);
+
+
 	if (wrole) {
+		r.role = wrole->type;
+#ifdef RTW_WKARD_ROLE_TYPE
+		if (wrole->mstate != MLME_NO_LINK &&
+			wrole->real_type != PHL_RTYPE_NONE) {
+			r.role = wrole->real_type;
+			PHL_INFO("[BTC], rtw_hal_btc_update_role_info_ntfy(): set r.role from type(%d) to real_type(%d)\n",
+				wrole->type, wrole->real_type);
+		}
+#endif /* RTW_WKARD_ROLE_TYPE */
 #ifdef CONFIG_PHL_P2PPS
 		r.noa = 0;
 		r.noa_duration = 0;
@@ -258,44 +263,32 @@ void rtw_hal_btc_update_role_info_ntfy(void *hinfo,  u8 role_id,
 			}
 		}
 #endif /* CONFIG_PHL_P2PPS */
-		r.role = wrole->type;
-		r.phy = rlink->hw_band;
-		r.pid = rlink->hw_port;
+		r.phy = wrole->hw_band;
+		r.pid = wrole->hw_port;
 		r.active = wrole->active;
-		r.connected = rlink->mstate;
-		r.mode = rlink->cap.wmode;
-		r.client_cnt = rlink->assoc_sta_queue.cnt;
+		r.connected = wrole->mstate;
+		r.mode = wrole->cap.wmode;
+		r.client_cnt = wrole->assoc_sta_queue.cnt;
 		#ifdef RTW_PHL_BCN
-		r.bcn_period = rlink->bcn_cmn.bcn_interval;
-		r.dtim_period = rlink->dtim_period;
+		r.bcn_period = wrole->bcn_cmn.bcn_interval;
+		r.dtim_period = wrole->dtim_period;
 		#endif
-		hal_mem_cpy(h->hal_com,
-		            &r.chdef,
-		            &rlink->chandef,
-		            sizeof(struct rtw_chan_def));
-		hal_mem_cpy(h->hal_com, r.mac_addr, rlink->mac_addr, MAC_ALEN);
+		/* Remove it after btc ready */
+		r.band = wrole->chandef.band;
+		r.ch = wrole->chandef.center_ch;
+		r.bw = wrole->chandef.bw;
+		hal_mem_cpy(h->hal_com, &r.chdef, &wrole->chandef,
+			    sizeof(struct rtw_chan_def));
+		hal_mem_cpy(h->hal_com, r.mac_addr, wrole->mac_addr, MAC_ALEN);
 	}
 
-	if (sta && rtw_phl_role_is_client_category(sta->wrole)) {/*associated node info??*/
+	if (sta && wrole->type == PHL_RTYPE_STATION) {/*associated node info??*/
 		r.mac_id = sta->macid;
 		r.mode = (u8)sta->wmode;
 	}
-	PHL_TRACE(COMP_PHL_BTC, _PHL_INFO_, "%s: rid(%d), phy(%d), mac_id(%d), client_cnt(%d)\n",
-			__FUNCTION__, role_id, r.phy, r.mac_id, r.client_cnt);
+
 	if (ops && ops->ntfy_role_info)
-		ops->ntfy_role_info(btc, role_id, &r, lstate);
-}
-
-void
-rtw_hal_btc_ap_client_notify(void *hinfo,
-		struct rtw_wifi_role_link_t *rlink, enum link_state lstate)
-{
-	struct hal_info_t *h = (struct hal_info_t *)hinfo;
-	struct rtw_phl_stainfo_t *sta = NULL;
-
-	sta = rtw_phl_get_stainfo_self(h->phl_com->phl_priv, rlink);
-	rtw_hal_btc_update_role_info_ntfy(h, rlink->wrole->id, rlink->wrole,
-					rlink, sta, lstate);
+		ops->ntfy_role_info(btc, role_id, &r, rstate);
 }
 
 void rtw_hal_btc_power_on_ntfy(void *hinfo)
@@ -404,9 +397,41 @@ void rtw_hal_btc_wl_status_ntfy(void *hinfo, struct rtw_phl_com_t *phl_com, u8 n
 	struct hal_info_t *h = (struct hal_info_t *)hinfo;
 	struct btc_t *btc = (struct btc_t *)h->btc;
 	struct btc_ops *ops = btc->ops;
+	struct btc_wl_stat_info stat_info[MAX_WIFI_ROLE_NUMBER] = {0};
+	struct btc_traffic *t;
+	struct rtw_stats *phl_stats = &phl_com->phl_stats;
+	struct rtw_phl_rainfo ra_info = {0};
+	u8 i;
+
+	if(ntfy_num == 0)
+		return;
+
+	for (i = 0; i < ntfy_num; i++) {
+		_os_mem_set(halcom_to_drvpriv(h->hal_com), &ra_info, 0,
+			    sizeof(ra_info));
+
+		stat_info[i].pid = sta[i]->wrole->id;
+		stat_info[i].stat.rssi = sta[i]->hal_sta->rssi_stat.rssi >> 1;
+
+		t = &stat_info[i].stat.traffic;
+		t->tx_lvl = phl_stats->tx_traffic.lvl;
+		t->tx_sts = phl_stats->tx_traffic.sts;
+
+		t->rx_lvl = phl_stats->rx_traffic.lvl;
+		t->rx_sts = phl_stats->rx_traffic.sts;
+
+	        if (RTW_HAL_STATUS_SUCCESS ==
+		    rtw_hal_bb_query_rainfo(h, sta[i]->hal_sta, &ra_info))
+			t->tx_rate = ra_info.rate;
+		else
+			t->tx_rate = RTW_DATA_RATE_MAX;
+
+		t->rx_rate = h->hal_com->trx_stat.rx_rate_plurality;
+	}
 
 	if (ops && ops->ntfy_wl_sta)
-		ops->ntfy_wl_sta(btc, &phl_com->phl_stats, ntfy_num, sta, reason);
+		ops->ntfy_wl_sta(btc, ntfy_num, stat_info, reason);
+
 }
 
 void rtw_hal_btc_fwinfo_ntfy(void *hinfo)
@@ -476,33 +501,6 @@ void rtw_hal_btc_fwinfo_ntfy(void *hinfo)
 	}
 }
 
-static struct rtw_phl_stainfo_t *
-_get_first_client_sta(
-	void *hinfo,
-	struct rtw_wifi_role_link_t *rlink,
-	struct rtw_phl_stainfo_t *self)
-{
-	struct hal_info_t *h = (struct hal_info_t *)hinfo;
-	struct rtw_phl_stainfo_t *n, *psta, *ret = NULL;
-	void *drv = hal_to_drvpriv(h);
-
-	if (rlink->assoc_sta_queue.cnt > 1) {
-		/* more than one sta, ex: softap & assoc sta */
-		_os_spinlock(drv, &rlink->assoc_sta_queue.lock, _bh, NULL);
-		phl_list_for_loop_safe(psta, n, struct rtw_phl_stainfo_t,
-			&rlink->assoc_sta_queue.queue, list) {
-			if (_os_mem_cmp(drv, self->mac_addr, psta->mac_addr, MAC_ALEN) == 0) {
-				/* skip softap self */
-				continue;
-			}
-			ret = psta;
-			break;
-		}
-		_os_spinunlock(drv, &rlink->assoc_sta_queue.lock, _bh, NULL);
-	}
-	return ret;
-}
-
 void rtw_hal_btc_timer(void *hinfo, void *timer)
 {
 	struct hal_info_t *h = (struct hal_info_t *)hinfo;
@@ -536,29 +534,18 @@ void rtw_hal_btc_timer(void *hinfo, void *timer)
 	if (ops && found) {
 		if (btmr->id == BTC_TIMER_PERIODIC) {
 			struct rtw_wifi_role_t *wrole = NULL;
-			struct rtw_phl_mld_t *mld = NULL;
 			struct rtw_phl_stainfo_t *sta = NULL;
-			/* Support max link num is 3 for MLO */
-			struct rtw_phl_stainfo_t *wrole_sta[MAX_WIFI_ROLE_NUMBER * 3] = {0};
+			struct rtw_phl_stainfo_t *wrole_sta[MAX_WIFI_ROLE_NUMBER] = {0};
 			u8 ntfy_num = 0;
-			u8 idx = 0;
 
 			for (i = 0; i < MAX_WIFI_ROLE_NUMBER; i++) {
 				wrole = &(btc->phl->wifi_roles[i]);
 				if(wrole->mstate == MLME_LINKED) {
-					mld = rtw_phl_get_mld_self(btc->phl->phl_priv, wrole);
-
-					for (idx = 0; idx < wrole->rlink_num; idx++) {
-						sta = mld->phl_sta[idx];
-						if(sta != NULL) {
-							struct rtw_phl_stainfo_t *client = NULL;
-
-							client = _get_first_client_sta(hinfo,
-								&wrole->rlink[idx], sta);
-							wrole_sta[ntfy_num] =
-								((client != NULL) ? client : sta);
-							ntfy_num++;
-						}
+					sta = rtw_phl_get_stainfo_self(
+						btc->phl->phl_priv, wrole);
+					if(sta != NULL) {
+						wrole_sta[ntfy_num] = sta;
+						ntfy_num++;
 					}
 				}
 			}
@@ -576,22 +563,21 @@ void rtw_hal_btc_timer(void *hinfo, void *timer)
 	}
 }
 
-u32 rtw_hal_btc_req_bt_slot_t(void *hinfo, enum phl_band_idx hw_band)
+u32 rtw_hal_btc_req_bt_slot_t(void *hinfo)
 {
 	struct hal_info_t *h = (struct hal_info_t *)hinfo;
 	struct btc_t *btc = (struct btc_t *)h->btc;
 
-	return btc->bt_req_len[hw_band];
+	return btc->bt_req_len;
 }
 
 /***********************/
 /* Called by BTC submodule */
 /***********************/
-void hal_btc_send_event(struct btc_t *btc, enum phl_band_idx hw_band,
-			u8 *buf, u32 len, u16 ev_id)
+void hal_btc_send_event(struct btc_t *btc, u8 *buf, u32 len, u16 ev_id)
 {
 #ifdef CONFIG_PHL_CMD_BTC
-	rtw_phl_btc_send_cmd(btc->phl, hw_band, buf, len, ev_id);
+	rtw_phl_btc_send_cmd(btc->phl, buf, len, ev_id);
 #endif
 }
 
@@ -621,34 +607,6 @@ bool rtw_hal_btc_proc_cmd(struct hal_info_t *hal_info, struct rtw_proc_cmd *incm
 	return true;
 }
 
-#else
-u32 rtw_hal_btc_req_bt_slot_t(void *hinfo, enum phl_band_idx hw_band)
-{
-	return 0;
-}
-
-static void _copy_btmsg(struct rtw_hal_com_t *hal_com,
-			struct hal_bt_msg *msg, u16 len, u8 *buf)
-{
-	return;
-}
-
-static bool _fw_evnt_enq(struct rtw_hal_com_t *hal_com,
-			u8 cls, u8 func, u16 len, u8 *buf)
-{
-	return true;
-}
-
-void rtw_hal_btc_scan_finish_ntfy(void *hinfo, enum phl_phy_idx phy_idx)
-{
-	return;
-}
-
-void rtw_hal_btc_scan_start_ntfy(void *hinfo, enum phl_phy_idx phy_idx,
-				  enum band_type band)
-{
-	return;
-}
 
 #endif
 
@@ -661,7 +619,7 @@ rtw_hal_btc_get_efuse_info(struct rtw_hal_com_t *hal_com,
 	return RTW_HAL_STATUS_SUCCESS;
 }
 
-u32 rtw_hal_btc_process_c2h(void *hal, struct rtw_c2h_info *c2h, struct c2h_evt_msg *c2h_msg)
+u32 rtw_hal_btc_process_c2h(void *hal, struct rtw_c2h_info *c2h)
 {
 	struct hal_info_t *h = (struct hal_info_t *)hal;
 	struct btc_t *btc = (struct btc_t *)h->btc;
@@ -683,8 +641,7 @@ u32 rtw_hal_btc_process_c2h(void *hal, struct rtw_c2h_info *c2h, struct c2h_evt_
 
 		_os_spinlock(d, &fmsg->lock, _bh, NULL);
 		if (fmsg->fev_cnt == 0) {
-			/* Only forward c2h content to btc */
-			if (rtw_phl_btc_send_cmd(btc->phl, HW_BAND_0, NULL, 0,
+			if (rtw_phl_btc_send_cmd(btc->phl, NULL, 0,
 						BTC_HMSG_FW_EV))
 				fmsg->fev_cnt++;
 		}

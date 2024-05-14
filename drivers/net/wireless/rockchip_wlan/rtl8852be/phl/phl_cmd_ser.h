@@ -21,7 +21,6 @@ enum rtw_phl_status rtw_phl_ser_dump_ple_buffer(void *phl);
 #endif
 
 enum rtw_phl_status phl_ser_send_msg(void *phl, enum RTW_PHL_SER_NOTIFY_EVENT notify);
-void phl_ser_send_check(void *phl);
 
 #ifdef CONFIG_PHL_CMD_SER
 enum rtw_phl_status

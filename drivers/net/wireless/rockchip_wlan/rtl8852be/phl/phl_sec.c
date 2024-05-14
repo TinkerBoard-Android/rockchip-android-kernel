@@ -125,7 +125,7 @@ _phl_cmd_set_key(void *phl,
 	}
 
 	psts = phl_cmd_enqueue(phl_info,
-	                       sta->rlink->hw_band,
+	                       sta->wrole->hw_band,
 	                       MSG_EVT_SEC_KEY,
 	                       (u8 *)param,
 	                       param_len,

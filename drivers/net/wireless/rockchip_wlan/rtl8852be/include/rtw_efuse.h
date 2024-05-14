@@ -61,8 +61,6 @@ enum rtw_efuse_phl_cmdid {
 	RTW_EFUSE_CMD_WIFI_GET_PHY_MAP = 29,
 	RTW_EFUSE_CMD_BT_GET_PHY_MAP = 30,
 	RTW_MP_EFUSE_CMD_WIFI_SET_RENEW = 31,
-	RTW_EFUSE_CMD_WIFI_GET_MASK_BUF = 32,
-	RTW_EFUSE_CMD_BT_GET_MASK_BUF = 33,
 	RTW_EFUSE_CMD_MAX,
 };
 
@@ -98,8 +96,6 @@ s8 rtw_efuse_get_map_from(_adapter *padapter);
 u32 rtw_efuse_get_map_size(_adapter *padapter , u16 *size , enum rtw_efuse_phl_cmdid cmdid);
 
 u32 rtw_efuse_get_available_size(_adapter *padapter , u16 *size, u8 efuse_type);
-
-u8 rtw_efuse_read_map2shadow(_adapter *padapter, u8 efuse_type);
 
 u8 rtw_efuse_map_read(_adapter * adapter, u16 addr, u16 cnts, u8 *data, u8 efuse_type);
 

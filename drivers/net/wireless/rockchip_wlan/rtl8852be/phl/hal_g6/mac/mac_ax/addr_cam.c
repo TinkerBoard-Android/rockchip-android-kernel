@@ -15,15 +15,6 @@
 
 #include "addr_cam.h"
 
-struct mac_ax_mc_table {
-	u8 valid;
-	struct mac_ax_multicast_info mc;
-	struct mac_ax_role_info role;
-};
-
-#define MAC_AX_MAX_MC_ENTRY 32
-static struct mac_ax_mc_table mc_role[MAC_AX_MAX_MC_ENTRY];
-
 #define MAC_AX_NO_HIT_IDX 0xFF
 
 static u8 get_set_bits_of_msk(u8 msk)
@@ -264,8 +255,6 @@ u32 fill_bssid_cam_info(struct mac_ax_adapter *adapter,
 			struct fwcmd_addrcam_info *fw_addrcam)
 {
 	struct mac_ax_bssid_cam_info b_info = role_info->b_info;
-	u8 msk = role_info->mask_sel == MAC_AX_BSSID_MSK ?
-		 role_info->addr_mask : MAC_AX_MSK_NONE;
 
 	fw_addrcam->dword12 =
 	  cpu_to_le32(SET_WORD(b_info.bssid_cam_idx,
@@ -275,7 +264,6 @@ u32 fill_bssid_cam_info(struct mac_ax_adapter *adapter,
 
 	fw_addrcam->dword13 =
 	  cpu_to_le32(((b_info.valid) ? FWCMD_H2C_ADDRCAM_INFO_B_VALID : 0) |
-	   SET_WORD(msk, FWCMD_H2C_ADDRCAM_INFO_B_MSK) |
 	   ((b_info.bb_sel) ? FWCMD_H2C_ADDRCAM_INFO_B_BB_SEL : 0) |
 	   SET_WORD(b_info.bss_color, FWCMD_H2C_ADDRCAM_INFO_BSS_COLOR) |
 	   SET_WORD(b_info.bssid[0], FWCMD_H2C_ADDRCAM_INFO_BSSID0) |
@@ -324,8 +312,8 @@ u32 mac_upd_addr_cam(struct mac_ax_adapter *adapter,
 			ret = init_addr_cam_info(adapter, info, fwcmd_tbl);
 		if (ret)
 			goto FWOFLD_END;
-		// dword 0
 
+		// dword 0
 		ret = h2c_pkt_set_hdr(adapter,
 				      h2cb,
 				      FWCMD_TYPE_H2C,
@@ -337,8 +325,8 @@ u32 mac_upd_addr_cam(struct mac_ax_adapter *adapter,
 		if (ret)
 			goto FWOFLD_END;
 
-		// Return MACSUCCESS if h2c aggregation is enabled and enqueued successfully.
-		// The H2C shall be sent by mac_h2c_agg_tx.
+		// return MACSUCCESS if h2c aggregation is enabled and enqueued successfully.
+		// H2C shall be sent by mac_h2c_agg_tx.
 		ret = h2c_agg_enqueue(adapter, h2cb);
 		if (ret == MACSUCCESS)
 			return MACSUCCESS;
@@ -385,13 +373,10 @@ FWOFLD_END:
 	// Indirect write cmac table addr cam idx
 	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852A))
 		ctlinfo_aidx_off = 0x18;
-	else if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852B) ||
-		 is_chip_id(adapter, MAC_AX_CHIP_ID_8851B))
+	else if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852B))
 		ctlinfo_aidx_off = 0x18;
 	else if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852C) ||
-		 is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB) ||
-		 is_chip_id(adapter, MAC_AX_CHIP_ID_8851E) ||
-		 is_chip_id(adapter, MAC_AX_CHIP_ID_8852D))
+		 is_chip_id(adapter, MAC_AX_CHIP_ID_8192XB))
 		ctlinfo_aidx_off = 0x17;
 	else
 		ctlinfo_aidx_off = 0xFF;
@@ -770,148 +755,9 @@ u32 get_mac_resp_ack(struct mac_ax_adapter *adapter, u32 *ack)
 u8 get_addr_cam_size(struct mac_ax_adapter *adapter)
 {
 	if (is_chip_id(adapter, MAC_AX_CHIP_ID_8852A) ||
-	    is_chip_id(adapter, MAC_AX_CHIP_ID_8852B) ||
-	    is_chip_id(adapter, MAC_AX_CHIP_ID_8851B))
+	    is_chip_id(adapter, MAC_AX_CHIP_ID_8852B))
 		return ADDR_CAM_ENT_LONG_SIZE;
 	else
 		return ADDR_CAM_ENT_SHORT_SIZE;
 }
 
-struct mac_ax_mc_table *
-get_avalible_mc_entry(struct mac_ax_adapter *adapter,
-		      struct mac_ax_multicast_info *info)
-{
-	struct mac_ax_mc_table *mc_entry = mc_role;
-	u8 i;
-
-	for (i = 0; i < MAC_AX_MAX_MC_ENTRY; i++) {
-		if (!PLTFM_MEMCMP(&mc_entry->mc, info, sizeof(*info)) &&
-		    mc_entry->valid == 1) {
-			PLTFM_MSG_ERR("duplicated multicast info\n");
-			return NULL;
-		}
-
-		if (mc_entry->valid == 0)
-			return mc_entry;
-		mc_entry++;
-	}
-
-	return NULL;
-}
-
-struct mac_ax_mc_table *
-get_record_mc_entry(struct mac_ax_adapter *adapter,
-		    struct mac_ax_multicast_info *info)
-{
-	struct mac_ax_mc_table *mc_entry = mc_role;
-	u8 i;
-
-	for (i = 0; i < MAC_AX_MAX_MC_ENTRY; i++) {
-		if (!PLTFM_MEMCMP(&mc_entry->mc, info, sizeof(*info)) &&
-		    mc_entry->valid == 1) {
-			return mc_entry;
-		}
-		mc_entry++;
-	}
-
-	return NULL;
-}
-
-u8 get_avalible_mc_entry_macid(struct mac_ax_adapter *adapter)
-{
-	struct mac_ax_mc_table *mc_entry = mc_role;
-	u8 i, macid = adapter->hw_info->macid_num - 1;
-
-	for (i = 0; i < MAC_AX_MAX_MC_ENTRY; i++) {
-		if (mc_entry->valid == 1 && mc_entry->role.macid <= macid)
-			macid = mc_entry->role.macid - 1;
-		mc_entry++;
-	}
-
-	return macid;
-}
-
-static u32 mac_add_multicast(struct mac_ax_adapter *adapter,
-			     struct mac_ax_multicast_info *info)
-{
-	struct mac_ax_mc_table *mc_entry;
-	struct mac_ax_role_info *role;
-	u32 ret;
-
-	mc_entry = get_avalible_mc_entry(adapter, info);
-	if (!mc_entry) {
-		PLTFM_MSG_ERR("%s: fails to get avalible mc\n", __func__);
-		return MACNPTR;
-	}
-
-	PLTFM_MEMCPY(&mc_entry->mc, info, sizeof(mc_entry->mc));
-
-	role = &mc_entry->role;
-	PLTFM_MEMSET(role, 0, sizeof(*role));
-	role->upd_mode = MAC_AX_ROLE_CREATE;
-	role->opmode = MAC_AX_ROLE_DISCONN;
-	role->macid = get_avalible_mc_entry_macid(adapter);
-	role->mask_sel = MAC_AX_SMA_MSK;
-	role->addr_mask = MAC_AX_MSK_NONE;
-	PLTFM_MEMCPY(role->self_mac, info->mc_addr, 6);
-	PLTFM_MEMCPY(role->target_mac, info->bssid, 6);
-	PLTFM_MEMCPY(role->bssid, info->bssid, 6);
-	role->is_mul_ent = 1;
-
-	ret = mac_add_role(adapter, role);
-	if (ret) {
-		PLTFM_MSG_ERR("%s: add role fail(%d)\n", __func__, ret);
-		return ret;
-	}
-	mc_entry->valid = 1;
-
-	return MACSUCCESS;
-}
-
-static u32 mac_del_multicast(struct mac_ax_adapter *adapter,
-			     struct mac_ax_multicast_info *info)
-{
-	struct mac_ax_mc_table *mc_entry;
-	u32 ret;
-
-	mc_entry = get_record_mc_entry(adapter, info);
-	if (!mc_entry) {
-		PLTFM_MSG_ERR("%s: fails to get record mc\n", __func__);
-		return MACNPTR;
-	}
-	ret = mac_remove_role(adapter, mc_entry->role.macid);
-	if (ret) {
-		PLTFM_MSG_ERR("%s: remove role fail(%d)\n", __func__, ret);
-		return ret;
-	}
-	mc_entry->valid = 0;
-
-	return MACSUCCESS;
-}
-
-u32 mac_pre_proc_mc_info(struct mac_ax_multicast_info *info)
-{
-	u8 i;
-
-	for (i = 0; i < 6; i++) {
-		if (!(info->mc_msk & (1 << i)))
-			info->mc_addr[i] = 0;
-	}
-
-	return 0;
-}
-
-u32 mac_cfg_multicast(struct mac_ax_adapter *adapter, u8 add,
-		      struct mac_ax_multicast_info *info)
-{
-	u32 ret;
-
-	mac_pre_proc_mc_info(info);
-
-	if (add)
-		ret = mac_add_multicast(adapter, info);
-	else
-		ret = mac_del_multicast(adapter, info);
-
-	return ret;
-}

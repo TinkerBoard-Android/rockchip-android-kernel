@@ -3,13 +3,13 @@
 # Before include this makefile, be sure interface (CONFIG_*_HCI) and IC
 # (CONFIG_RTL*) setting are all ready!
 
-#HAL = hal_g6
+HAL = hal_g6
 
 ifeq ($(CONFIG_PHL_ARCH), y)
-phl_path := phl/$(HAL)
+phl_path := phl/hal_g6
 phl_path_d1 := $(src)/phl/$(HAL)
 else
-phl_path := $(HAL)
+phl_path := hal_g6
 phl_path_d1 := $(src)/$(HAL)
 endif
 
@@ -31,8 +31,7 @@ halbtc-y += $(path_halbtc_8852a)/btc_8852a.o
 
 endif
 
-# 8852B/8852BP Support
-ifneq ($(filter y,$(CONFIG_RTL8852B) $(CONFIG_RTL8852BP) $(CONFIG_RTL8851B)),)
+ifeq ($(CONFIG_RTL8852B), y)
 ic := 8852b
 # Level 2 directory
 path_halbtc_8852b := $(path_halbtc_d1)/btc_$(ic)

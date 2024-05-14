@@ -22,10 +22,9 @@
 #endif
 
 #define WP_TID_INDIC_RESERVED_BIT BIT(14)
-#define WP_BAND_INDIC_RESERVED_BIT BIT(14)
-
 #define WP_RESERVED_SEQ 0xFFF
 #define WP_MAX_SEQ_NUMBER WP_RESERVED_SEQ
+
 
 struct tx_base_desc {
 	u8 *vir_addr;

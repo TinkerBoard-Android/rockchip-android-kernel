@@ -718,8 +718,6 @@ u32 rtw_tkip_encrypt(_adapter *padapter, u8 *pxmitframe)
 	u32 prwskeylen;
 	u8 *pframe, *payload, *iv, *prwskey;
 	union pn48 dot11txpn;
-	struct _ADAPTER_LINK *padapter_link = pattrib->adapter_link;
-	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
 
 
 	if (pattrib->encrypt != _TKIP_)
@@ -727,7 +725,7 @@ u32 rtw_tkip_encrypt(_adapter *padapter, u8 *pxmitframe)
 
 	/* start to encrypt each fragment */
 	if (IS_MCAST(pattrib->ra))
-		prwskey = lsecuritypriv->dot118021XGrpKey[lsecuritypriv->dot118021XGrpKeyid].skey;
+		prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey;
 	else
 		prwskey = pattrib->dot118021x_UncstKey.skey;
 	prwskeylen = 16;
@@ -782,8 +780,6 @@ u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 	struct	rx_pkt_attrib	*prxattrib = &((union recv_frame *)precvframe)->u.hdr.attrib;
 	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
 	u32		res = _SUCCESS;
-	struct _ADAPTER_LINK		*padapter_link = ((union recv_frame *)precvframe)->u.hdr.adapter_link;
-	struct	link_security_priv	*lsecuritypriv = &padapter_link->securitypriv;
 
 
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
@@ -791,7 +787,7 @@ u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 	/* 4 start to decrypt recvframe */
 	if (prxattrib->encrypt == _TKIP_) {
 
-		stainfo = ((union recv_frame *)precvframe)->u.hdr.psta;
+		stainfo = rtw_get_stainfo(&padapter->stapriv , &prxattrib->ta[0]);
 		if (stainfo != NULL) {
 
 			if (IS_MCAST(prxattrib->ra)) {
@@ -799,7 +795,7 @@ u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 				static u32 no_gkey_bc_cnt = 0;
 				static u32 no_gkey_mc_cnt = 0;
 
-				if (lsecuritypriv->binstallGrpkey == _FALSE) {
+				if (psecuritypriv->binstallGrpkey == _FALSE) {
 					res = _FAIL;
 
 					if (start == 0)
@@ -832,7 +828,7 @@ u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 
 				/* RTW_INFO("rx bc/mc packets, to perform sw rtw_tkip_decrypt\n"); */
 				/* prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey; */
-				prwskey = lsecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
+				prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
 				prwskeylen = 16;
 			} else {
 				prwskey = &stainfo->dot118021x_UncstKey.skey[0];
@@ -848,7 +844,6 @@ u32 rtw_tkip_decrypt(_adapter *padapter, u8 *precvframe)
 			pnl = (u16)(dot11txpn.val);
 			pnh = (u32)(dot11txpn.val >> 16);
 
-			/* ToDo CONFIG_RTW_MLD: MLD addr for unicast, link addr for multicast */
 			phase1((u16 *)&ttkey[0], prwskey, &prxattrib->ta[0], pnh);
 			phase2(&rc4key[0], prwskey, (unsigned short *)&ttkey[0], pnl);
 
@@ -1585,8 +1580,6 @@ u32 rtw_aes_encrypt(_adapter *padapter, u8 *pxmitframe)
 	u32 prwskeylen;
 	u8 *pframe;
 	u8 *prwskey;
-	struct _ADAPTER_LINK *padapter_link = pattrib->adapter_link;
-	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
 
 
 	if ((pattrib->encrypt != _AES_) && (pattrib->encrypt != _CCMP_256_))
@@ -1594,7 +1587,7 @@ u32 rtw_aes_encrypt(_adapter *padapter, u8 *pxmitframe)
 
 	/* start to encrypt each fragment */
 	if (IS_MCAST(pattrib->ra))
-		prwskey = lsecuritypriv->dot118021XGrpKey[lsecuritypriv->dot118021XGrpKeyid].skey;
+		prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey;
 	else
 		prwskey = pattrib->dot118021x_UncstKey.skey;
 
@@ -1899,15 +1892,13 @@ u32 rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 	u8 *pframe;
 	u8 *prwskey;
 	u32 res = _SUCCESS;
-	struct _ADAPTER_LINK *padapter_link = ((union recv_frame *)precvframe)->u.hdr.adapter_link;
-	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
 
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
 	/* start to encrypt each fragment */
 	if ((prxattrib->encrypt == _AES_) ||
 	    (prxattrib->encrypt == _CCMP_256_)) {
 
-		stainfo = ((union recv_frame *)precvframe)->u.hdr.psta;
+		stainfo = rtw_get_stainfo(&padapter->stapriv, &prxattrib->ta[0]);
 		if (stainfo != NULL) {
 
 			if (IS_MCAST(prxattrib->ra)) {
@@ -1915,8 +1906,7 @@ u32 rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 				static u32 no_gkey_bc_cnt = 0;
 				static u32 no_gkey_mc_cnt = 0;
 
-				if ((!MLME_IS_MESH(padapter)
-					&& lsecuritypriv->binstallGrpkey == _FALSE)
+				if ((!MLME_IS_MESH(padapter) && psecuritypriv->binstallGrpkey == _FALSE)
 					#ifdef CONFIG_RTW_MESH
 					|| !(stainfo->gtk_bmp | BIT(prxattrib->key_index))
 					#endif
@@ -1959,11 +1949,10 @@ u32 rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 				} else
 				#endif
 				{
-					prwskey = lsecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
-					if (lsecuritypriv->dot118021XGrpKeyid != prxattrib->key_index)
-					{
+					prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
+					if (psecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
 						RTW_DBG("not match packet_index=%d, install_index=%d\n"
-							, prxattrib->key_index, lsecuritypriv->dot118021XGrpKeyid);
+							, prxattrib->key_index, psecuritypriv->dot118021XGrpKeyid);
 						res = _FAIL;
 						goto exit;
 					}
@@ -2005,12 +1994,10 @@ u32	rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 	struct	security_priv	*psecuritypriv = &padapter->securitypriv;
 	u32	res = _SUCCESS;
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
-	struct _ADAPTER_LINK *padapter_link = ((union recv_frame *)precvframe)->u.hdr.adapter_link;
-
 	/* 4 start to encrypt each fragment */
 	if ((prxattrib->encrypt == _AES_)) {
 
-		stainfo = ((union recv_frame *)precvframe)->u.hdr.psta;
+		stainfo = rtw_get_stainfo(&padapter->stapriv , &prxattrib->ta[0]);
 		if (stainfo != NULL) {
 
 			if (IS_MCAST(prxattrib->ra)) {
@@ -2020,8 +2007,7 @@ u32	rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 
 				/* RTW_INFO("rx bc/mc packets, to perform sw rtw_aes_decrypt\n"); */
 				/* prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey; */
-				if ((!MLME_IS_MESH(padapter)
-					&& lsecuritypriv->binstallGrpkey == _FALSE)
+				if ((!MLME_IS_MESH(padapter) && psecuritypriv->binstallGrpkey == _FALSE)
 					#ifdef CONFIG_RTW_MESH
 					|| !(stainfo->gtk_bmp | BIT(prxattrib->key_index))
 					#endif
@@ -2064,10 +2050,10 @@ u32	rtw_aes_decrypt(_adapter *padapter, u8 *precvframe)
 				} else
 				#endif
 				{
-					prwskey = lsecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
-					if (lsecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
+					prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
+					if (psecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
 						RTW_DBG("not match packet_index=%d, install_index=%d\n"
-							, prxattrib->key_index, lsecuritypriv->dot118021XGrpKeyid);
+							, prxattrib->key_index, psecuritypriv->dot118021XGrpKeyid);
 						res = _FAIL;
 						goto exit;
 					}
@@ -2316,17 +2302,14 @@ void rtw_sec_restore_wep_key(_adapter *adapter)
 {
 	struct security_priv *securitypriv = &(adapter->securitypriv);
 	sint keyid;
-	/* ToDo CONFIG_RTW_MLD: [currently primary link only]
-	** but currently no one call this function */
-	struct _ADAPTER_LINK *adapter_link = GET_PRIMARY_LINK(adapter);
 
 	if ((_WEP40_ == securitypriv->dot11PrivacyAlgrthm) || (_WEP104_ == securitypriv->dot11PrivacyAlgrthm)) {
 		for (keyid = 0; keyid < 4; keyid++) {
 			if (securitypriv->key_mask & BIT(keyid)) {
 				if (keyid == securitypriv->dot11PrivacyKeyIndex)
-					rtw_set_key(adapter, adapter_link, keyid, 1, _FALSE);
+					rtw_set_key(adapter, securitypriv, keyid, 1, _FALSE);
 				else
-					rtw_set_key(adapter, adapter_link, keyid, 0, _FALSE);
+					rtw_set_key(adapter, securitypriv, keyid, 0, _FALSE);
 			}
 		}
 	}
@@ -2454,8 +2437,6 @@ u32 rtw_gcmp_encrypt(_adapter *padapter, u8 *pxmitframe)
 	u8 *pframe = NULL;
 	u8 *prwskey = NULL;
 	u8 hw_hdr_offset = 0;
-	struct _ADAPTER_LINK *padapter_link = pattrib->adapter_link;
-	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
 
 
 	if ((pattrib->encrypt != _GCMP_) && (pattrib->encrypt != _GCMP_256_))
@@ -2463,7 +2444,7 @@ u32 rtw_gcmp_encrypt(_adapter *padapter, u8 *pxmitframe)
 
 	/* start to encrypt each fragment */
 	if (IS_MCAST(pattrib->ra))
-		prwskey = lsecuritypriv->dot118021XGrpKey[lsecuritypriv->dot118021XGrpKeyid].skey;
+		prwskey = psecuritypriv->dot118021XGrpKey[psecuritypriv->dot118021XGrpKeyid].skey;
 	else
 		prwskey = pattrib->dot118021x_UncstKey.skey;
 	prwskeylen = (pattrib->encrypt == _GCMP_256_) ? 32 : 16;
@@ -2492,22 +2473,18 @@ u32 rtw_gcmp_decrypt(_adapter *padapter, u8 *precvframe)
 	struct rx_pkt_attrib *prxattrib = &((union recv_frame *)precvframe)->u.hdr.attrib;
 	struct security_priv *psecuritypriv = &padapter->securitypriv;
 	u32 res = _SUCCESS;
-	struct _ADAPTER_LINK *padapter_link = ((union recv_frame *)precvframe)->u.hdr.adapter_link;
-	struct link_security_priv *lsecuritypriv = &padapter_link->securitypriv;
-
 	pframe = (unsigned char *)((union recv_frame *)precvframe)->u.hdr.rx_data;
 
 	if ((prxattrib->encrypt == _GCMP_) ||
 		(prxattrib->encrypt == _GCMP_256_)) {
-		stainfo = ((union recv_frame *)precvframe)->u.hdr.psta;
+		stainfo = rtw_get_stainfo(&padapter->stapriv, &prxattrib->ta[0]);
 		if (stainfo != NULL) {
 			if (IS_MCAST(prxattrib->ra)) {
 				static systime start = 0;
 				static u32 no_gkey_bc_cnt = 0;
 				static u32 no_gkey_mc_cnt = 0;
 
-				if ((!MLME_IS_MESH(padapter)
-					&& lsecuritypriv->binstallGrpkey == _FALSE)
+				if ((!MLME_IS_MESH(padapter) && psecuritypriv->binstallGrpkey == _FALSE)
 					#ifdef CONFIG_RTW_MESH
 					|| !(stainfo->gtk_bmp | BIT(prxattrib->key_index))
 					#endif
@@ -2550,11 +2527,10 @@ u32 rtw_gcmp_decrypt(_adapter *padapter, u8 *precvframe)
 				} else
 				#endif
 				{
-					prwskey = lsecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
-					if (lsecuritypriv->dot118021XGrpKeyid != prxattrib->key_index)
-					{
+					prwskey = psecuritypriv->dot118021XGrpKey[prxattrib->key_index].skey;
+					if (psecuritypriv->dot118021XGrpKeyid != prxattrib->key_index) {
 						RTW_DBG("not match packet_index=%d, install_index=%d\n"
-							, prxattrib->key_index, lsecuritypriv->dot118021XGrpKeyid);
+							, prxattrib->key_index, psecuritypriv->dot118021XGrpKeyid);
 						res = _FAIL;
 						goto exit;
 					}

@@ -1542,12 +1542,12 @@ msg_fail:
 enum rtw_phl_status phl_fsm_flush_gbl(struct fsm_obj *obj)
 {
 	void *d = phl_to_drvpriv(obj->fsm->phl_info);
-	struct gbl_param *p, *n;
+	struct gbl_param *p;
 
 	_os_mem_set(d, &obj->my_gbl_req, 0, sizeof(obj->my_gbl_req));
 
 	/* flush obj->gbl_queue */
-	phl_list_for_loop_safe(p, n,
+	phl_list_for_loop(p,
 		struct gbl_param, &obj->gbl_queue.q, list) {
 
 		list_del(&p->list);

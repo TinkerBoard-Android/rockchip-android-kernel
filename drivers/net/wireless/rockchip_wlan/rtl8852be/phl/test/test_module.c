@@ -77,13 +77,12 @@ struct test_mgnt_info{
 	/* test module context root */
 	void *mp_ctx;
 	void *ver_ctx;
-	void *fpga_ctx;
 };
 
 struct test_module_cmd {
 	u8 type;
-	u16 len;
 	u8 buf[MAX_TEST_CMD_BUF];
+	u16 len;
 };
 
 struct test_module_info {
@@ -239,14 +238,12 @@ static void _test_submodule_deinit(void *tm)
 
 	phl_test_mp_deinit(test_mgnt->mp_ctx);
 	phl_test_verify_deinit(test_mgnt->ver_ctx);
-	phl_test_fpga_deinit(test_mgnt->fpga_ctx);
 }
 
 u8 phl_test_module_init(struct phl_info_t *phl_info)
 {
 	struct rtw_phl_com_t* phl_com = phl_info->phl_com;
 	struct test_mgnt_info *test_mgnt = NULL;
-	enum rtw_phl_status psts = RTW_PHL_STATUS_FAILURE;
 	void *d = NULL;
 	u8 i = 0;
 
@@ -267,29 +264,19 @@ u8 phl_test_module_init(struct phl_info_t *phl_info)
 	for(i = 0; i < MAX_TEST_OBJ_NUM; i++)
 		test_mgnt->test_obj_pool[i].submd_obj_id = TEST_SUB_MODULE_UNKNOWN;
 
-	psts = phl_test_mp_alloc(test_mgnt->phl, test_mgnt->hal, &(test_mgnt->mp_ctx));
-	if (psts != RTW_PHL_STATUS_SUCCESS) {
+	if (phl_test_mp_alloc(test_mgnt->phl, test_mgnt->hal, &(test_mgnt->mp_ctx)) != RTW_PHL_STATUS_SUCCESS) {
 		PHL_INFO("[TM]: %s phl_test_mp_alloc fail!\n",__FUNCTION__);
 		goto _mp_module_mem;
 	}
 
-	psts = phl_test_verify_alloc(test_mgnt->phl, test_mgnt->hal, &(test_mgnt->ver_ctx));
-	if(psts != RTW_PHL_STATUS_SUCCESS) {
+	if(phl_test_verify_alloc(test_mgnt->phl, test_mgnt->hal, &(test_mgnt->ver_ctx)) != RTW_PHL_STATUS_SUCCESS) {
 		PHL_INFO("[TM]: %s phl_test_verify_alloc fail!\n",__FUNCTION__);
 		goto _verify_module_mem;
-	}
-
-	psts = phl_test_fpga_alloc(test_mgnt->phl, test_mgnt->hal, &(test_mgnt->fpga_ctx));
-	if(psts != RTW_PHL_STATUS_SUCCESS) {
-		PHL_INFO("[TM]: %s phl_test_fpga_alloc fail!\n",__FUNCTION__);
-		goto _fpga_module_mem;
 	}
 
 	PHL_INFO("[TM]: %s\n",__FUNCTION__);
 	return true;
 
-_fpga_module_mem:
-	phl_test_verify_free(&test_mgnt->ver_ctx);
 _verify_module_mem:
 	phl_test_mp_free(&test_mgnt->mp_ctx);
 _mp_module_mem:
@@ -313,7 +300,6 @@ void phl_test_module_deinit(struct rtw_phl_com_t* phl_com)
 
 	phl_test_mp_free(&test_mgnt->mp_ctx);
 	phl_test_verify_free(&test_mgnt->ver_ctx);
-	phl_test_fpga_free(&test_mgnt->fpga_ctx);
 	_os_mem_free(d, test_mgnt, sizeof(struct test_mgnt_info));
 	phl_com->test_mgnt = NULL;
 	PHL_INFO("[TM]: %s\n",__FUNCTION__);
@@ -519,8 +505,14 @@ u8 rtw_phl_test_is_test_complete(struct rtw_phl_com_t* phl_com)
 	return false;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,17,0)
+static void _test_obj_thread_callback(unsigned long priv)
+{
+        void *context = (void *)priv;
+#else
 static void _test_obj_thread_callback(void *context)
 {
+#endif
 	struct rtw_phl_handler *phl_handler
 		= (struct rtw_phl_handler *)phl_container_of(context,
 							     struct rtw_phl_handler,
@@ -548,21 +540,15 @@ u8 init_obj_thread(struct test_mgnt_info *test_mgnt,
 	case TEST_LVL_MAX:
 		PHL_TRACE(COMP_PHL_DBG, _PHL_DEBUG_, "init_obj_thread(): Unsupported case:%d, please check it\n",
 				lvl);
-		return false;
+		break;
 	default:
 		PHL_TRACE(COMP_PHL_DBG, _PHL_DEBUG_, "init_obj_thread(): Unrecognize case:%d, please check it\n",
 				lvl);
-		return false;
+		break;
 	}
-
 	obj->handler.callback = _test_obj_thread_callback;
 	obj->handler.context = obj;
 	obj->handler.drv_priv = test_mgnt->phl_com->drv_priv;
-
-	#if defined(CONFIG_RTW_OS_HANDLER_EXT)
-	obj->handler.id = RTW_PHL_TEST_HANDLER;
-	#endif /* CONFIG_RTW_OS_HANDLER_EXT */
-
 	pstatus = phl_register_handler(test_mgnt->phl_com, &(obj->handler));
 	return (RTW_PHL_STATUS_SUCCESS != pstatus) ? (false) : (true);
 }
@@ -623,7 +609,7 @@ u8 rtw_phl_test_add_new_test_obj(struct rtw_phl_com_t *phl_com,
 		if (init_obj_thread(test_mgnt, obj, lvl)) {
 			SET_STATUS_FLAG(obj->status, TO_STATUS_ENQ);
 			_enqueue_obj(d,	&(test_mgnt->busy_queue), obj);
-
+			_os_sema_up(d, &(test_mgnt->busy_chk));
 			PHL_INFO("[TM]: %s, id %u EnQ\n", __FUNCTION__, submd_id);
 		} else {
 			_enqueue_obj(d,	&(test_mgnt->idle_queue), obj);
@@ -632,9 +618,6 @@ u8 rtw_phl_test_add_new_test_obj(struct rtw_phl_com_t *phl_com,
 	}
 	if (is_idle_empty || !TEST_STATUS_FLAG(obj->status, TO_STATUS_ENQ))
 		return false;
-
-	_os_sema_up(d, &(test_mgnt->busy_chk));
-
 	return true;
 }
 
@@ -687,9 +670,6 @@ void rtw_phl_test_submodule_init(struct rtw_phl_com_t* phl_com, void *buf)
 			phl_test_verify_start(test_mgnt->ver_ctx);
 			break;
 		case TEST_SUB_MODULE_FPGA:
-			phl_test_fpga_init(test_mgnt->fpga_ctx);
-			phl_test_fpga_start(test_mgnt->fpga_ctx, tm_info->tm_mode);
-			break;
 		case TEST_SUB_MODULE_TOOL:
 		default:
 			break;
@@ -716,9 +696,6 @@ void rtw_phl_test_submodule_deinit(struct rtw_phl_com_t* phl_com, void *buf)
 			phl_test_verify_deinit(test_mgnt->ver_ctx);
 			break;
 		case TEST_SUB_MODULE_FPGA:
-			phl_test_fpga_stop(test_mgnt->fpga_ctx, tm_info->tm_mode);
-			phl_test_fpga_deinit(test_mgnt->fpga_ctx);
-			break;
 		case TEST_SUB_MODULE_TOOL:
 		default:
 			break;
@@ -739,9 +716,8 @@ rtw_phl_test_submodule_cmd_process(struct rtw_phl_com_t* phl_com,
 
 	cmd = (struct test_module_cmd *)buf;
 	type = cmd->type;
-	/*debug_dump_data(cmd->buf, MAX_TEST_CMD_BUF, "[TM] cmd buf =");*/
+	/* debug_dump_data(cmd->buf, MAX_TEST_CMD_BUF, "[TM] cmd buf ="); */
 	PHL_INFO("%s: len = %d\n", __FUNCTION__, cmd->len);
-	PHL_INFO("%s: type = %d\n", __FUNCTION__, cmd->type);
 
 	switch(type) {
 		case TEST_SUB_MODULE_MP:
@@ -751,8 +727,6 @@ rtw_phl_test_submodule_cmd_process(struct rtw_phl_com_t* phl_com,
 			phl_test_verify_cmd_process(test_mgnt->ver_ctx, cmd->buf, cmd->len, TEST_SUB_MODULE_VERIFY);
 			break;
 		case TEST_SUB_MODULE_FPGA:
-			phl_test_fpga_cmd_process(test_mgnt->fpga_ctx, cmd->buf, cmd->len, TEST_SUB_MODULE_FPGA);
-			break;
 		case TEST_SUB_MODULE_TOOL:
 		default:
 			break;
@@ -782,8 +756,6 @@ rtw_phl_test_submodule_get_rpt(struct rtw_phl_com_t* phl_com,
 			phl_test_verify_get_rpt(test_mgnt->ver_ctx, cmd->buf, cmd->len);
 			break;
 		case TEST_SUB_MODULE_FPGA:
-			phl_test_fpga_get_rpt(test_mgnt->fpga_ctx, cmd->buf, cmd->len);
-			break;
 		case TEST_SUB_MODULE_TOOL:
 		default:
 			break;

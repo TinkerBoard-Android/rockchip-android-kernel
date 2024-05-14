@@ -158,14 +158,11 @@ void cmd_set_job_tbl(struct _cmd_obj *pcmd)
 
 char *job_name(struct _cmd_obj *pcmd, u8 id)
 {
-	char *name = NULL;
 	if (id >= JOB_MAX)
 		FSM_ERR(pcmd->fsm, "%s: job id %d not found\n",
 			phl_fsm_obj_name(pcmd->fsm_obj), id);
-	else
-		name = job_hdl_tbl[id].name;
 
-	return name;
+	return job_hdl_tbl[id].name;
 }
 
 int phl_cmd_do_job(struct _cmd_obj *pcmd, void *param)

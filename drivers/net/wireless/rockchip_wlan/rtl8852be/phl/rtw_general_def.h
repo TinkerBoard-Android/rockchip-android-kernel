@@ -57,10 +57,6 @@ enum rtl_ic_id {
 	RTL8834A,
 	RTL8852B,
 	RTL8852C,
-	RTL8192XB,
-	RTL8832BR,
-	RTL8852BP,
-	RTL8851B,
 	MAX_IC_ID
 };
 
@@ -88,17 +84,8 @@ enum rtw_dev_state {
 	RTW_DEV_SUSPENDING = BIT1,
 	RTW_DEV_RESUMING = BIT2,
 	RTW_DEV_SURPRISE_REMOVAL = BIT3,
-	RTW_DEV_IN_DFS_CAC_PERIOD = BIT4,
-	RTW_DEV_SHUTTING_DOWN = BIT5, /* set by core */
 	RTW_DEV_MAX
 };
-
-#define RTW_RATE_MODE_MASK (BIT(7) | BIT(8))
-#define RTW_RATE_MODE_SHIFT 7
-#define RTW_RATE_INDEX_MASK 0x007f
-
-#define RTW_GET_RATE_MODE(_rtw_data_rate) (u16)((_rtw_data_rate & RTW_RATE_MODE_MASK) >> RTW_RATE_MODE_SHIFT)
-#define RTW_GET_RATE_INDEX(_rtw_data_rate) (u16)(_rtw_data_rate & RTW_RATE_INDEX_MASK)
 
 enum rtw_rate_mode {
 	RTW_LEGACY_MODE = 0,
@@ -319,7 +306,6 @@ enum wlan_mode {
 	WLAN_MD_11GNAC  = (WLAN_MD_11G | WLAN_MD_11N | WLAN_MD_11AC),
 	WLAN_MD_24G_MIX = (WLAN_MD_11B | WLAN_MD_11G | WLAN_MD_11N | WLAN_MD_11AC | WLAN_MD_11AX),
 	WLAN_MD_5G_MIX	= (WLAN_MD_11A | WLAN_MD_11N | WLAN_MD_11AC | WLAN_MD_11AX),
-	WLAN_MD_6G_MIX 	= (WLAN_MD_11A | WLAN_MD_11AX),
 	WLAN_MD_MAX	= (WLAN_MD_24G_MIX|WLAN_MD_5G_MIX),
 };
 
@@ -366,13 +352,9 @@ enum channel_width {
  */
 enum chan_offset {
 	CHAN_OFFSET_NO_EXT = 0,	/*SCN - no secondary channel*/
-	CHAN_OFFSET_UPPER = 1,	/*SCA - secondary channel above*/
+	CHAN_OFFSET_UPPER = 1,		/*SCA - secondary channel above*/
 	CHAN_OFFSET_NO_DEF = 2,	/*Reserved*/
-	CHAN_OFFSET_LOWER = 3,	/*SCB - secondary channel below*/
-	CHAN_OFFSET_40M_UPPER = 4,
-	CHAN_OFFSET_40M_LOWER = 5,
-	CHAN_OFFSET_80M_UPPER = 6,
-	CHAN_OFFSET_80M_LOWER = 7,
+	CHAN_OFFSET_LOWER = 3,		/*SCB - secondary channel below*/
 };
 
 enum rf_type {
@@ -559,7 +541,6 @@ enum rtw_edcca_mode {
 	RTW_EDCCA_NORMAL,
 	RTW_EDCCA_ETSI,
 	RTW_EDCCA_JP,
-	RTW_EDCCA_FCC,
 	RTW_EDCCA_MAX
 };
 
@@ -618,7 +599,6 @@ enum rtw_gpio_mode {
 #define RTW_FRAME_TYPE_ASOC_RESP 4
 #define RTW_FRAME_TYPE_REASOC_REQ 8
 #define RTW_FRAME_TYPE_REASOC_RESP 12
-#define RTW_FRAME_TYPE_ACK 53
 #define RTW_IS_ASOC_PKT(_TYPE) \
 	((_TYPE == RTW_FRAME_TYPE_REASOC_RESP) || \
 	 (_TYPE == RTW_FRAME_TYPE_REASOC_REQ) || \
@@ -636,20 +616,5 @@ enum rtw_gpio_mode {
 #define TU 1024 /* Time Unit (TU): 1024 us*/
 
 #define RTW_MAX_ETH_PKT_LEN 1536
-
-#define WL_SEQ_MASK 0xfff /* PHL_RXSC_AMPDU */
-
-#define RX_DESC_PPDU_T_LCCK 0
-#define RX_DESC_PPDU_T_SCCK 1
-#define RX_DESC_PPDU_T_OFDM 2
-#define RX_DESC_PPDU_T_HT 3
-#define RX_DESC_PPDU_T_HTGF 4
-#define RX_DESC_PPDU_T_VHT_SU 5
-#define RX_DESC_PPDU_T_VHT_MU 6
-#define RX_DESC_PPDU_T_HE_SU 7
-#define RX_DESC_PPDU_T_HE_ERSU 8
-#define RX_DESC_PPDU_T_HE_MU 9
-#define RX_DESC_PPDU_T_HE_TB 10
-#define RX_DESC_PPDU_T_UNKNOWN 15
 
 #endif /*_RTW_GENERAL_DEF_H_*/

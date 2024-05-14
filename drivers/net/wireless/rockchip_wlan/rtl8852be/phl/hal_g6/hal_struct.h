@@ -40,14 +40,11 @@ struct hal_info_t;
  * @update_rxbd: the function for updating rx bd for recv packet
  * @notify_rxdone: the function to notify hw rx done
  * @handle_wp_rpt: the function parsing wp report content
- * @query_txch_hwband: which hwband that txch belong to
- * @query_txch_map: fill txch map by band_idx
  */
 struct hal_trx_ops {
-	u8 (*map_hw_tx_chnl)(struct hal_info_t *hal, u16 macid, enum rtw_phl_ring_cat cat, u8 band);
+	u8 (*map_hw_tx_chnl)(u16 macid, enum rtw_phl_ring_cat cat, u8 band);
 	u8 (*query_txch_num)(void);
 	u8 (*query_rxch_num)(void);
-	u32 (*hal_get_wd_len)(struct hal_info_t *hal, struct rtw_xmit_req *tx_req);
 
 #ifdef CONFIG_PCI_HCI
 	enum rtw_hal_status (*init)(struct hal_info_t *hal, u8 *txbd_buf, u8 *rxbd_buf);
@@ -57,9 +54,6 @@ struct hal_trx_ops {
 			    u16 *host_idx, u16 *hw_idx);
 	u16 (*query_rx_res)(struct rtw_hal_com_t *hal_com, u8 dma_ch,
 			    u16 *host_idx, u16 *hw_idx);
-	u16 (*get_rxbd_num)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
-	u16 (*get_rxbuf_num)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
-	u16 (*get_rxbuf_size)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
 	void (*cfg_dma_io)(struct hal_info_t *hal, u8 en);
 	void (*cfg_txdma)(struct hal_info_t *hal, u8 en, u8 dma_ch);
 	void (*cfg_wow_txdma)(struct hal_info_t *hal, u8 en);
@@ -70,9 +64,6 @@ struct hal_trx_ops {
 	u8 (*poll_txdma_idle)(struct hal_info_t *hal);
 	void (*cfg_rsvd_ctrl)(struct hal_info_t *hal);
 	u8 (*qsel_to_tid)(struct hal_info_t *hal, u8 qsel_id, u8 tid_indic);
-
-	u8 (*query_txch_hwband)(u8 dma_ch);
-	void (*query_txch_map)(enum phl_band_idx band, void *ch_map);
 
 	enum rtw_hal_status
 		(*update_wd)(struct hal_info_t *hal, struct rtw_phl_pkt_req *req);
@@ -87,8 +78,7 @@ struct hal_trx_ops {
 
 	u8 (*get_fwcmd_queue_idx)(void);
 
-	u8 (*check_rxrdy)(struct rtw_phl_com_t *phl_com,
-			  struct rtw_rx_buf *rx_buf, u8 dma_ch);
+	u8 (*check_rxrdy)(struct rtw_phl_com_t *phl_com, u8 *rxbuf, u8 dma_ch);
 	enum rtw_hal_status
 		(*handle_rx_buffer)(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal,
@@ -99,15 +89,14 @@ struct hal_trx_ops {
 	enum rtw_hal_status
 		(*update_rxbd)(struct hal_info_t *hal,
 				struct rx_base_desc *rxbd,
-				struct rtw_rx_buf *rx_buf, u8 ch_idx);
+				struct rtw_rx_buf *rx_buf);
 
 	enum rtw_hal_status
 		(*notify_rxdone)(struct hal_info_t *hal,
 				struct rx_base_desc *rxbd, u8 ch, u16 rxcnt);
 
 	u16 (*handle_wp_rpt)(struct hal_info_t *hal, u8 *rp, u16 len,
-			     u8 *sw_retry, u8 *dma_ch, u16 *wp_seq, u8 *mac_id,
-			     u8 *ac_queue, u8 *txsts);
+			     u8 *sw_retry, u8 *dma_ch, u16 *wp_seq, u8 *txsts);
 #endif /*CONFIG_PCI_HCI*/
 
 #ifdef CONFIG_USB_HCI
@@ -150,9 +139,7 @@ struct hal_trx_ops {
 			    u16 *host_idx, u16 *hw_idx);
 	u16 (*query_rx_res)(struct rtw_hal_com_t *hal_com, u8 dma_ch,
 			    u16 *host_idx, u16 *hw_idx);
-	u16 (*get_rxbd_num)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
-	u16 (*get_rxbuf_num)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
-	u16 (*get_rxbuf_size)(struct rtw_hal_com_t *hal_com, u8 dma_ch);
+
 	enum rtw_hal_status
 	(*hal_fill_wd)(struct hal_info_t *hal, struct rtw_xmit_req *tx_req,
 				u8 *wd_buf, u32 *wd_len);
@@ -181,8 +168,7 @@ struct hal_ops_t {
 					struct hal_info_t *hal);
 	void (*init_hal_spec)(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal);
-	void (*init_default_value)(struct hal_info_t *hal);
-	void (*init_int_default_value)(struct hal_info_t *hal, enum rtw_hal_int_set_opt opt);
+	void (*init_default_value)(struct hal_info_t *hal, struct hal_intr_mask_cfg *cfg);
 	u32 (*hal_hci_configure)(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal,
 					struct rtw_ic_info *ic_info);
@@ -201,8 +187,6 @@ struct hal_ops_t {
 					  struct hal_info_t *hal,
 					  char *ic_name,
 					  enum rtw_fw_type fw_type);
-	enum rf_path (*get_path_from_ant_num)(u8 antnum);
-
 #ifdef CONFIG_WOWLAN
 	enum rtw_hal_status (*hal_wow_init)(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal, struct rtw_phl_stainfo_t *sta);
@@ -215,9 +199,6 @@ struct hal_ops_t {
 					struct hal_info_t *hal);
 	enum rtw_hal_status (*hal_mp_deinit)(struct rtw_phl_com_t *phl_com,
 					struct hal_info_t *hal);
-	bool (*hal_mp_path_chk)(struct rtw_phl_com_t *phl_com,
-					u8 ant_tx,
-					u8 cur_phy);
 	/*IO ops*/
 	u32 (*read_macreg)(struct hal_info_t *hal,
 			u32 offset, u32 bit_mask);
@@ -237,7 +218,6 @@ struct hal_ops_t {
 #endif
 
 	/*** interrupt hdl section ***/
-	void (*disable_interrupt_isr)(struct hal_info_t *hal);
 	void (*enable_interrupt)(struct hal_info_t *hal);
 	void (*disable_interrupt)(struct hal_info_t *hal);
 	void (*config_interrupt)(struct hal_info_t *hal, enum rtw_phl_config_int int_mode);
@@ -247,28 +227,21 @@ struct hal_ops_t {
 	u32 (*interrupt_handler)(struct hal_info_t *hal);
 	void (*restore_interrupt)(struct hal_info_t *hal);
 	void (*restore_rx_interrupt)(struct hal_info_t *hal);
-#ifdef PHL_RXSC_ISR
-	enum rtw_hal_status (*check_rpq_isr)(u8 dma_ch, u32 rx_int_array);
-#endif
 
-#ifdef RTW_PHL_BCN
+#ifdef RTW_PHL_BCN //hal_ops_t
 	enum rtw_hal_status (*cfg_bcn)(struct rtw_phl_com_t *phl_com,
 		struct hal_info_t *hal, struct rtw_bcn_entry *bcn_entry);
 	enum rtw_hal_status (*upt_bcn)(struct rtw_phl_com_t *phl_com,
 		struct hal_info_t *hal, struct rtw_bcn_entry *bcn_entry);
 #endif
-#ifdef CONFIG_RTW_MULTI_DEV_MULTI_BAND
-	enum rtw_hal_status (*cfg_share_xstal)(struct hal_info_t *hal,
-					       struct rtw_phl_com_t *phl_com,
-					       bool is_share);
-#endif /* CONFIG_RTW_MULTI_DEV_MULTI_BAND */
 
-	enum rtw_hal_status (*cfg_ppdu_sts)(struct hal_info_t *hal,
-					    struct hal_ppdu_sts_cfg *cfg);
+	enum rtw_hal_status (*pkt_ofld)(struct hal_info_t *hal, u8 *id, u8 op,
+							u8 *pkt, u16 *len);
+	enum rtw_hal_status (*pkt_update_ids)(struct hal_info_t *hal,
+						struct pkt_ofld_entry *entry);
 };
 
 struct hal_info_t {
-	struct rtw_phl_com_t *phl_com;
 	struct rtw_hal_com_t *hal_com;
 	_os_atomic hal_mac_mem;
 
@@ -284,34 +257,19 @@ struct hal_info_t {
 	void *rf;
 	void *btc;
 	void *efuse;
-	u8 monitor_mode[MAX_BAND_NUM]; /* default: 0 */
-};
-
-struct c2h_evt_msg {
-	union {
-		struct rtw_tx_pkt_rpt tx_rpt;
-		#ifdef CONFIG_PHL_TWT
-		struct rtw_phl_twt_wait_anno_rpt twt_anno_rpt;
-		#endif
-		struct rtw_bcn_early_rpt bcn_erly_rpt;
-	} u;
+	enum rtw_rx_fltr_mode rx_fltr_mode;
+	u8 monitor_mode; /* default: 0 */
 };
 
 struct hal_c2h_hdl {
 	u8 cat;
 	u8 cls_min;
 	u8 cls_max;
-	u32 (*c2h_hdl)(void *hal, struct rtw_c2h_info *c2h, struct c2h_evt_msg *c2h_msg);
-	void (*c2h_buf_wb)(void *hal, struct rtw_c2h_info *c2h, u32 evt_id, struct c2h_evt_msg *c2h_msg);
+	u32 (*c2h_hdl)(void *hal, struct rtw_c2h_info *c2h);
 };
 
 
 #ifdef CONFIG_PHL_CHANNEL_INFO
-enum chinfo_ch_mode {
-	CH_INFO_LEGACY_CH = 0,
-	CH_INFO_MIMO_CH = 1,
-	CH_INFO_MAX,
-};
 
 struct chinfo_bbcr_cfg {
 	bool	ch_i_phy0_en;
@@ -323,11 +281,10 @@ struct chinfo_bbcr_cfg {
 	u8	ch_i_blk_start_idx;
 	u8	ch_i_blk_end_idx;
 	u32	ch_i_ele_bitmap;
-	enum chinfo_ch_mode	ch_i_type;
+	bool	ch_i_type;
 	u8	ch_i_seg_len;
 };
 
-/*sync from struct bb_ch_rpt_hdr_info */
 struct ch_rpt_hdr_info {
 	u16 total_len_l; /*header(16byte) + Raw data length(Unit: byte)*/
 	#if (PLATFOM_IS_LITTLE_ENDIAN)
@@ -337,7 +294,6 @@ struct ch_rpt_hdr_info {
 	u8 total_seg_num:7;
 	u8 total_len_m:1;
 	#endif
-
 	u8 avg_noise_pow;
 	#if (PLATFOM_IS_LITTLE_ENDIAN)
 	u8 is_pkt_end:1;
@@ -351,34 +307,27 @@ struct ch_rpt_hdr_info {
 	u8 is_pkt_end:1;
 	#endif
 	u8 segment_size; /*unit (8Byte)*/
-	u8 sts0_evm;
-	u8 seq_num;
+	u8 evm[2];
 };
 
-/*sync from struct bb_phy_info_rpt */
 struct phy_info_rpt {
 	u8	rssi[2];
 	u16	rsvd_0;
 	u8	rssi_avg;
 	#if (PLATFOM_IS_LITTLE_ENDIAN)
 	u8	rxsc:4;
-	u8	sts1_evm_l:4;
-	u8	sts1_evm_m:4;
 	u8	rsvd_1:4;
 	#else
 	u8	rsvd_1:4;
-	u8	sts1_evm_m:4;
-	u8	sts1_evm_l:4;
 	u8	rxsc:4;
 	#endif
-	u8	rsvd_2;
+	u16	rsvd_2;
 };
 
 
 struct ch_info_drv_rpt {
 	u32 raw_data_len;
 	u8 seg_idx_curr;
-	bool get_ch_rpt_success;
 };
 
 #endif /* CONFIG_PHL_CHANNEL_INFO */

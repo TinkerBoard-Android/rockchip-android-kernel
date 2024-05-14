@@ -20,7 +20,7 @@
 #define NO_MACID_ROLE		0xFF
 #define VALID			0x01
 #define INVALID			0x00
-
+#define FORCE_KEYCAM_INDEX_TYPE	0xF0
 struct addr_sec_only_info {
 	u32 dword0;
 	u32 dword1;
@@ -55,11 +55,15 @@ enum HW_SUPPORT_ENC_TYPE {
 	HW_SUPPORT_ENC_TYPE_BIP128 = 0xA,
 };
 
-u32 sec_info_tbl_init(struct mac_ax_adapter *adapter)
+u32 sec_info_tbl_init(struct mac_ax_adapter *adapter, u8 op_mode)
 {
 	u8 i = 0;
-	struct sec_cam_table_t **sec_cam_table =
-		&adapter->hw_info->sec_cam_table;
+	struct sec_cam_table_t **sec_cam_table;
+
+	if (op_mode == SEC_CAM_BACKUP)
+		sec_cam_table = &adapter->hw_info->sec_cam_table_bk;
+	else
+		sec_cam_table = &adapter->hw_info->sec_cam_table;
 
 	/*First time access sec cam , initial sec cam table INVALID  */
 	if ((*sec_cam_table) == NULL) {
@@ -95,10 +99,15 @@ u32 sec_info_tbl_init(struct mac_ax_adapter *adapter)
 	return MACSUCCESS;
 }
 
-u32 free_sec_info_tbl(struct mac_ax_adapter *adapter)
+u32 free_sec_info_tbl(struct mac_ax_adapter *adapter, u8 op_mode)
 {
 	u8 i;
-	struct sec_cam_table_t *sec_cam_table = adapter->hw_info->sec_cam_table;
+	struct sec_cam_table_t *sec_cam_table;
+
+	if (op_mode == SEC_CAM_RESTORE)
+		sec_cam_table = adapter->hw_info->sec_cam_table_bk;
+	else
+		sec_cam_table = adapter->hw_info->sec_cam_table;
 
 	if (!sec_cam_table)
 		return MACSUCCESS;
@@ -114,7 +123,11 @@ u32 free_sec_info_tbl(struct mac_ax_adapter *adapter)
 
 	PLTFM_FREE(sec_cam_table, sizeof(struct sec_cam_table_t));
 
-	adapter->hw_info->sec_cam_table = NULL;
+	if (op_mode == SEC_CAM_RESTORE)
+		adapter->hw_info->sec_cam_table_bk = NULL;
+	else
+		adapter->hw_info->sec_cam_table = NULL;
+
 	return MACSUCCESS;
 }
 
@@ -253,8 +266,8 @@ u32 mac_upd_sec_infotbl(struct mac_ax_adapter *adapter,
 		if (ret != MACSUCCESS)
 			goto fail;
 
-		// Return MACSUCCESS if h2c aggregation is enabled and enqueued successfully.
-		// The H2C shall be sent by mac_h2c_agg_tx.
+		// return MACSUCCESS if h2c aggregation is enabled and enqueued successfully.
+		// H2C shall be sent by mac_h2c_agg_tx.
 		ret = h2c_agg_enqueue(adapter, h2cb);
 		if (ret == MACSUCCESS)
 			return MACSUCCESS;
@@ -308,6 +321,7 @@ u8 check_key_index(u8 addr_cam_sec_mode, u8 key_type, u8 key_index)
 		case SEC_CAM_KEY_TYPE_UNI:
 			if (key_index <= 6)
 				return MACSUCCESS;
+			break;
 		default:
 			break;
 		}
@@ -317,6 +331,7 @@ u8 check_key_index(u8 addr_cam_sec_mode, u8 key_type, u8 key_index)
 		case SEC_CAM_KEY_TYPE_UNI:
 			if (key_index <= 6)
 				return MACSUCCESS;
+			break;
 		default:
 			break;
 		}
@@ -568,23 +583,21 @@ u8 insert_key_to_addr_cam(struct mac_ax_adapter *adapter,
 u32 m_security_cam_hal(struct mac_ax_adapter *adapter,
 		       struct mac_ax_sec_cam_info *sec_cam_info,
 		       u8 mac_id, u8 key_id, u8 key_type,
-		       u8 sec_cam_idx, u8 clear)
+		       u8 sec_cam_idx, u8 opmode)
 {
 	u8 i = 0;
 	struct sec_cam_entry_t *sec_cam_entry = NULL;
-	struct sec_cam_table_t *sec_cam_table =
-		adapter->hw_info->sec_cam_table;
+	struct sec_cam_entry_t *sec_cam_bk_entry = NULL;
+	struct sec_cam_table_t *sec_cam_table = adapter->hw_info->sec_cam_table;
+	struct sec_cam_table_t *sec_cam_table_bk =
+		adapter->hw_info->sec_cam_table_bk;
 
 	if (!sec_cam_table)
 		return MACSUCCESS;
 
-	/* patch for read wrong value from HW*/
-	if (sec_cam_idx >= SEC_CAM_ENTRY_NUM)
-		return MACSUCCESS;
-
 	sec_cam_entry =
 		adapter->hw_info->sec_cam_table->sec_cam_entry[sec_cam_idx];
-	if (clear == 1) {
+	if (opmode == SEC_CAM_CLEAR) {
 		sec_cam_entry->valid = INVALID;
 		sec_cam_entry->mac_id = 0;
 		sec_cam_entry->key_id = 0;
@@ -594,6 +607,29 @@ u32 m_security_cam_hal(struct mac_ax_adapter *adapter,
 		sec_cam_entry->sec_cam_info->spp_mode = 0;
 		for (i = 0; i < 3; i++)
 			sec_cam_entry->sec_cam_info->key[i] = 0;
+
+	} else if (opmode == SEC_CAM_BACKUP) {
+		if (!sec_cam_table_bk)
+			return MACSUCCESS;
+
+		sec_cam_bk_entry = adapter->hw_info->sec_cam_table_bk
+				   ->sec_cam_entry[sec_cam_idx];
+
+		// backup security entry in halmac
+		sec_cam_bk_entry->valid = sec_cam_entry->valid;
+		sec_cam_bk_entry->mac_id = sec_cam_entry->mac_id;
+		sec_cam_bk_entry->key_id = sec_cam_entry->key_id;
+		sec_cam_bk_entry->key_type = sec_cam_entry->key_type;
+		sec_cam_bk_entry->sec_cam_info->type =
+			sec_cam_entry->sec_cam_info->type;
+		sec_cam_bk_entry->sec_cam_info->ext_key =
+			sec_cam_entry->sec_cam_info->ext_key;
+		sec_cam_bk_entry->sec_cam_info->spp_mode =
+			sec_cam_entry->sec_cam_info->spp_mode;
+
+		for (i = 0; i < 4; i++)
+			sec_cam_bk_entry->sec_cam_info->key[i] =
+			sec_cam_entry->sec_cam_info->key[i];
 	} else {
 		if (!sec_cam_info) {
 			sec_cam_entry->valid = VALID;
@@ -647,7 +683,7 @@ u32 disconnect_flush_key(struct mac_ax_adapter *adapter,
 			m_security_cam_hal(adapter, sec_cam_info,
 					   mac_id, sec_ent_keyid[key_index],
 					   key_type, sec_cam_index[key_index],
-					   1);
+					   SEC_CAM_CLEAR);
 		}
 	}
 	return MACSUCCESS;
@@ -687,7 +723,7 @@ u32 mac_sta_del_key(struct mac_ax_adapter *adapter,
 
 	m_security_cam_hal(adapter, NULL,
 			   mac_id, key_id, key_type,
-			   sec_cam_idx, 1);
+			   sec_cam_idx, SEC_CAM_CLEAR);
 
 	return MACSUCCESS;
 }
@@ -709,9 +745,13 @@ u32 mac_sta_add_key(struct mac_ax_adapter *adapter,
 	if (!role)
 		return MACNOROLE;
 
-	ret = decide_sec_cam_index(adapter, &sec_cam_idx);
-	if (ret != MACSUCCESS)
-		return ret;
+	if (sec_cam_info->offset != FORCE_KEYCAM_INDEX_TYPE) {
+		ret = decide_sec_cam_index(adapter, &sec_cam_idx);
+		if (ret != MACSUCCESS)
+			return ret;
+	} else {
+		sec_cam_idx = sec_cam_info->sec_cam_idx;
+	}
 
 	sec_cam_info->sec_cam_idx = sec_cam_idx;
 	sec_cam_info->offset = 0x00;
@@ -730,7 +770,93 @@ u32 mac_sta_add_key(struct mac_ax_adapter *adapter,
 		return ret;
 	m_security_cam_hal(adapter, sec_cam_info,
 			   mac_id, key_id, key_type,
-			   sec_cam_idx, 0);
+			   sec_cam_idx, SEC_CAM_NORMAL);
+
+	return MACSUCCESS;
+}
+
+u32 mac_sta_keycam_backup(struct mac_ax_adapter *adapter, u8 op_mode)
+{
+	u8 sec_cam_idx = 0, i = 0;
+	u32 ret = 0;
+	struct sec_cam_entry_t *s_entry = NULL;
+	struct mac_ax_sec_cam_info sec_cam_info;
+
+	struct sec_cam_table_t *sec_cam_table =
+		adapter->hw_info->sec_cam_table;
+	struct sec_cam_table_t *sec_cam_table_bk =
+		adapter->hw_info->sec_cam_table_bk;
+
+	if (op_mode > SEC_CAM_RESTORE)
+		return MACNOITEM;
+
+	if (op_mode == SEC_CAM_BACKUP) {
+		/*Initial backup sec cam table */
+		ret = sec_info_tbl_init(adapter, SEC_CAM_BACKUP);
+		if (ret != MACSUCCESS) {
+			PLTFM_MSG_ERR("[ERR]sec info tbl backup %d\n", ret);
+			return ret;
+		}
+
+		/*Backup sec cam table valid entry*/
+		for (sec_cam_idx = 0; sec_cam_idx < SEC_CAM_ENTRY_NUM;
+		     sec_cam_idx++) {
+			/* Only search valid entry */
+			if (sec_cam_table->sec_cam_entry[sec_cam_idx]->valid ==
+			    VALID) {
+				m_security_cam_hal(adapter, NULL, 0, 0, 0,
+						   sec_cam_idx, SEC_CAM_BACKUP);
+			}
+		}
+
+		ret = free_sec_info_tbl(adapter, SEC_CAM_NORMAL);
+		if (ret != MACSUCCESS) {
+			PLTFM_MSG_ERR("[ERR]sec info tbl backup %d\n", ret);
+			return ret;
+		}
+
+	} else if (op_mode == SEC_CAM_RESTORE) {
+		ret = sec_info_tbl_init(adapter, SEC_CAM_NORMAL);
+		if (ret != MACSUCCESS) {
+			PLTFM_MSG_ERR("[ERR]sec info tbl backup %d\n", ret);
+			return ret;
+		}
+
+		/*Force sec cam table */
+		for (sec_cam_idx = 0; sec_cam_idx < SEC_CAM_ENTRY_NUM;
+		     sec_cam_idx++) {
+			s_entry = sec_cam_table_bk->sec_cam_entry[sec_cam_idx];
+			PLTFM_MSG_ERR("sec_cam_idx %d\n", sec_cam_idx);
+			/* Only search valid entry */
+			if (s_entry->valid == VALID) {
+				sec_cam_info.offset = FORCE_KEYCAM_INDEX_TYPE;
+				sec_cam_info.sec_cam_idx = sec_cam_idx;
+				sec_cam_info.type =
+					s_entry->sec_cam_info->type;
+				sec_cam_info.ext_key =
+					s_entry->sec_cam_info->ext_key;
+				sec_cam_info.spp_mode =
+					s_entry->sec_cam_info->spp_mode;
+				for (i = 0; i < 4; i++) {
+					sec_cam_info.key[i] =
+					s_entry->sec_cam_info->key[i];
+				}
+
+				mac_sta_add_key(adapter, &sec_cam_info,
+						s_entry->mac_id, s_entry->key_id,
+						s_entry->key_type);
+			}
+		}
+
+		/*Free backup sec cam table */
+		ret = free_sec_info_tbl(adapter, SEC_CAM_RESTORE);
+		if (ret != MACSUCCESS) {
+			PLTFM_MSG_ERR("[ERR]sec info tbl backup %d\n", ret);
+			return ret;
+		}
+	} else {
+		return MACNOITEM;
+	}
 
 	return MACSUCCESS;
 }
@@ -899,11 +1025,9 @@ u32 refresh_security_cam_info(struct mac_ax_adapter *adapter,
 
 		PLTFM_MSG_WARN("%s ind access macid %d start\n", __func__, mac_id);
 		cam_address = addr_idx * addr_cam_size;
-		for (i = 0; i < 10; i++) {
-			dword[i] = mac_sram_dbg_read(adapter, cam_address + (i * 4),
+		for (i = 0; i < 10; i++)
+			dword[i] = mac_sram_dbg_read(adapter, cam_address,
 						     ADDR_CAM_SEL);
-			PLTFM_MSG_WARN("CAMADDR<%x>=%x\n", cam_address, dword[i]);
-		}
 		PLTFM_MSG_WARN("%s ind access macid %d end\n", __func__, mac_id);
 
 		if ((dword[0] & ADDRCAM_VALID) == VALID) {
@@ -953,7 +1077,7 @@ u32 refresh_security_cam_info(struct mac_ax_adapter *adapter,
 	}
 
 	if (hit_flag == INVALID) {
-		PLTFM_MSG_ALWAYS("MACID : %d not exist\n", mac_id);
+		PLTFM_MSG_TRACE("MACID : %d not exist\n", mac_id);
 		return MACNOROLE;
 	}
 
@@ -967,7 +1091,7 @@ u32 refresh_security_cam_info(struct mac_ax_adapter *adapter,
 				m_security_cam_hal(adapter, NULL,
 						   mac_id, DEFAULT_KEYID,
 						   DEFAULT_KEYTYPE,
-						   sec_cam_idx, 1);
+						   sec_cam_idx, SEC_CAM_CLEAR);
 			}
 		}
 	}
@@ -978,58 +1102,20 @@ u32 refresh_security_cam_info(struct mac_ax_adapter *adapter,
 			key_type = check_key_type(sec_ent_mode, key_index);
 			m_security_cam_hal(adapter, NULL,
 					   mac_id, sec_ent_keyid[key_index],
-					   key_type,
-					   key_cam_index[key_index], 0);
+					   key_type, key_cam_index[key_index],
+					   SEC_CAM_NORMAL);
 		}
 	}
 
 	// write back to address cam sec part
 	role = mac_role_srch(adapter, mac_id);
-	if (!role) {
-		PLTFM_MSG_ALWAYS("%s mac_role_srch fail\n", __func__);
+	if (!role)
 		return MACNOROLE;
-	}
 
 	role->info.a_info.sec_ent_valid = key_valid_byte_ori;
 	for (i = 0; i < 7; i++) {
 		role->info.a_info.sec_ent_keyid[i] = sec_ent_keyid[i];
 		role->info.a_info.sec_ent[i] = key_cam_index[i];
-	}
-
-	return MACSUCCESS;
-}
-
-u32 mac_wowlan_secinfo(struct mac_ax_adapter *adapter,
-		       struct mac_ax_sec_iv_info *sec_iv_info)
-{
-	u8 mac_id = 0;
-	u32 ret = 0;
-	struct mac_role_tbl *role = NULL;
-	struct dctl_secinfo_entry_t *dctl_secinfo_entry = NULL;
-	struct dctl_sec_info_t *dctl_sec_info = adapter->hw_info->dctl_sec_info;
-
-	/*check dmac tbl is valid*/
-	if (!dctl_sec_info)
-		return MACNOKEYINDEX;
-
-	mac_id = sec_iv_info->macid;
-	/*check mac_id role is valid*/
-	role = mac_role_srch(adapter, mac_id);
-	if (!role)
-		return MACNOROLE;
-
-	/*get some decide key index info*/
-	dctl_secinfo_entry = dctl_sec_info->dctl_secinfo_entry[mac_id];
-
-	switch (sec_iv_info->opcode) {
-	case SEC_IV_UPD_TYPE_WRITE:
-		break;
-	case SEC_IV_UPD_TYPE_READ:
-		ret = refresh_security_cam_info(adapter, mac_id);
-		break;
-	default:
-
-		break;
 	}
 
 	return MACSUCCESS;

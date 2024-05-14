@@ -1,108 +1,30 @@
-/*
- * SPDX-License-Identifier: BSD-3-Clause
+/******************************************************************************
  *
- * Copyright (c) 2021, Realtek Semiconductor Corp. All rights reserved.
+ * Copyright(c) 2007 - 2020  Realtek Corporation.
  *
- * Redistribution and use in source and binary forms, with or without modification,
- * are permitted provided that the following conditions are met:
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of version 2 of the GNU General Public License as
+ * published by the Free Software Foundation.
  *
- *   * Redistributions of source code must retain the above copyright notice, this
- *     list of conditions and the following disclaimer.
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
  *
- *   * Redistributions in binary form must reproduce the above copyright notice,
- *     this list of conditions and the following disclaimer in the documentation
- *     and/or other materials provided with the distribution.
+ * The full GNU General Public License is included in this distribution in the
+ * file called LICENSE.
  *
- *   * Neither the name of the Realtek nor the names of its contributors may
- *     be used to endorse or promote products derived from this software without
- *     specific prior written permission.
+ * Contact Information:
+ * wlanfae <wlanfae@realtek.com>
+ * Realtek Corporation, No. 2, Innovation Road II, Hsinchu Science Park,
+ * Hsinchu 300, Taiwan.
  *
+ * Larry Finger <Larry.Finger@lwfinger.net>
  *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
- * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
- * ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
- * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
+ *****************************************************************************/
 #include "../halbb_precomp.h"
 
 #ifdef BB_8852B_SUPPORT
-
-
-u8 halbb_ex_cn_report_8852b(struct bb_info *bb)
-{
-	struct bb_cmn_rpt_info	*cmn_rpt = &bb->bb_cmn_rpt_i;
-	struct bb_pkt_cnt_su_info *pkt_cnt = &cmn_rpt->bb_pkt_cnt_su_i;
-	struct bb_physts_acc_info *acc = &cmn_rpt->bb_physts_acc_i;
-	struct bb_physts_avg_info *avg = &cmn_rpt->bb_physts_avg_i;
-	u8 cn_report = 0;
-
-	halbb_set_reg(bb, 0x42a0, BIT(23), 0x1);
-	avg->cn_avg = (u8)HALBB_DIV(acc->cn_avg_acc, pkt_cnt->pkt_cnt_2ss);
-	cn_report = (avg->cn_avg >> 1);
-	BB_DBG(bb, DBG_DBG_API, "[CN_avg] = %d\n", (avg->cn_avg >> 1));
-	return cn_report;
-
-}
-
-u8 halbb_ex_evm_1ss_report_8852b(struct bb_info *bb)
-{
-	struct bb_cmn_rpt_info	*cmn_rpt = &bb->bb_cmn_rpt_i;
-	struct bb_pkt_cnt_su_info *pkt_cnt = &cmn_rpt->bb_pkt_cnt_su_i;
-	struct bb_physts_acc_info *acc = &cmn_rpt->bb_physts_acc_i;
-	struct bb_physts_avg_info *avg = &cmn_rpt->bb_physts_avg_i;
-	u8 evm_1ss_report = 0;
-
-	avg->evm_1ss = (u8)HALBB_DIV(acc->evm_1ss, (pkt_cnt->pkt_cnt_1ss + pkt_cnt->pkt_cnt_ofdm));
-
-	evm_1ss_report = (avg->evm_1ss >> 2);
-
-	BB_DBG(bb, DBG_DBG_API, "[EVM_1ss] = %d\n", evm_1ss_report);
-
-
-	return evm_1ss_report;
-}
-
-u8 halbb_ex_evm_max_report_8852b(struct bb_info *bb)
-{
-	struct bb_cmn_rpt_info	*cmn_rpt = &bb->bb_cmn_rpt_i;
-	struct bb_pkt_cnt_su_info *pkt_cnt = &cmn_rpt->bb_pkt_cnt_su_i;
-	struct bb_physts_acc_info *acc = &cmn_rpt->bb_physts_acc_i;
-	struct bb_physts_avg_info *avg = &cmn_rpt->bb_physts_avg_i;
-	u8 evm_max_report = 0;
-
-	avg->evm_max = (u8)HALBB_DIV(acc->evm_max_acc, pkt_cnt->pkt_cnt_2ss);
-
-	evm_max_report = (avg->evm_max >> 2);
-
-	BB_DBG(bb, DBG_DBG_API, "[EVM_max] = %d\n", evm_max_report);
-
-	return evm_max_report;
-}
-
-u8 halbb_ex_evm_min_report_8852b(struct bb_info *bb)
-{
-	struct bb_cmn_rpt_info	*cmn_rpt = &bb->bb_cmn_rpt_i;
-	struct bb_pkt_cnt_su_info *pkt_cnt = &cmn_rpt->bb_pkt_cnt_su_i;
-	struct bb_physts_acc_info *acc = &cmn_rpt->bb_physts_acc_i;
-	struct bb_physts_avg_info *avg = &cmn_rpt->bb_physts_avg_i;
-	u8 evm_min_report = 0;
-
-	avg->evm_min = (u8)HALBB_DIV(acc->evm_min_acc, pkt_cnt->pkt_cnt_2ss);
-
-	evm_min_report = (avg->evm_min >> 2);
-
-	BB_DBG(bb, DBG_DBG_API, "[EVM_min] = %d\n", evm_min_report);
-
-	return evm_min_report;
-}
-
 
 bool halbb_set_pwr_ul_tb_ofst_8852b(struct bb_info *bb,
 				    s16 pw_ofst, enum phl_phy_idx phy_idx)
@@ -125,98 +47,6 @@ bool halbb_set_pwr_ul_tb_ofst_8852b(struct bb_info *bb,
 	rtw_hal_mac_write_msk_pwr_reg(bb->hal_com, (u8)phy_idx, 0xD290, 0x1f, pw_ofst - 3);
 
 	return true;
-}
-
-bool halbb_lps_info_8852b(struct bb_info *bb, u16 mac_id)
-{
-/*
-	struct bb_h2c_lps_info_8852b *lps_info;
-	u32 *bb_h2c;
-	u8 cmdlen = sizeof(struct bb_h2c_lps_info_8852b);
-	u16 lps_info_len = 0;
-	bool ret_val = true, h2c_done = false;
-	u8 i = 0;
-
-	lps_info = hal_mem_alloc(bb->hal_com, cmdlen);
-
-	bb_h2c = (u32 *)lps_info;
-
-	lps_info->central_ch = bb->phl_sta_info[mac_id]->chandef.center_ch;
-	lps_info->pri_ch = bb->phl_sta_info[mac_id]->chandef.chan;
-	lps_info->bw = (u8)bb->phl_sta_info[mac_id]->chandef.bw;
-	lps_info->band_type = (u8)bb->phl_sta_info[mac_id]->chandef.band;
-
-	ret_val = halbb_fill_h2c_cmd(bb, cmdlen, DM_H2C_FW_LPS_INFO,
-				     HALBB_H2C_DM, bb_h2c);
-
-	hal_mem_free(bb->hal_com, lps_info, cmdlen);
-
-	BB_DBG(bb, DBG_FW_INFO, "LPS info=>h2c start\n");
-
-	while (!h2c_done) {
-		h2c_done = (bool)halbb_get_reg(bb, 0x1e0, BIT(0));
-		halbb_delay_us(bb, 50);
-		i++;
-		if (i > 100) {
-			ret_val = false;
-			break;
-		}
-	}
-
-	BB_DBG(bb, DBG_FW_INFO, "LPS info=>h2c[0]: %x, h2c_done: %d\n", bb_h2c[0], h2c_done);
-
-	// Return h2c_done flag to default
-	halbb_set_reg(bb, 0x1e0, BIT(0), 0);
-
-	BB_DBG(bb, DBG_FW_INFO, "LPS info=>h2c[0]: %x\n", bb_h2c[0]);
-
-	return ret_val;
-*/
-	return true;
-}
-
-void halbb_digital_cfo_comp_8852b(struct bb_info *bb, s32 curr_cfo)
-{
-	struct bb_cfo_trk_cr_info *cr = &bb->bb_cfo_trk_i.bb_cfo_trk_cr_i;
-	struct bb_link_info *bb_link = &bb->bb_link_i;
-	struct bb_cfo_trk_info *cfo_trk = &bb->bb_cfo_trk_i;
-	s32 cfo_avg_312; /*in unit of sub-carrier spacing*/
-	s32 digital_cfo_comp_offset;
-	bool is_positive = IS_GREATER(curr_cfo, 0);
-
-	if (!bb_link->is_linked) {
-		BB_DBG(bb, DBG_CFO_TRK, "[%s] is_linked=%d\n", __func__,
-		       bb_link->is_linked);
-		return;
-	}
-
-	if (curr_cfo == 0) {
-		BB_DBG(bb, DBG_CFO_TRK, "curr_cfo=0\n");
-		return;
-	}
-
-	BB_DBG(bb, DBG_CFO_TRK, "[%s]\n", __func__);
-
-	// For manually fine tune digital cfo
-	digital_cfo_comp_offset = halbb_get_reg(bb, 0x4264, 0x000000FF);
-
-	/*CR{S(12,11} = (CFO_avg{S(12,2)} << 9) / 312.5 = (CFO_avg{S(12,2)} << 10) / 625*/
-	if(is_positive) {
-		cfo_avg_312 = HALBB_DIV(curr_cfo, 625) + digital_cfo_comp_offset;
-	} else {
-		cfo_avg_312 = HALBB_DIV(curr_cfo, 625) - digital_cfo_comp_offset;
-	}
-
-	/*312.5KHz/(2^11) ~ 152Hz per step*/
-	BB_DBG(bb, DBG_CFO_TRK, "[52B] cfo_avg_312 = %d step\n", cfo_avg_312);
-
-	halbb_print_sign_frac_digit(bb, curr_cfo, 32, (cfo_trk->shift4dcfo+2), bb->dbg_buf, HALBB_SNPRINT_SIZE);
-	BB_DBG(bb, DBG_CFO_TRK, "[CFO_DBG] [Digital Comp] cfo: %s KHz\n", bb->dbg_buf);
-
-	halbb_print_sign_frac_digit(bb, cfo_avg_312, 32, 11, bb->dbg_buf, HALBB_SNPRINT_SIZE);
-	BB_DBG(bb, DBG_CFO_TRK, "[CFO_DBG] cfo_avg_312: %s * 312.5KHz\n", bb->dbg_buf);
-
-	halbb_set_reg(bb, cr->r_cfo_comp_seg0_312p5khz, cr->r_cfo_comp_seg0_312p5khz_m, cfo_avg_312);
 }
 
 void halbb_tx_triangular_shap_cfg_8852b(struct bb_info *bb, u8 shape_idx,
@@ -266,18 +96,18 @@ void halbb_bb_reset_8852b(struct bb_info *bb, enum phl_phy_idx phy_idx)
 	BB_DBG(bb, DBG_DBG_API, "%s\n", __func__);
 
 	// === [TSSI protect on] === //
-	halbb_set_reg(bb, 0x58dc, BIT(30) | BIT(31), 0x1);
+	halbb_set_reg(bb, 0x58dc, BIT(30), 0x1);
 	halbb_set_reg(bb, 0x5818, BIT(30), 0x1);
-	halbb_set_reg(bb, 0x78dc, BIT(30) | BIT(31), 0x1);
+	halbb_set_reg(bb, 0x78dc, BIT(30), 0x1);
 	halbb_set_reg(bb, 0x7818, BIT(30), 0x1);
 	// === [BB reset] === //
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 1, phy_idx);
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 0, phy_idx);
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 1, phy_idx);
 	// === [TSSI protect off] === //
-	halbb_set_reg(bb, 0x58dc, BIT(30) | BIT(31), 0x3);
+	halbb_set_reg(bb, 0x58dc, BIT(30), 0x0);
 	halbb_set_reg(bb, 0x5818, BIT(30), 0x0);
-	halbb_set_reg(bb, 0x78dc, BIT(30) | BIT(31), 0x3);
+	halbb_set_reg(bb, 0x78dc, BIT(30), 0x0);
 	halbb_set_reg(bb, 0x7818, BIT(30), 0x0);
 }
 
@@ -307,10 +137,12 @@ void halbb_tssi_cont_en_8852b(struct bb_info *bb, bool en, enum rf_path path)
 
 	BB_DBG(bb, DBG_DBG_API, "%s\n", __func__);
 
-	if (en)
+	if (en) {
 		halbb_set_reg(bb, tssi_trk_man[path], BIT(30), 0x0);
-	else
+		rtw_hal_rf_tssi_scan_ch(bb->hal_com, HW_PHY_0, path);
+	} else {
 		halbb_set_reg(bb, tssi_trk_man[path], BIT(30), 0x1);
+	}
 }
 void halbb_bb_reset_all_8852b(struct bb_info *bb, enum phl_phy_idx phy_idx)
 {
@@ -323,9 +155,9 @@ void halbb_bb_reset_all_8852b(struct bb_info *bb, enum phl_phy_idx phy_idx)
 	// === [BB reset] === //
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 1, phy_idx);
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 0, phy_idx);
-	
 	halbb_set_reg_cmn(bb, 0x1200, BIT(28) | BIT(29) | BIT(30), 0x0, phy_idx);
 	halbb_set_reg_cmn(bb, 0x3200, BIT(28) | BIT(29) | BIT(30), 0x0, phy_idx);
+
 	halbb_set_reg_cmn(bb, 0x704, BIT(1), 1, phy_idx);
 }
 
@@ -476,7 +308,7 @@ u32 halbb_read_rf_reg_8852b(struct bb_info *bb, enum rf_path path, u32 reg_addr,
 	return readback_value;
 }
 
-void halbb_5m_mask_8852b(struct bb_info *bb, u8 pri_ch_idx, enum channel_width bw,
+void halbb_5m_mask_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 			   enum phl_phy_idx phy_idx)
 {
 	bool mask_5m_low = false;
@@ -487,21 +319,21 @@ void halbb_5m_mask_8852b(struct bb_info *bb, u8 pri_ch_idx, enum channel_width b
 			/* Prich=1 : Mask 5M High
 			   Prich=2 : Mask 5M Low */
 			mask_5m_en = true;
-			mask_5m_low = pri_ch_idx == 2 ? true : false;
+			mask_5m_low = pri_ch == 2 ? true : false;
 			break;
 		case CHANNEL_WIDTH_80:
 			/* Prich=3 : Mask 5M High
 			   Prich=4 : Mask 5M Low
 			   Else    : Mask 5M Disable */
-			mask_5m_en = ((pri_ch_idx == 3) || (pri_ch_idx == 4)) ? true : false;
-			mask_5m_low = pri_ch_idx == 4 ? true : false;
+			mask_5m_en = ((pri_ch == 3) || (pri_ch == 4)) ? true : false;
+			mask_5m_low = pri_ch == 4 ? true : false;
 			break;
 		default:
 			mask_5m_en = false;
 			break;
 	}
 
-	BB_DBG(bb, DBG_PHY_CONFIG, "[5M Mask] pri_ch_idx = %d, bw = %d", pri_ch_idx, bw);
+	BB_DBG(bb, DBG_PHY_CONFIG, "[5M Mask] pri_ch = %d, bw = %d", pri_ch, bw);
 
 	if (!mask_5m_en) {
 		halbb_set_reg(bb, 0x46f8, BIT(12), 0x0);
@@ -529,6 +361,36 @@ void halbb_5m_mask_8852b(struct bb_info *bb, u8 pri_ch_idx, enum channel_width b
 		}
 		halbb_set_reg_cmn(bb, 0x4440, BIT(31), 0x1, phy_idx);
 	}
+}
+
+u8 halbb_sco_mapping_8852b(struct bb_info *bb,  u8 central_ch)
+{
+	/*=== SCO compensate : (BIT(0) << 18) / central_ch ===*/
+	if (central_ch == 1)
+		/*=== 2G ===*/
+		return 109;
+	else if (central_ch >= 2 && central_ch <= 6)
+		return 108;
+	else if (central_ch >= 7 && central_ch <= 10)
+		return 107;
+	else if (central_ch >= 11 && central_ch <= 14)
+		return 106;
+	else if (central_ch == 36 || central_ch == 38)
+		return 51;
+	else if (central_ch >= 40 && central_ch <= 58)
+		return 50;
+	else if (central_ch >= 60 && central_ch <= 64)
+		return 49;
+	else if (central_ch == 100 || central_ch == 102)
+		return 48;
+	else if (central_ch >= 104 && central_ch <= 126)
+		return 47;
+	else if (central_ch >= 128 && central_ch <= 151)
+		return 46;
+	else if (central_ch >= 153 && central_ch <= 177)
+		return 45;
+	else
+		return 0;
 }
 
 bool halbb_ctrl_sco_cck_8852b(struct bb_info *bb, u8 pri_ch)
@@ -687,17 +549,15 @@ void halbb_ctrl_btg_8852b(struct bb_info *bb, bool btg)
 	
 	
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
-/*
+
 	if(bb->hal_com->band[0].cur_chandef.band != BAND_ON_24G)
 		return;
-*/
+
 	if (btg) {
 		// Path A
 		halbb_set_reg(bb, 0x4738, BIT(19), 0x1);
 		halbb_set_reg(bb, 0x4738, BIT(22), 0x0);
 		// Path B
-		halbb_set_reg(bb, 0x476c, 0xFF000000, 0x20);
-		halbb_set_reg(bb, 0x4778, 0xFF, 0x30);
 		halbb_set_reg(bb, 0x4AA4, BIT(19), 0x1);
 		halbb_set_reg(bb, 0x4AA4, BIT(22), 0x1);
 		BB_DBG(bb, DBG_PHY_CONFIG, "[BT] Apply BTG Setting\n");
@@ -715,13 +575,11 @@ void halbb_ctrl_btg_8852b(struct bb_info *bb, bool btg)
 		halbb_set_reg(bb, 0x4738, BIT(19), 0x0);
 		halbb_set_reg(bb, 0x4738, BIT(22), 0x0);
 		// Path B
-		halbb_set_reg(bb, 0x476c, 0xFF000000, 0x1a);
-		halbb_set_reg(bb, 0x4778, 0xFF, 0x2a);
 		halbb_set_reg(bb, 0x4AA4, BIT(19), 0x0);
 		halbb_set_reg(bb, 0x4AA4, BIT(22), 0x0);
 		BB_DBG(bb, DBG_PHY_CONFIG, "[BT] Disable BTG Setting\n");
 		// Ignore Grant BT by PMAC Setting
-		halbb_set_reg(bb, 0x980, 0x1e0000, 0xc);
+		halbb_set_reg(bb, 0x980, 0x1e0000, 0x0);
 		BB_DBG(bb, DBG_PHY_CONFIG, "[BT] Ignore Grant BT by PMAC Setting\n");
 		// Reset BT share
 		halbb_set_reg(bb, 0x49C4, BIT(14), 0x0);
@@ -740,97 +598,24 @@ void halbb_ctrl_btc_preagc_8852b(struct bb_info *bb, bool bt_en)
 		// DFIR Corner
 		halbb_set_reg(bb, 0x46D0, BIT(1) | BIT(0), 0x3);
 		halbb_set_reg(bb, 0x4790, BIT(1) | BIT(0), 0x3);
-		
-		// BT trakcing always on
-		halbb_set_reg(bb, 0x4ad4, MASKDWORD, 0xf);
-		halbb_set_reg(bb, 0x4ae0, MASKDWORD, 0xf);
-
-		// LNA6_OP1dB
-		halbb_set_reg(bb, 0x4688, MASKBYTE3, 0x80);
-		halbb_set_reg(bb, 0x476C, MASKBYTE3, 0x80);
-
-		// LNA6_TIA0_1_OP1dB
-		halbb_set_reg(bb, 0x4694, MASKBYTE0, 0x80);
-		halbb_set_reg(bb, 0x4694, MASKBYTE1, 0x80);
-		halbb_set_reg(bb, 0x4778, MASKBYTE0, 0x80);
-		halbb_set_reg(bb, 0x4778, MASKBYTE1, 0x80);
-		
+		// LNA Backoff at Normal
+		halbb_set_reg(bb, 0x46a0, 0x3f, 0x8);
+		halbb_set_reg(bb, 0x49f4, 0x3f, 0x8);
 		// LNA, TIA, ADC backoff at BT TX
-
-		if (bb->ic_sub_type == BB_IC_SUB_TYPE_8852B_8852BP) {
-			halbb_set_reg(bb, 0x4ae4, 0xffffff, 0x787D1E);
-			halbb_set_reg(bb, 0x4aec, 0xffffff, 0x787D1E);
-		} else {
-			halbb_set_reg(bb, 0x4ae4, 0xffffff, 0x780D1E);
-			halbb_set_reg(bb, 0x4aec, 0xffffff, 0x780D1E);
-		}
-
-		// IBADC backoff
-		halbb_set_reg(bb, 0x469c, 0xfc000000, 0x34);
-		halbb_set_reg(bb, 0x49f0, 0xfc000000, 0x34);
-		
+		halbb_set_reg(bb, 0x4ae4, 0xffffff, 0x78899e);
+		halbb_set_reg(bb, 0x4aec, 0xffffff, 0x78899e);
 	} else {
 		// DFIR Corner
 		halbb_set_reg(bb, 0x46D0, BIT(1) | BIT(0), 0x0);
 		halbb_set_reg(bb, 0x4790, BIT(1) | BIT(0), 0x0);
-		
-		// BT trakcing always on
-		halbb_set_reg(bb, 0x4ad4, MASKDWORD, 0x60);
-		halbb_set_reg(bb, 0x4ae0, MASKDWORD, 0x60);
-
-		// LNA6_OP1dB
-		halbb_set_reg(bb, 0x4688, MASKBYTE3, 0x1a);
-		halbb_set_reg(bb, 0x476C, MASKBYTE3, 0x20);
-
-		// LNA6_TIA0_1_OP1dB
-		halbb_set_reg(bb, 0x4694, MASKBYTE0, 0x2a);
-		halbb_set_reg(bb, 0x4694, MASKBYTE1, 0x2a);
-		halbb_set_reg(bb, 0x4778, MASKBYTE0, 0x30);
-		halbb_set_reg(bb, 0x4778, MASKBYTE1, 0x2a);
-
+		// LNA Backoff at Normal
+		halbb_set_reg(bb, 0x46a0, 0x3f, 0x1e);
+		halbb_set_reg(bb, 0x49f4, 0x3f, 0x1e);
 		// LNA, TIA, ADC backoff at BT TX
-		halbb_set_reg(bb, 0x4ae4, 0xffffff, 0x79E99E);
-		halbb_set_reg(bb, 0x4aec, 0xffffff, 0x79E99E);
-
-		// IBADC backoff
-		halbb_set_reg(bb, 0x469c, 0xfc000000, 0x26);
-		halbb_set_reg(bb, 0x49f0, 0xfc000000, 0x26);
-		
+		halbb_set_reg(bb, 0x4ae4, 0xffffff, 0x4d34d2);
+		halbb_set_reg(bb, 0x4aec, 0xffffff, 0x4d34d2);
 	}
 }
-
-bool halbb_spur_location_8852b(struct bb_info *bb, u8 central_ch,
-                               enum channel_width bw, enum band_type band,
-			       u32 *intf)
-{
-        bool rpt = true;
-
-        if (band == BAND_ON_24G) {
-			/*
-                if ((bw == CHANNEL_WIDTH_20) && ((central_ch >= 5) &&
-                    (central_ch <= 8)))
-                        *intf = 2440;
-                else if ((bw == CHANNEL_WIDTH_20) && (central_ch == 13))
-                        *intf = 2480;
-                else if ((bw == CHANNEL_WIDTH_40) && ((central_ch >= 3) &&
-                         (central_ch <= 10)))
-                        *intf = 2440;
-                else
-             */
-                        return false;
-        } else if (band == BAND_ON_5G) {
-                if ((central_ch == 151) || (central_ch == 153) ||
-                    (central_ch == 155) || (central_ch == 163))
-                        *intf = 5760;
-                else
-                        rpt = false;
-        } else {
-                rpt = false;
-        }
-
-        return rpt;
-}
-
 bool halbb_bw_setting_8852b(struct bb_info *bb, enum channel_width bw,
 			    enum rf_path path)
 {
@@ -901,9 +686,7 @@ bool halbb_bw_setting_8852b(struct bb_info *bb, enum channel_width bw,
 bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 			 enum phl_phy_idx phy_idx)
 {
-	u32 rx_path_0 = 0x0;
-  
-  	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
+	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 
 	if (bb->is_disable_phy_api) {
 		BB_DBG(bb, DBG_PHY_CONFIG, "[%s] Disable PHY API\n", __func__);
@@ -918,8 +701,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 		return false;
 	}
 
-	rx_path_0 = halbb_get_reg_cmn(bb, 0x49c4, 0xf,phy_idx);
-
 	/*==== Switch bandwidth ====*/
 	switch (bw) {
 	case CHANNEL_WIDTH_5:
@@ -933,12 +714,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 			halbb_set_reg_cmn(bb, 0x49C4, 0x3000, 0x1, phy_idx);
 			/*Pri ch:[11:8]=0x0 */
 			halbb_set_reg_cmn(bb, 0x49C4, 0xf00, 0x0, phy_idx);
-			/*Set RF mode at 3 */
-			halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x333, phy_idx);
-			halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x333, phy_idx);
-			/*ACI Detect:[16]=0x0 */
-			halbb_set_reg_cmn(bb, 0x4738, 0x10000, 0x0, phy_idx);
-			halbb_set_reg_cmn(bb, 0x4AA4, 0x10000, 0x0, phy_idx);
 		} else if (bw == CHANNEL_WIDTH_10) {
 			/*RF_BW:[31:30]=0x0 */
 			halbb_set_reg_cmn(bb, 0x49C0, 0xC0000000, 0x0,
@@ -947,12 +722,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 			halbb_set_reg_cmn(bb, 0x49C4, 0x3000, 0x2, phy_idx);
 			/*Pri ch:[11:8]=0x0 */
 			halbb_set_reg_cmn(bb, 0x49C4, 0xf00, 0x0, phy_idx);
-			/*Set RF mode at 3 */
-			halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x333, phy_idx);
-			halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x333, phy_idx);
-			/*ACI Detect:[16]=0x0 */
-			halbb_set_reg_cmn(bb, 0x4738, 0x10000, 0x0, phy_idx);
-			halbb_set_reg_cmn(bb, 0x4AA4, 0x10000, 0x0, phy_idx);
 		} else if (bw == CHANNEL_WIDTH_20) {
 			/*RF_BW:[31:30]=0x0 */
 			halbb_set_reg_cmn(bb, 0x49C0, 0xC0000000, 0x0,
@@ -961,12 +730,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 			halbb_set_reg_cmn(bb, 0x49C4, 0x3000, 0x0, phy_idx);
 			/*Pri ch:[11:8]=0x0 */
 			halbb_set_reg_cmn(bb, 0x49C4, 0xf00, 0x0, phy_idx);
-			/*Set RF mode at 3 */
-			halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x333, phy_idx);
-			halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x333, phy_idx);
-			/*ACI Detect:[16]=0x1 */
-			halbb_set_reg_cmn(bb, 0x4738, 0x10000, 0x1, phy_idx);
-			halbb_set_reg_cmn(bb, 0x4AA4, 0x10000, 0x1, phy_idx);
 		}
 
 		break;
@@ -977,9 +740,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 		halbb_set_reg_cmn(bb, 0x49C4, 0x3000, 0x0, phy_idx);
 		/*Pri ch:[11:8] */
 		halbb_set_reg_cmn(bb, 0x49C4, 0xf00, pri_ch, phy_idx);
-		/*Set RF mode at 3 */
-		halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x333, phy_idx);
-		halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x333, phy_idx);
 		/*CCK primary channel */
 		if (pri_ch == 1)
 			halbb_set_reg(bb, 0x237c, BIT(0), 1);
@@ -994,14 +754,6 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 		halbb_set_reg_cmn(bb, 0x49C4, 0x3000, 0x0, phy_idx);
 		/*Pri ch:[11:8] */
 		halbb_set_reg_cmn(bb, 0x49C4, 0xf00, pri_ch, phy_idx);
-		/*Set RF mode at A */
-		if (bb->ic_sub_type == BB_IC_SUB_TYPE_8852B_8852BP){
-			halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x333, phy_idx);
-			halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x333, phy_idx);
-		} else {
-			halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0xaaa, phy_idx);
-			halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0xaaa, phy_idx);
-		}
 
 		break;
 	default:
@@ -1014,12 +766,7 @@ bool halbb_ctrl_bw_8852b(struct bb_info *bb, u8 pri_ch, enum channel_width bw,
 	halbb_bw_setting_8852b(bb, bw, RF_PATH_A);
 	/*============== [Path B] ==============*/
 	halbb_bw_setting_8852b(bb, bw, RF_PATH_B);
-
-	/*============= RF mode (standby) setting for 1R chip =========== */
-	if (rx_path_0 == 0x1)
-		halbb_set_reg_cmn(bb, 0x32ac, 0xfff000, 0x111, phy_idx);
-	else if (rx_path_0 == 0x2)
-		halbb_set_reg_cmn(bb, 0x12ac, 0xfff000, 0x111, phy_idx);
+	
 
 	BB_DBG(bb, DBG_PHY_CONFIG,
 		  "[Switch BW Success] BW: %d for PHY%d\n", bw, phy_idx);
@@ -1032,20 +779,18 @@ bool halbb_ch_setting_8852b(struct bb_info *bb, u8 central_ch, enum rf_path path
 {
 	u32 rf_reg18 = 0;
 
-	//*is_2g_ch = (central_ch <= 14) ? true : false;
+	*is_2g_ch = (central_ch <= 14) ? true : false;
 	//RF_18 R/W already move to RF API
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Success][ch_setting] CH: %d for Path-%d\n",
 	       central_ch, path);
 	return true;
 }
 
-bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch, enum band_type band,
+bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch,
 			 enum phl_phy_idx phy_idx)
 {
-	u8 sco;
-	u16 central_freq;
+	u8 sco_comp;
 	bool is_2g_ch;
-	u8 ch_idx_encoded = 0;
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 
@@ -1054,28 +799,19 @@ bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch, enum band_type band,
 		return true;
 	}
 	/*==== Error handling ====*/
-	if (band != BAND_ON_6G) {
-		if ((central_ch > 14 && central_ch < 36) ||
-			(central_ch > 64 && central_ch < 100) ||
-			(central_ch > 144 && central_ch < 149) ||
-			central_ch > 177 ||
-			central_ch== 0) {
-			BB_WARNING("Invalid CH:%d for PHY%d\n", central_ch,
-				phy_idx);
-			return false;
-			}
-	} else {
-		if (central_ch > 253) {
-			BB_WARNING("Invalid 6G CH:%d for PHY%d\n", central_ch,
-				   phy_idx);
-			return false;
-		}
+	if ((central_ch > 14 && central_ch < 36) ||
+	    (central_ch > 64 && central_ch < 100) ||
+	    (central_ch > 144 && central_ch < 149) ||
+	    central_ch > 177 ||
+	    central_ch== 0) {
+		BB_WARNING("Invalid CH:%d for PHY%d\n", central_ch,
+			   phy_idx);
+		return false;
 	}
 
-	is_2g_ch = (band == BAND_ON_24G) ? true : false;
 	
 	/*============== [Path A] ==============*/
-	//halbb_ch_setting_8852b(bb, central_ch, RF_PATH_A, &is_2g_ch);
+	halbb_ch_setting_8852b(bb, central_ch, RF_PATH_A, &is_2g_ch);
 	//------------- [Mode Sel - Path A] ------------//
 	if (is_2g_ch)
 		halbb_set_reg_cmn(bb, 0x4738, BIT(17), 1, phy_idx); 
@@ -1084,7 +820,7 @@ bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch, enum band_type band,
 
 	/*============== [Path B] ==============*/
 
-	//halbb_ch_setting_8852b(bb, central_ch, RF_PATH_B, &is_2g_ch);
+	halbb_ch_setting_8852b(bb, central_ch, RF_PATH_B, &is_2g_ch);
 	//------------- [Mode Sel - Path B] ------------//
 	if (is_2g_ch)
 		halbb_set_reg_cmn(bb, 0x4AA4, BIT(17), 1, phy_idx); 
@@ -1092,34 +828,28 @@ bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch, enum band_type band,
 		halbb_set_reg_cmn(bb, 0x4AA4, BIT(17), 0, phy_idx);
 
 	/*==== [SCO compensate fc setting] ====*/
-	//sco_comp = halbb_sco_mapping_8852b(bb, central_ch);
-	central_freq = halbb_fc_mapping(bb, band, central_ch);
-
-	/*=== SCO compensate : (BIT(0) << 18) / central_ch ===*/
-	sco = (u8)HALBB_DIV((BIT(0) << 18) + (central_freq / 2), central_freq);
-	halbb_set_reg_cmn(bb, 0x49C0, 0x7f, sco, phy_idx); 
+	sco_comp = halbb_sco_mapping_8852b(bb, central_ch);
+	halbb_set_reg_cmn(bb, 0x49C0, 0x7f, sco_comp, phy_idx); 
 
 	/* === CCK Parameters === */
-	if (band != BAND_ON_6G) {
-		if (central_ch == 14) {
-			halbb_set_reg(bb, 0x2300, 0xffffff, 0x3b13ff);
-			halbb_set_reg(bb, 0x2304, 0xffffff, 0x1c42de);
-			halbb_set_reg(bb, 0x2308, 0xffffff, 0xfdb0ad);
-			halbb_set_reg(bb, 0x230c, 0xffffff, 0xf60f6e);
-			halbb_set_reg(bb, 0x2310, 0xffffff, 0xfd8f92);
-			halbb_set_reg(bb, 0x2314, 0xffffff, 0x2d011);
-			halbb_set_reg(bb, 0x2318, 0xffffff, 0x1c02c);
-			halbb_set_reg(bb, 0x231c, 0xffffff, 0xfff00a);
-		} else {	
-			halbb_set_reg(bb, 0x2300, 0xffffff, 0x3d23ff);
-			halbb_set_reg(bb, 0x2304, 0xffffff, 0x29b354);
-			halbb_set_reg(bb, 0x2308, 0xffffff, 0xfc1c8);
-			halbb_set_reg(bb, 0x230c, 0xffffff, 0xfdb053);
-			halbb_set_reg(bb, 0x2310, 0xffffff, 0xf86f9a);
-			halbb_set_reg(bb, 0x2314, 0xffffff, 0xfaef92);
-			halbb_set_reg(bb, 0x2318, 0xffffff, 0xfe5fcc);
-			halbb_set_reg(bb, 0x231c, 0xffffff, 0xffdff5);
-		}
+	if (central_ch == 14) {
+		halbb_set_reg(bb, 0x2300, 0xffffff, 0x3b13ff);
+		halbb_set_reg(bb, 0x2304, 0xffffff, 0x1c42de);
+		halbb_set_reg(bb, 0x2308, 0xffffff, 0xfdb0ad);
+		halbb_set_reg(bb, 0x230c, 0xffffff, 0xf60f6e);
+		halbb_set_reg(bb, 0x2310, 0xffffff, 0xfd8f92);
+		halbb_set_reg(bb, 0x2314, 0xffffff, 0x2d011);
+		halbb_set_reg(bb, 0x2318, 0xffffff, 0x1c02c);
+		halbb_set_reg(bb, 0x231c, 0xffffff, 0xfff00a);
+	} else {	
+		halbb_set_reg(bb, 0x2300, 0xffffff, 0x3d23ff);
+		halbb_set_reg(bb, 0x2304, 0xffffff, 0x29b354);
+		halbb_set_reg(bb, 0x2308, 0xffffff, 0xfc1c8);
+		halbb_set_reg(bb, 0x230c, 0xffffff, 0xfdb053);
+		halbb_set_reg(bb, 0x2310, 0xffffff, 0xf86f9a);
+		halbb_set_reg(bb, 0x2314, 0xffffff, 0xfaef92);
+		halbb_set_reg(bb, 0x2318, 0xffffff, 0xfe5fcc);
+		halbb_set_reg(bb, 0x231c, 0xffffff, 0xffdff5);
 	}
 	/* === Set Gain Error === */
 	halbb_set_gain_error_8852b(bb, central_ch);
@@ -1127,9 +857,10 @@ bool halbb_ctrl_ch_8852b(struct bb_info *bb, u8 central_ch, enum band_type band,
 	halbb_set_efuse_8852b(bb, central_ch, HW_PHY_0);
 	/* === Set RXSC RPL Comp === */
 	halbb_set_rxsc_rpl_comp_8852b(bb, central_ch);
+
 	/* === Set Ch idx report in phy-sts === */
-	halbb_ch_idx_encode(bb, central_ch, band, &ch_idx_encoded);
-	halbb_set_reg_cmn(bb, 0x0734, 0x0ff0000, ch_idx_encoded, phy_idx);
+	halbb_set_reg_cmn(bb, 0x0734, 0x0ff0000, central_ch, phy_idx);
+	bb->bb_ch_i.rf_central_ch_cfg = central_ch;
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Switch CH Success] CH: %d for PHY%d\n",
 	       central_ch, phy_idx);
@@ -1158,15 +889,16 @@ bool halbb_ctrl_bw_ch_8852b(struct bb_info *bb, u8 pri_ch, u8 central_ch,
 	bool rpt = true;
 	bool cck_en = false;
 	u8 pri_ch_idx = 0;
-	bool is_5g_ch;
+	bool is_2g_ch;
 	
-	is_5g_ch = (band == BAND_ON_5G) ? true : false;
+	is_2g_ch = (band == BAND_ON_24G) ? true : false;
 	/*==== [Set pri_ch idx] ====*/
-	if (band == BAND_ON_24G) {
-#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA	
+	if (central_ch <= 14) {
+#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA
 		/*==== [UL-OFDMA 2x 1p6 Tx WA] ====*/
 		halbb_set_reg(bb, 0x4498, BIT(30), 1);
 #endif
+
 		// === 2G === //
 		switch (bw) {
 		case CHANNEL_WIDTH_20:
@@ -1188,19 +920,18 @@ bool halbb_ctrl_bw_ch_8852b(struct bb_info *bb, u8 pri_ch, u8 central_ch,
 		// === 5G === //
 		switch (bw) {
 		case CHANNEL_WIDTH_20:
-#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA	
+#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA
 			/*==== [UL-OFDMA 2x 1p6 Tx WA] ====*/
 			halbb_set_reg(bb, 0x4498, BIT(30), 1);
 #endif
 			break;
-
 		case CHANNEL_WIDTH_40:
 		case CHANNEL_WIDTH_80:
 			if (pri_ch > central_ch)
 				pri_ch_idx = (pri_ch - central_ch) >> 1;
 			else
 				pri_ch_idx = ((central_ch - pri_ch) >> 1) + 1;
-#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA			
+#ifdef BANDEDGE_FILTER_CFG_FOR_ULOFDMA
 			/*==== [UL-OFDMA 2x 1p6 Tx WA] ====*/
 			halbb_set_reg(bb, 0x4498, BIT(30), 0);
 #endif
@@ -1213,21 +944,18 @@ bool halbb_ctrl_bw_ch_8852b(struct bb_info *bb, u8 pri_ch, u8 central_ch,
 	}
 
 	/*==== [Switch CH] ====*/
-	rpt &= halbb_ctrl_ch_8852b(bb, central_ch, band, phy_idx);
+	rpt &= halbb_ctrl_ch_8852b(bb, central_ch, phy_idx);
 	/*==== [Switch BW] ====*/
 	rpt &= halbb_ctrl_bw_8852b(bb, pri_ch_idx, bw, phy_idx);
 	/*==== [CCK Enable / Disable] ====*/
 	halbb_ctrl_cck_en_8852b(bb, cck_en, phy_idx);
 	/*==== [Spur elimination] ====*/
-	halbb_csi_tone_idx(bb, central_ch, bw, band, phy_idx);
-	if (phy_idx == HW_PHY_0) {
-		/*============== [Path A] ==============*/
-		halbb_nbi_tone_idx(bb, central_ch, pri_ch, bw, band, RF_PATH_A);
-		/*============== [Path B] ==============*/
-		halbb_nbi_tone_idx(bb, central_ch, pri_ch, bw, band, RF_PATH_B);
-	}
-	/*==== BTG setting ===*/
-	if (is_5g_ch){
+		//TBD
+	if (is_2g_ch && ((bb->rx_path == RF_PATH_B) || (bb->rx_path == RF_PATH_AB))){
+		halbb_ctrl_btg_8852b(bb, true);
+	} else if (is_2g_ch && (bb->rx_path == RF_PATH_A)) {
+		halbb_ctrl_btg_8852b(bb, false);
+	} else {
 		// Path A
 		halbb_set_reg(bb, 0x4738, BIT(19), 0x0);
 		halbb_set_reg(bb, 0x4738, BIT(22), 0x0);
@@ -1235,7 +963,7 @@ bool halbb_ctrl_bw_ch_8852b(struct bb_info *bb, u8 pri_ch, u8 central_ch,
 		halbb_set_reg(bb, 0x4AA4, BIT(19), 0x0);
 		halbb_set_reg(bb, 0x4AA4, BIT(22), 0x0);
 		// Ignore Grant BT by PMAC Setting
-		//halbb_set_reg(bb, 0x980, 0x1e0000, 0xf);
+		halbb_set_reg(bb, 0x980, 0x1e0000, 0xf);
 		// Reset BT share
 		halbb_set_reg(bb, 0x49C4, BIT(14), 0x0);
 		halbb_set_reg(bb, 0x49C0, 0x3c00000, 0x0);
@@ -1243,14 +971,10 @@ bool halbb_ctrl_bw_ch_8852b(struct bb_info *bb, u8 pri_ch, u8 central_ch,
 		halbb_set_reg(bb, 0x4420, BIT(31), 0x0);
 		halbb_set_reg(bb, 0xc6c, BIT(21), 0x0);
 	}
-	if (band == BAND_ON_24G)
-		halbb_ctrl_btc_preagc_8852b(bb, bb->bt_en);
-	else
-		halbb_ctrl_btc_preagc_8852b(bb, false);
 
 	/* Dynamic 5M Mask Setting */
-	halbb_5m_mask_8852b(bb, pri_ch_idx, bw, phy_idx);
-	
+	halbb_5m_mask_8852b(bb, pri_ch, bw, phy_idx);
+
 	/*==== [BB reset] ====*/
 	halbb_bb_reset_all_8852b(bb, phy_idx);
 
@@ -1279,7 +1003,6 @@ bool halbb_ctrl_rx_path_8852b(struct bb_info *bb, enum rf_path rx_path)
 		halbb_set_reg(bb, 0xd80, 0x3fc0, 4);
 		halbb_set_reg(bb, 0xd80, BIT(16) | BIT(15) | BIT(14), 0);
 		halbb_set_reg(bb, 0xd80, BIT(25) | BIT(24) | BIT(23), 0);
-
 	} else if (ofdm_rx == RF_PATH_B) {
 		halbb_set_reg(bb, 0x49C4, 0xf, 0x2);
 		/*==== 1rcca ====*/
@@ -1292,7 +1015,6 @@ bool halbb_ctrl_rx_path_8852b(struct bb_info *bb, enum rf_path rx_path)
 		halbb_set_reg(bb, 0xd80, 0x3fc0, 4);
 		halbb_set_reg(bb, 0xd80, BIT(16) | BIT(15) | BIT(14), 0);
 		halbb_set_reg(bb, 0xd80, BIT(25) | BIT(24) | BIT(23), 0);
-
 	} else if (ofdm_rx == RF_PATH_AB) {
 		halbb_set_reg(bb, 0x49C4, 0xf, 0x3);
 		/*==== 1rcca ====*/
@@ -1305,7 +1027,6 @@ bool halbb_ctrl_rx_path_8852b(struct bb_info *bb, enum rf_path rx_path)
 		halbb_set_reg(bb, 0xd80, 0x3fc0, 4);
 		halbb_set_reg(bb, 0xd80, BIT(16) | BIT(15) | BIT(14), 1);
 		halbb_set_reg(bb, 0xd80, BIT(25) | BIT(24) | BIT(23), 1);
-
 	}
 	/*==== [Set Efuse] =====*/
 	halbb_set_efuse_8852b(bb, bb->hal_com->band[0].cur_chandef.center_ch, HW_PHY_0);
@@ -1325,6 +1046,8 @@ bool halbb_ctrl_rx_path_8852b(struct bb_info *bb, enum rf_path rx_path)
 		halbb_set_reg(bb, 0x78dc, BIT(31) | BIT(30), 0x3);
 	}
 
+	/*==== [BB reset] ====*/
+	//halbb_bb_reset_all_8852b(bb, HW_PHY_0);
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Rx Success]RX_en=%x\n", rx_path);
 	return true;
 
@@ -1353,6 +1076,8 @@ bool halbb_ctrl_tx_path_8852b(struct bb_info *bb, enum rf_path tx_path)
 		return false;
 	}
 
+	/*==== [BB reset] ====*/
+	halbb_bb_reset_all_8852b(bb, HW_PHY_0);
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Success] [P-MAC] Tx Path Config\n");
 	return true;
 }
@@ -1376,29 +1101,6 @@ void halbb_ctrl_rf_mode_8852b(struct bb_info *bb,  enum phl_rf_mode mode)
 		halbb_set_reg(bb, 0x32b0, 0xfff, 0x333);
 	}
 	BB_DBG(bb, DBG_PHY_CONFIG, "[RF Mode] Mode = %d", mode);
-}
-
-void halbb_ctrl_rf_mode_rx_path_8852b(struct bb_info *bb,  enum rf_path rx_path)
-{
-
-	// Rx RF mode config (1R & 2R)
-	if (rx_path == RF_PATH_A) {
-		halbb_set_reg(bb, 0x12ac, 0xfffffff0, 0x1233312);
-		halbb_set_reg(bb, 0x12b0, 0xfff, 0x333);
-		halbb_set_reg(bb, 0x32ac, 0xfffffff0, 0x1111111);
-		halbb_set_reg(bb, 0x32b0, 0xfff, 0x111);
-	} else if (rx_path == RF_PATH_B) {
-		halbb_set_reg(bb, 0x12ac, 0xfffffff0, 0x1111111);
-		halbb_set_reg(bb, 0x12b0, 0xfff, 0x111);
-		halbb_set_reg(bb, 0x32ac, 0xfffffff0, 0x1233312);
-		halbb_set_reg(bb, 0x32b0, 0xfff, 0x333);
-	} else if (rx_path == RF_PATH_AB) {
-		halbb_set_reg(bb, 0x12ac, 0xfffffff0, 0x1233312);
-		halbb_set_reg(bb, 0x12b0, 0xfff, 0x333);
-		halbb_set_reg(bb, 0x32ac, 0xfffffff0, 0x1233312);
-		halbb_set_reg(bb, 0x32b0, 0xfff, 0x333);
-	}
-
 }
 
 u16 halbb_cfg_cmac_tx_ant_8852b(struct bb_info *bb, enum rf_path tx_path)
@@ -1435,9 +1137,6 @@ void halbb_ctrl_trx_path_8852b(struct bb_info *bb, enum rf_path tx_path,
 	// Rx Config
 	halbb_ctrl_rx_path_8852b(bb, rx_path);
 
-	// RF mode config
-	halbb_ctrl_rf_mode_rx_path_8852b(bb, rx_path);
-	
 	if ((rx_nss > 2) || (tx_nss > 2)) {
 		BB_WARNING("[Invalid Nss]Tx Nss: %d, Rx Nss: %d\n", tx_nss,
 			   rx_nss);
@@ -1658,10 +1357,6 @@ void halbb_backup_info_8852b(struct bb_info *bb, enum phl_phy_idx phy_idx)
 	/*==== This Backup info is for RF TSSI calibration =====*/
 	bb->bb_cmn_backup_i.cur_tx_path = (u8)halbb_get_reg_cmn(bb, 0x458c, 0xf0000000, phy_idx);
 	bb->bb_cmn_backup_i.cur_rx_path = (u8)halbb_get_reg_cmn(bb, 0x49c4, 0xf, phy_idx);
-	bb->bb_cmn_backup_i.cur_rfmode_a_12ac= (u32)halbb_get_reg_cmn(bb, 0x12ac, MASKDWORD, phy_idx);
-	bb->bb_cmn_backup_i.cur_rfmode_a_12b0= (u32)halbb_get_reg_cmn(bb, 0x12b0, MASKDWORD, phy_idx);
-	bb->bb_cmn_backup_i.cur_rfmode_b_32ac= (u32)halbb_get_reg_cmn(bb, 0x32ac, MASKDWORD, phy_idx);
-	bb->bb_cmn_backup_i.cur_rfmode_b_32b0= (u32)halbb_get_reg_cmn(bb, 0x32b0, MASKDWORD, phy_idx);
 	bb->bb_cmn_backup_i.cur_tx_pwr = halbb_get_txpwr_dbm_8852b(bb, phy_idx);
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Backup Info] [PHY%d] Tx path = %x\n", phy_idx, bb->bb_cmn_backup_i.cur_tx_path);
@@ -1678,10 +1373,6 @@ void halbb_restore_info_8852b(struct bb_info *bb, enum phl_phy_idx phy_idx)
 		halbb_set_reg(bb, 0x45B4, 0x1e0000, 0x0);
 	}
 	halbb_set_reg_cmn(bb, 0x49c4, 0xf, bb->bb_cmn_backup_i.cur_rx_path, phy_idx);
-	halbb_set_reg_cmn(bb, 0x12ac, MASKDWORD, bb->bb_cmn_backup_i.cur_rfmode_a_12ac, phy_idx);
-	halbb_set_reg_cmn(bb, 0x12b0, MASKDWORD, bb->bb_cmn_backup_i.cur_rfmode_a_12b0, phy_idx);
-	halbb_set_reg_cmn(bb, 0x32ac, MASKDWORD, bb->bb_cmn_backup_i.cur_rfmode_b_32ac, phy_idx);
-	halbb_set_reg_cmn(bb, 0x32b0, MASKDWORD, bb->bb_cmn_backup_i.cur_rfmode_b_32b0, phy_idx);
 	halbb_set_txpwr_dbm_8852b(bb, bb->bb_cmn_backup_i.cur_tx_pwr, phy_idx);
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Restore Info] [PHY%d] Tx path = %x\n", phy_idx, bb->bb_cmn_backup_i.cur_tx_path);
@@ -1867,18 +1558,13 @@ void halbb_dump_bb_reg_8852b(struct bb_info *bb, u32 *_used, char *output,
 				  {0x1200, 0x13FC},
 				  {0x1700, 0x20FC},
 				  {0x2200, 0x24FC},
+				  {0x2600, 0x2DFC},
 				  {0x3000, 0x30FC},
 				  {0x3200, 0x33FC},
 				  {0x3900, 0x4FFC},
-				  {0x5600, 0x56FC},
-				  {0x5800, 0x5CFC},
-				  {0x7600, 0x76FC},
-				  {0x7800, 0x7CFC},
-				  {0xC000, 0xC1FC}};
-	u32 bb_wrapper_table[][2] = {{0xd200, 0xd6fc}};
+				  {0x5800, 0x6FFC},
+				  {0x7800, 0x7FFC}};
 	u32 table_len = sizeof(dump_cr_table)/(sizeof(u32) * 2);
-	u32 bb_wrapper_len = sizeof(bb_wrapper_table)/(sizeof(u32) * 2);
-	u32 reg_val = 0;
 
 	BB_TRACE("BBCR: dump all ==>\n");
 	BB_TRACE("table_len=%d\n", table_len);
@@ -1905,22 +1591,6 @@ void halbb_dump_bb_reg_8852b(struct bb_info *bb, u32 *_used, char *output,
 			else
 				BB_TRACE("0x%04x 0x%08x\n",
 					 addr, halbb_get_reg(bb, addr, MASKDWORD));
-		}
-	}
-
-	BB_TRACE1(bb, "BB Wrapper[0]\n ======================================>");
-
-	for (i = 0; i < bb_wrapper_len; i ++) {
-		cr_start = bb_wrapper_table[i][0];
-		cr_end = bb_wrapper_table[i][1];
-		for (addr = cr_start; addr <= cr_end; addr += 4) {
-			rtw_hal_mac_get_pwr_reg(bb->hal_com, 0, addr, &reg_val);
-
-			if (dump_2_buff)
-				BB_DBG_VAST(*_out_len, *_used, output + *_used, *_out_len - *_used,
-					    "0x%04x 0x%08x\n", addr, reg_val);
-			else
-				BB_TRACE1(bb, "0x%04x 0x%08x\n", addr, reg_val);
 		}
 	}
 }
@@ -1981,7 +1651,7 @@ void halbb_physts_brk_fail_pkt_rpt_8852b(struct bb_info *bb, bool enable,
 {
 	u32 val32 = (enable) ? 0 : 0x3;
 
-	halbb_set_reg_cmn(bb, 0x0738, 0xC, val32, phy_idx);
+	halbb_set_reg_cmn(bb, 0x0738, 0xC, 0x3, phy_idx);
 }
 
 bool halbb_rf_write_bb_reg_8852b(struct bb_info *bb, u32 addr, u32 mask, u32 data)
@@ -2032,63 +1702,24 @@ s8 halbb_efuse_exchange_8852b(struct bb_info *bb, u8 value,
 	return tmp;
 }
 
-void halbb_ext_loss_avg_update_8852b(struct bb_info *bb)
-{
-	struct bb_ch_info *ch = &bb->bb_ch_i;
-	struct bb_edcca_info *bb_edcca = &bb->bb_edcca_i;
-	struct bb_edcca_cr_info *cr = &bb->bb_edcca_i.bb_edcca_cr_i;
-	u64 tmp_linear = 0;
-
-	if (ch->ext_loss[0] == ch->ext_loss[1]) {
-		ch->ext_loss_avg = ch->ext_loss[0];
-	} else {
-		/* avg(a_db, b_db) = 10*log10((10^(a_db/10)+10^(b_db/10))/2) =*/
-		/* 10*log10((10^((a_db - b_db)/10)+1)/2)+b_db*/
-		/* a_db > b_db => a_db - b_db > 0*/
-		tmp_linear = halbb_db_2_linear((u32)DIFF_2(ch->ext_loss[0], ch->ext_loss[1])) + 1;
-		tmp_linear = tmp_linear >> 1;
-		tmp_linear = (tmp_linear + (1 << (FRAC_BITS - 1))) >> FRAC_BITS;
-		ch->ext_loss_avg = (s8)halbb_convert_to_db(tmp_linear);
-		ch->ext_loss_avg += MIN_2(ch->ext_loss[0], ch->ext_loss[1]);
-	}
-
-	/*edcca loss compensation*/
-	bb_edcca->pwrofst = MAX_2(((ch->ext_loss_avg + 2) / 4) + 16,
-				  EDCCA_PWROFST_DEFAULT);
-
-	halbb_set_reg(bb, cr->r_pwrofst, cr->r_pwrofst_m, bb_edcca->pwrofst);
-
-	BB_DBG(bb, DBG_PHY_CONFIG,
-	       "[Ext loss] path{avg, a, b}={%d, %d, %d}(0.25dB), edcca_pwrofst = %d dB\n",
-	       ch->ext_loss_avg, bb->bb_ch_i.ext_loss[RF_PATH_A],
-	       bb->bb_ch_i.ext_loss[RF_PATH_B], bb_edcca->pwrofst - 16);
-}
-
-void halbb_get_efuse_ofst_init_8852b(struct bb_info *bb)
-{
-	struct bb_efuse_info *gain = &bb->bb_efuse_i;
-	u8 tmp_ofst;
-
-	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
-
-	tmp_ofst = (u8)halbb_get_reg(bb, 0x49B0, 0xff);
-	bb->bb_efuse_i.efuse_ofst[HW_PHY_0] = (s8)halbb_cnvrt_2_sign(tmp_ofst, 8);
-	tmp_ofst = (u8)halbb_get_reg(bb, 0x4A00, 0xff);
-	bb->bb_efuse_i.efuse_ofst_tb[HW_PHY_0] = (s8)halbb_cnvrt_2_sign(tmp_ofst, 8);
-}
-
 void halbb_get_normal_efuse_init_8852b(struct bb_info *bb)
 {
 	struct bb_efuse_info *gain = &bb->bb_efuse_i;
 	u8 tmp;
+	u8 tmp_ofst;
 	u32 check_tmp = 0, i, j;
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 
+	tmp_ofst = (u8)halbb_get_reg(bb, 0x49B0, 0xff);
+	bb->bb_efuse_i.efuse_ofst = (s8)halbb_cnvrt_2_sign(tmp_ofst, 8);
+	tmp_ofst = (u8)halbb_get_reg(bb, 0x4A00, 0xff);
+	bb->bb_efuse_i.efuse_ofst_tb = (s8)halbb_cnvrt_2_sign(tmp_ofst, 8);
+
 	halbb_efuse_get_info(bb, EFUSE_INFO_RF_RX_GAIN_K_A_2G_CCK, &tmp, 1);
 	gain->gain_offset[RF_PATH_A][0] = halbb_efuse_exchange_8852b(bb, tmp, HIGH_MASK);
 	gain->gain_offset[RF_PATH_B][0] = halbb_efuse_exchange_8852b(bb, tmp, LOW_MASK);
-
+	
 	halbb_efuse_get_info(bb, EFUSE_INFO_RF_RX_GAIN_K_A_2G_OFMD, &tmp, 1);
 	gain->gain_offset[RF_PATH_A][1] = halbb_efuse_exchange_8852b(bb, tmp, HIGH_MASK);
 	gain->gain_offset[RF_PATH_B][1] = halbb_efuse_exchange_8852b(bb, tmp, LOW_MASK);
@@ -2222,46 +1853,30 @@ void halbb_set_efuse_8852b(struct bb_info *bb, u8 central_ch, enum phl_phy_idx p
 	u8 band;
 	u8 gain_val = 0;
 	s32 hidden_efuse = 0, normal_efuse = 0, normal_efuse_cck = 0;
-	s32 normal_efuse_a = 0, normal_efuse_b = 0;
 	s32 tmp = 0;
 	u8 path = 0;
 	u32 gain_err_addr[2] = {0x4ACC, 0x4AD8}; //Wait for Bcut Def
-	u32 rssi_ofst_addr[2] = {0x4694, 0x4778};
-
+	
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 	
 	// 2G Band: (0)
 	// 5G Band: (1):Low, (2): Mid, (3):High
-	if (bb->hal_com->band[0].cur_chandef.band != BAND_ON_6G) {
-		if (central_ch >= 0 && central_ch <= 14)
-			band = 0;
-		else if (central_ch >= 36 && central_ch <= 64)
-			band = 1;
-		else if (central_ch >= 100 && central_ch <= 144)
-			band = 2;
-		else if (central_ch >= 149 && central_ch <= 177)
-			band = 3;
-		else
-			band = 0;
-	} else {
-		if (central_ch >=1 && central_ch <= 61)
-			band = 4;
-		else if (central_ch >= 65 && central_ch <= 125)
-			band = 5;
-		else if (central_ch >= 129 && central_ch <= 189)
-			band = 6;
-		else if (central_ch >= 193 && central_ch <= 233)
-			band = 7;
-		else
-			band = 4;
-	}
+	if (central_ch >= 0 && central_ch <= 14)
+		band = 0;
+	else if (central_ch >= 36 && central_ch <= 64)
+		band = 1;
+	else if (central_ch >= 100 && central_ch <= 144)
+		band = 2;
+	else if (central_ch >= 149 && central_ch <= 177)
+		band = 3;
+	else
+		band = 0;
 
 	// === [Set hidden efuse] === //
 	if (bb->bb_efuse_i.hidden_efuse_check) {
 		for (path = RF_PATH_A; path < BB_PATH_MAX_8852B; path++) {
 			gain_val = bb->bb_efuse_i.gain_cs[path][band] << 2;
-			halbb_set_reg(bb, gain_err_addr[path], 0xff, gain_val);
-			
+			halbb_set_reg(bb, gain_err_addr[path], 0xff, gain_val);	
 		}
 		BB_DBG(bb, DBG_PHY_CONFIG, "[Efuse] Hidden efuse dynamic setting!!\n");
 		
@@ -2271,24 +1886,6 @@ void halbb_set_efuse_8852b(struct bb_info *bb, u8 central_ch, enum phl_phy_idx p
 
 	// === [Set normal efuse] === //
 	if (bb->bb_efuse_i.normal_efuse_check) {
-		/*r_g_offset*/
-		normal_efuse_a = (-1) * bb->bb_efuse_i.gain_offset[RF_PATH_A][band + 1];
-		normal_efuse_b = (-1) * bb->bb_efuse_i.gain_offset[RF_PATH_B][band + 1];
-		BB_DBG(bb, DBG_PHY_CONFIG,
-		       "[Normal Efuse] normal_efuse_a=0x%x, normal_efuse_b=0x%x, efuse_ofst0x%x\n",
-		       normal_efuse_a, normal_efuse_b,
-		       bb->bb_efuse_i.efuse_ofst[HW_PHY_0]);
-		tmp = (-1) * ((normal_efuse_a << 2) + (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >> 2));
-		halbb_set_reg(bb, rssi_ofst_addr[RF_PATH_A], 0xff0000, (tmp & 0xff));
-		BB_DBG(bb, DBG_PHY_CONFIG,
-		       "[RSSI] addr=0x%x, bitmask=0xff0000, val=0x%x\n",
-		       rssi_ofst_addr[RF_PATH_A], tmp);
-		tmp = (-1) * ((normal_efuse_b << 2) + (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >> 2));
-		halbb_set_reg(bb, rssi_ofst_addr[RF_PATH_B], 0xff0000, (tmp & 0xff));
-		BB_DBG(bb, DBG_PHY_CONFIG,
-		       "[RSSI] addr=0x%x, bitmask=0xff0000, val=0x%x\n",
-		       rssi_ofst_addr[RF_PATH_B], tmp);
-
 		if ((bb->rx_path == RF_PATH_A) || (bb->rx_path == RF_PATH_AB)) {
 			normal_efuse = bb->bb_efuse_i.gain_offset[RF_PATH_A][band + 1];
 			normal_efuse_cck = bb->bb_efuse_i.gain_offset[RF_PATH_A][0];
@@ -2301,32 +1898,20 @@ void halbb_set_efuse_8852b(struct bb_info *bb, u8 central_ch, enum phl_phy_idx p
 
 		// OFDM normal efuse
 		// r_1_rpl_bias_comp
-		tmp = (normal_efuse << 4) + bb->bb_efuse_i.efuse_ofst[HW_PHY_0];
+		tmp = (normal_efuse << 4) + bb->bb_efuse_i.efuse_ofst;
 		halbb_set_reg_cmn(bb, 0x49B0, 0xff, (tmp & 0xff), phy_idx);
 		// r_tb_rssi_bias_comp
-		tmp = (normal_efuse << 4) + bb->bb_efuse_i.efuse_ofst_tb[HW_PHY_0];
+		tmp = (normal_efuse << 4) + bb->bb_efuse_i.efuse_ofst_tb;
 		halbb_set_reg_cmn(bb, 0x4A00, 0xff, (tmp & 0xff), phy_idx);	
 		// CCK normal efuse
 		if (band == 0) {
-			tmp = (normal_efuse_cck << 3) + (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >>1);
+			tmp = (normal_efuse_cck << 3) + (bb->bb_efuse_i.efuse_ofst >>1);
 			halbb_set_reg(bb, 0x23ac, 0x7f, (tmp & 0x7f));
 		}
-
-		/*ext_loss*/
-		bb->bb_ch_i.ext_loss[RF_PATH_A] = (s8)((normal_efuse_a << 2) +
-						       (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >> 2));
-		bb->bb_ch_i.ext_loss[RF_PATH_B] = (s8)((normal_efuse_b << 2) +
-						       (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >> 2));
-
 		BB_DBG(bb, DBG_PHY_CONFIG, "[Efuse] Normal efuse dynamic setting!!\n");
 	} else {
-		/*ext_loss*/
-		bb->bb_ch_i.ext_loss[RF_PATH_A] = 0;
-		bb->bb_ch_i.ext_loss[RF_PATH_B] = 0;
 		BB_DBG(bb, DBG_PHY_CONFIG, "[Efuse] Values of normal efuse are all 0xff, bypass dynamic setting!!\n");
 	}
-
-	halbb_ext_loss_avg_update_8852b(bb);
 }
 
 void halbb_set_gain_error_8852b(struct bb_info *bb, u8 central_ch)
@@ -2360,34 +1945,20 @@ void halbb_set_gain_error_8852b(struct bb_info *bb, u8 central_ch)
 
 	// 2G Band: (0)
 	// 5G Band: (1):Low, (2): Mid, (3):High
-	// 6G Band: (4):Low, (5): Mid, (6):High 7:(Ultra_High)
-	if (bb->hal_com->band[0].cur_chandef.band != BAND_ON_6G) {
-		if (central_ch >= 0 && central_ch <= 14)
-			band = 0;
-		else if (central_ch >= 36 && central_ch <= 64)
-			band = 1;
-		else if (central_ch >= 100 && central_ch <= 144)
-			band = 2;
-		else if (central_ch >= 149 && central_ch <= 177)
-			band = 3;
-		else
-			band = 0;
-	} else {
-		if (central_ch >=1 && central_ch <= 61)
-			band = 4;
-		else if (central_ch >= 65 && central_ch <= 125)
-			band = 5;
-		else if (central_ch >= 129 && central_ch <= 189)
-			band = 6;
-		else if (central_ch >= 193 && central_ch <= 233)
-			band = 7;
-		else
-			band = 4;
-	}
+	if (central_ch >= 0 && central_ch <= 14)
+		band = 0;
+	else if (central_ch >= 36 && central_ch <= 64)
+		band = 1;
+	else if (central_ch >= 100 && central_ch <= 144)
+		band = 2;
+	else if (central_ch >= 149 && central_ch <= 177)
+		band = 3;
+	else
+		band = 0;
 
 	for (path = RF_PATH_A; path < BB_PATH_MAX_8852B; path++) {
 		for (lna_idx = 0; lna_idx < 7; lna_idx++) {
-			if (band == 0) {
+			if (central_ch >= 0 && central_ch <= 14) {
 				tmp = gain->lna_gain[band][path][lna_idx];
 				halbb_set_reg(bb, lna_gain_g[path][lna_idx], lna_gain_mask[lna_idx], tmp);
 			} else {
@@ -2397,7 +1968,7 @@ void halbb_set_gain_error_8852b(struct bb_info *bb, u8 central_ch)
 		}
 			
 		for (tia_idx = 0; tia_idx < 2; tia_idx++) {
-			if (band == 0) {
+			if (central_ch >= 0 && central_ch <= 14) {
 				tmp = gain->tia_gain[band][path][tia_idx];
 				halbb_set_reg(bb, tia_gain_g[path][tia_idx], tia_gain_mask[tia_idx], tmp);
 			} else {
@@ -2427,28 +1998,16 @@ void halbb_set_rxsc_rpl_comp_8852b(struct bb_info *bb, u8 central_ch)
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 
-	if (bb->hal_com->band[0].cur_chandef.band != BAND_ON_6G) {
-		if (central_ch >= 0 && central_ch <= 14)
-			band = 0;
-		else if (central_ch >= 36 && central_ch <= 64)
-			band = 1;
-		else if (central_ch >= 100 && central_ch <= 144)
-			band = 2;
-		else if (central_ch >= 149 && central_ch <= 177)
-			band = 3;
-		else
-			band = 0;
+	if (central_ch >= 0 && central_ch <= 14) {
+		band = 0;
+	} else if (central_ch >= 36 && central_ch <= 64) {
+		band = 1;
+	} else if (central_ch >= 100 && central_ch <= 144) {
+		band = 2;
+	} else if (central_ch >= 149 && central_ch <= 177) {
+		band = 3;
 	} else {
-		if (central_ch >=1 && central_ch <= 61)
-			band = 4;
-		else if (central_ch >= 65 && central_ch <= 125)
-			band = 5;
-		else if (central_ch >= 129 && central_ch <= 189)
-			band = 6;
-		else if (central_ch >= 193 && central_ch <= 233)
-			band = 7;
-		else
-			band = 4;
+		band = 0;
 	}
 	//20M RPL
 	bw20_avg = (gain->rpl_ofst_20[band][RF_PATH_A] +
@@ -2489,6 +2048,7 @@ void halbb_set_rxsc_rpl_comp_8852b(struct bb_info *bb, u8 central_ch)
 		      gain->rpl_ofst_80[band][RF_PATH_B][9]) >> 1;
 	tmp_val3 |= (((u32)bw80_avg_9 & 0xff) << 24);
 
+
 	BB_DBG(bb, DBG_PHY_CONFIG, "[20M RPL] gain ofst = 0x%2x\n",
 		bw20_avg&0xff);
 	BB_DBG(bb, DBG_PHY_CONFIG, "[40M RPL] gain ofst = 0x%2x, 0x%2x, 0x%2x\n",
@@ -2522,11 +2082,11 @@ void halbb_normal_efuse_verify_8852b(struct bb_info *bb, s8 rx_gain_offset,
 
 	// === [Set normal efuse] === //
 	// r_1_rpl_bias_comp
-	tmp = (rx_gain_offset << 4) + bb->bb_efuse_i.efuse_ofst[HW_PHY_0];
+	tmp = (rx_gain_offset << 4) + bb->bb_efuse_i.efuse_ofst;
 	halbb_set_reg_cmn(bb, 0x49B0, 0xff, (tmp & 0xff), phy_idx);
 	// r_tb_rssi_bias_comp
-	tmp = (rx_gain_offset << 4) + bb->bb_efuse_i.efuse_ofst_tb[HW_PHY_0];
-	halbb_set_reg_cmn(bb, 0x4A00, 0xff, (bb->bb_efuse_i.efuse_ofst_tb[HW_PHY_0] & 0xff), phy_idx);
+	tmp = (rx_gain_offset << 4) + bb->bb_efuse_i.efuse_ofst_tb;
+	halbb_set_reg_cmn(bb, 0x4A00, 0xff, (bb->bb_efuse_i.efuse_ofst_tb & 0xff), phy_idx);
 	
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Normal Efuse] 0x49B0[7:0] = 0x%x\n",
 		halbb_get_reg(bb, 0x49B0, 0xff));
@@ -2544,7 +2104,7 @@ void halbb_normal_efuse_verify_cck_8852b(struct bb_info *bb, s8 rx_gain_offset,
 	BB_DBG(bb, DBG_PHY_CONFIG, "<====== %s ======>\n", __func__);
 
 	rx_gain_offset *= (-1);
-	tmp = (rx_gain_offset << 3) + (bb->bb_efuse_i.efuse_ofst[HW_PHY_0] >>1);
+	tmp = (rx_gain_offset << 3) + (bb->bb_efuse_i.efuse_ofst >>1);
 	halbb_set_reg(bb, 0x23ac, 0x7f, (tmp & 0x7f));
 
 	BB_DBG(bb, DBG_PHY_CONFIG, "[Normal Efuse] gain ofst = 0x%x\n",

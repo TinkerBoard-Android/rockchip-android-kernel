@@ -35,37 +35,6 @@
 
 #define BACAM_RST_DLY_CNT	1000
 #define BACAM_RST_DLY_US	1
-
-#define NTX_PATH_EN_MASK 0xf
-#define PATH_MAP_MASK 0x3
-
-#define BACAM_MIN_ENTRY_IDX_8852B 0
-#define BACAM_MAX_ENTRY_IDX_8852B 1
-#define BACAM_MIN_ENTRY_IDX_8851B 0
-#define BACAM_MAX_ENTRY_IDX_8851B 1
-#define BACAM_MAX_ENTRY_IDX_8851E 15
-#define BACAM_INIT_TMP_ENTRY_NUM_STA_8851E 2
-#define BACAM_MAX_ENTRY_IDX_8852C 15
-#define BACAM_INIT_TMP_ENTRY_NUM_AP_8852C 8
-#define BACAM_INIT_TMP_ENTRY_NUM_STA_8852C 2
-#define BACAM_MAX_ENTRY_IDX_8192XB 15
-#define BACAM_INIT_TMP_ENTRY_NUM_AP_8192XB 8
-#define BACAM_INIT_TMP_ENTRY_NUM_STA_8192XB 2
-#define BACAM_MAX_ENTRY_IDX_8852D 15
-#define BACAM_INIT_TMP_ENTRY_NUM_AP_8852D 8
-#define BACAM_INIT_TMP_ENTRY_NUM_STA_8852D 2
-#define BACAM_MAX_RU_SUPPORT_B0_AP_8852C 8
-#define BACAM_MAX_RU_SUPPORT_B1_AP_8852C 0
-#define BACAM_MAX_RU_SUPPORT_B0_AP_8192XB 8
-#define BACAM_MAX_RU_SUPPORT_B1_AP_8192XB 0
-#define BACAM_MAX_RU_SUPPORT_B0_AP_8852D 8
-#define BACAM_MAX_RU_SUPPORT_B1_AP_8852D 0
-#define BACAM_MIN_ENTRY_IDX_DEF_1115E 0
-#define BACAM_MAX_RU_SUPPORT_B0_NON_AP 1 //for Fool-proof mechanism
-#define BACAM_MAX_RU_SUPPORT_B1_NON_AP 0 //for Fool-proof mechanism
-#define BACAM_MAX_ENTRY_IDX_DEF_1115E 127
-#define BACAM_MAX_RU_SUPPORT_B0_STA 1
-#define BACAM_MAX_RU_SUPPORT_B1_STA 1
 /*--------------------Define Enum---------------------------------------*/
 
 /**
@@ -169,47 +138,6 @@ struct rst_bacam_info {
 };
 
 /**
- * @brief mac_bacam_avl_std_entry_idx
- *
- * @param *info
- * @return Please Place Description here.
- * @retval u32
- */
-u32 mac_bacam_avl_std_entry_idx(struct mac_ax_adapter *adapter,
-				struct mac_ax_avl_std_bacam_info *info);
-/**
- * @}
- * @}
- */
-
-/**
- * @addtogroup Association
- * @{
- * @addtogroup BA_Info
- * @{
- */
-
-/**
- * @brief mac_bacam_init
- *
- * @param *adapter
- * @return Please Place Description here.
- * @retval u32
- */
-u32 mac_bacam_init(struct mac_ax_adapter *adapter);
-/**
- * @}
- * @}
- */
-
-/**
- * @addtogroup Association
- * @{
- * @addtogroup BA_Info
- * @{
- */
-
-/**
  * @addtogroup Association
  * @{
  * @addtogroup BA_Info
@@ -267,7 +195,7 @@ u32 mac_upd_mudecision_para(struct mac_ax_adapter *adapter,
  * @retval u32
  */
 u32 mac_upd_ul_fixinfo(struct mac_ax_adapter *adapter,
-		       struct rtw_phl_ax_ul_fixinfo *info);
+		       struct mac_ax_ul_fixinfo *info);
 /**
  * @}
  * @}
@@ -369,8 +297,8 @@ u32 mac_upd_shcut_mhdr(struct mac_ax_adapter *adapter,
  * @retval u32
  */
 u32 mac_upd_cctl_info(struct mac_ax_adapter *adapter,
-		      struct rtw_hal_mac_ax_cctl_info *info,
-		      struct rtw_hal_mac_ax_cctl_info *mask, u8 macid, u8 operation);
+		      struct mac_ax_cctl_info *info,
+		      struct mac_ax_cctl_info *mask, u8 macid, u8 operation);
 /**
  * @}
  * @}
@@ -691,76 +619,11 @@ u32 dctl_info_debug_write(struct mac_ax_adapter *adapter, u8 macid,
 u32 mac_fw_status_cmd(struct mac_ax_adapter *adapter,
 		      struct mac_ax_fwstatus_payload *info);
 
-/**
- * @addtogroup Basic_TRX
- * @{
- * @addtogroup CMAC_TABLE
- * @{
- */
-
-/**
- * @brief mac_tx_path_map_cfg
- *
- * @param *adapter
- * @param macid
- * @param *tbl
- * @return Please Place Description here.
- * @retval u32
- */
-
-u32 mac_tx_path_map_cfg(struct mac_ax_adapter *adapter,
-			struct hal_txmap_cfg *cfg);
-/**
- * @}
- * @}
- */
-
-/**
- * @addtogroup FrameExchange
- * @{
- * @addtogroup fw_ofdma_info
- * @{
- */
-
-/**
- * @brief mac_fwc2h_ofdma_sts_parse
- *
- * @param *adapter
- * @param *fw_c2h_sts
- * @param *content
- * @return parse the ofdma info report by fw to mac_ax_fwc2h_sts structure
- * @retval u32
- */
-
 u32 mac_fwc2h_ofdma_sts_parse(struct mac_ax_adapter *adapter,
 			      struct mac_ax_fwc2h_sts *fw_c2h_sts,
 			      u32 *content);
-/**
- * @}
- * @}
- */
-
-/**
- * @addtogroup FrameExchange
- * @{
- * @addtogroup fw_ofdma_info
- * @{
- */
-
-/**
- * @brief mac_fw_ofdma_sts_en
- *
- * @param *adapter
- * @param *fwsts_para
- * @return enable/disable and set period for fw report ofdma info
- * @retval u32
- */
 
 u32 mac_fw_ofdma_sts_en(struct mac_ax_adapter *adapter,
 			struct mac_ax_fwsts_para *fwsts_para);
-/**
- * @}
- * @}
- */
 
 #endif

@@ -30,7 +30,7 @@
 	#define BB_8852A_2_SUPPORT /*> CBV*/
 #endif
 
-#if defined(CONFIG_RTL8852B) || defined(CONFIG_RTL8852BP)
+#ifdef CONFIG_RTL8852B
 	#define BB_8852B_SUPPORT
 #endif
 
@@ -38,24 +38,9 @@
 	#define BB_8852C_SUPPORT
 #endif
 
-#if defined(CONFIG_RTL8192XB) || defined(CONFIG_RTL8832BR)
+#ifdef CONFIG_RTL8192XB
 	#define BB_8192XB_SUPPORT
 #endif
-
-#ifdef CONFIG_RTL8851B
-	#define BB_8851B_SUPPORT
-	#define HALBB_DUAL_SAR_LMT_TB_8851B
-#endif
-
-#ifdef CONFIG_RTL8922A
-	//#define BB_8922A_SUPPORT
-#endif
-	#define BB_8922A_DVLP_SPF_2
-
-#ifdef CONFIG_RTL8922AM /*Will be modified*/
-	#define BB_8922A_SUPPORT
-#endif
-
 
 #endif
 

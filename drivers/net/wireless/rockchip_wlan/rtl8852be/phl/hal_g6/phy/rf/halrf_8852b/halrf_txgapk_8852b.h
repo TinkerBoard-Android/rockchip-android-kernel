@@ -28,7 +28,7 @@
 
 #ifdef RF_8852B_SUPPORT
 
-#define TXGAPK_VER_8852B 0x0b
+#define TXGAPK_VER_8852B 0x06
 
 /*--------------------------Define Parameters-------------------------------*/
 #define TXGAPK_RF_PATH_MAX_8852B 2
@@ -40,6 +40,8 @@
 #define TXGAP_TB_ADDR_8852B			0x10033
 	
 #define TXGAP_TB_VAL_8852B			0x1003F
+
+
 /*---------------------------End Define Parameters----------------------------*/
 
 

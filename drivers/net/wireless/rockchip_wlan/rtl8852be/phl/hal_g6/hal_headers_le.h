@@ -28,17 +28,12 @@
 #include "../phl_txpwr.h"
 /* Exported structure/definition from PHL */
 #include "../phl_util.h"
-#include "mac/mac_exp_def.h"
 #include "../phl_def.h"
 #include "../phl_trx_def.h"
 #include "../phl_wow_def.h"
 #include "../phl_btc_def.h"
 #include "../phl_test_def.h"
 #include "../phl_debug.h"
-#include "../phl_ext_tx_pwr_lmt_def.h"
-#ifdef CONFIG_PHL_CHANNEL_INFO
-#include "../phl_chan_info_def.h"
-#endif /* CONFIG_PHL_CHANNEL_INFO */
 
 #ifdef CONFIG_PCI_HCI
 #include "../hci/phl_trx_def_pcie.h"
@@ -53,10 +48,8 @@
 /* Common definition from HAL*/
 #include "hal_general_def.h"
 /* Exported structure/definition from HAL */
-#include "hal_config.h"
 #include "hal_def.h"
-#include "phy/bb/halbb_outsrc_def.h"
-#include "mac/mac_outsrc_def.h"
+#include "hal_config.h"
 
 /*
 Exported hal API  from HAL
@@ -117,13 +110,13 @@ static inline void hal_mem_set(struct rtw_hal_com_t *h, void *buf, s8 value, u32
 }
 
 static inline void hal_mem_cpy(struct rtw_hal_com_t *h, void *dest,
-						const void *src, u32 size)
+						void *src, u32 size)
 {
 	_os_mem_cpy(halcom_to_drvpriv(h), dest, src, size);
 }
 
-static inline int hal_mem_cmp(struct rtw_hal_com_t *h, const void *dest,
-						const void *src, u32 size)
+static inline int hal_mem_cmp(struct rtw_hal_com_t *h, void *dest,
+						void *src, u32 size)
 {
 	return _os_mem_cmp(halcom_to_drvpriv(h), dest, src, size);
 }

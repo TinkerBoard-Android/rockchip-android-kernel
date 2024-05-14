@@ -13,6 +13,7 @@
  *
  *****************************************************************************/
 #define _HAL_TRX_8852B_C_
+#include "../hal_headers.h"
 #include "rtl8852b_hal.h"
 
 static void _hal_trx_8852b_dump_rxcnt(struct hal_ppdu_sts *ppdu_sts)
@@ -229,46 +230,6 @@ static void _hal_dump_rxdesc(u8 *buf, struct rtw_r_meta_data *mdata)
 	return RTW_HAL_STATUS_SUCCESS;
  }
 
-#ifdef PHL_RXSC_AMPDU
-static enum rtw_hal_status
-_hal_check_rxsc_rdy_8852b(struct hal_info_t *hal,
-	struct rtw_phl_com_t *phl_com, u8 *desc, struct rtw_r_meta_data *mdata)
-{
-	enum rtw_hal_status hstatus = RTW_HAL_STATUS_FAILURE;
-	struct rtw_rxsc_cache_entry *rxsc_entry = &phl_com->rxsc_entry;
-
-	mdata->tid = GET_RX_AX_DESC_TID_8852B(desc);
-	mdata->macid = GET_RX_AX_DESC_MACID_8852B(desc);
-	mdata->seq = GET_RX_AX_DESC_SEQ_8852B(desc);
-	mdata->mc = GET_RX_AX_DESC_MC_8852B(desc);
-	mdata->bc = GET_RX_AX_DESC_BC_8852B(desc);
-	mdata->htc = GET_RX_AX_DESC_HTC_8852B(desc);
-
-	if (mdata->ampdu &&
-		rxsc_entry->cached_rx_macid == mdata->macid &&
-		rxsc_entry->cached_rx_ppdu_cnt == mdata->ppdu_cnt &&
-		rxsc_entry->cached_rx_tid == mdata->tid &&
-		((rxsc_entry->cached_rx_seq + 1) & WL_SEQ_MASK) == mdata->seq
-	) {
-		mdata->rx_rate = GET_RX_AX_DESC_RX_DATARATE_8852B(desc);
-		mdata->amsdu = GET_RX_AX_DESC_AMSDU_8852B(desc);
-		mdata->crc32 = GET_RX_AX_DESC_CRC32_8852B(desc);
-		mdata->icverr = GET_RX_AX_DESC_ICVERR_8852B(desc);
-		mdata->sw_dec = GET_RX_AX_DESC_SW_DEC_8852B(desc);
-		mdata->pwr_bit = GET_RX_AX_DESC_PWR_8852B(desc);
-		mdata->q_null = GET_RX_AX_DESC_QNULL_8852B(desc);
-		mdata->frame_type = GET_RX_AX_DESC_TYPE_8852B(desc);
-
-		rxsc_entry->cached_rx_seq = mdata->seq;
-		hstatus = RTW_HAL_STATUS_SUCCESS;
-	} else {
-		rxsc_entry->cached_rx_macid = PHL_MACID_MAX_NUM;
-	}
-
-	return hstatus;
-}
-#endif
-
  /**
  * SW Parsing Rx Desc - hal_parsing_rx_wd_8852b
  * description:
@@ -282,18 +243,14 @@ _hal_check_rxsc_rdy_8852b(struct hal_info_t *hal,
  * 	rxwd : rx desc
  */
 static enum rtw_hal_status
-_hal_parsing_rx_wd_8852b(struct hal_info_t *hal,
-	struct rtw_phl_com_t *phl_com,
-	u8 *desc, struct rtw_r_meta_data *mdata)
+_hal_parsing_rx_wd_8852b(struct hal_info_t *hal, u8 *desc,
+				   struct rtw_r_meta_data *mdata)
 {
 	/* ToDo: Parse word by word with byte swap once for
 	 * each word
 	 */
 	enum rtw_hal_status hstatus = RTW_HAL_STATUS_FAILURE;
 	struct rtw_hal_com_t *hal_com = hal->hal_com;
-#ifdef PHL_RXSC_AMPDU
-	struct rtw_rxsc_cache_entry *rxsc_entry = &phl_com->rxsc_entry;
-#endif
 
 	mdata->pktlen = GET_RX_AX_DESC_PKT_LEN_8852B(desc);
 	mdata->shift = GET_RX_AX_DESC_SHIFT_8852B(desc);
@@ -309,18 +266,6 @@ _hal_parsing_rx_wd_8852b(struct hal_info_t *hal,
 
 		mdata->ppdu_type = GET_RX_AX_DESC_PPDU_TYPE_8852B(desc);
 		mdata->ppdu_cnt = GET_RX_AX_DESC_PPDU_CNT_8852B(desc);
-		mdata->ampdu = GET_RX_AX_DESC_AMPDU_8852B(desc);
-
-#ifdef PHL_RXSC_AMPDU
-		if (PHL_MACID_MAX_NUM != rxsc_entry->cached_rx_macid &&
-			RX_8852B_DESC_PKT_T_WIFI == mdata->rpkt_type) {
-
-			/* check and get rxsc cache */
-			if (_hal_check_rxsc_rdy_8852b(hal, phl_com, desc, mdata) == RTW_HAL_STATUS_SUCCESS)
-				return RTW_HAL_STATUS_SUCCESS;
-		}
-#endif
-
 		mdata->sr_en = GET_RX_AX_DESC_SR_EN_8852B(desc);
 		mdata->user_id = GET_RX_AX_DESC_USER_ID_8852B(desc);
 		mdata->rx_rate = GET_RX_AX_DESC_RX_DATARATE_8852B(desc);
@@ -334,6 +279,7 @@ _hal_parsing_rx_wd_8852b(struct hal_info_t *hal,
 		mdata->a1_match = GET_RX_AX_DESC_A1_MATCH_8852B(desc);
 		mdata->sw_dec = GET_RX_AX_DESC_SW_DEC_8852B(desc);
 		mdata->hw_dec = GET_RX_AX_DESC_HW_DEC_8852B(desc);
+		mdata->ampdu = GET_RX_AX_DESC_AMPDU_8852B(desc);
 		mdata->ampdu_end_pkt = GET_RX_AX_DESC_AMPDU_EDN_PKT_8852B(desc);
 		mdata->amsdu = GET_RX_AX_DESC_AMSDU_8852B(desc);
 		mdata->amsdu_cut = GET_RX_AX_DESC_AMSDU_CUT_8852B(desc);
@@ -388,19 +334,6 @@ _hal_parsing_rx_wd_8852b(struct hal_info_t *hal,
 			mdata->sec_type = GET_RX_AX_DESC_SEC_TYPE_8852B(desc);
 		}
 	}
-#ifdef CONFIG_PHL_CHANNEL_INFO
-		else if (mdata->rpkt_type == RX_8852B_DESC_PKT_T_CHANNEL_INFO) {
-			mdata->freerun_cnt = GET_RX_AX_DESC_FREERUN_CNT_8852B(desc);
-			mdata->bw = GET_RX_AX_DESC_BW_8852B(desc);
-			mdata->rx_rate = GET_RX_AX_DESC_RX_DATARATE_8852B(desc);
-			/* invalid for 8852B */
-			#if 0
-			mdata->a1_match = GET_RX_AX_DESC_A1_MATCH_8852B(desc);
-			mdata->get_ch_info = GET_RX_AX_DESC_CH_INFO_8852B(desc);
-			mdata->macid = GET_RX_AX_DESC_MACID_8852B(desc);
-			#endif
-		}
-#endif
 
 	if(mdata->pktlen == 0)
 		hstatus = RTW_HAL_STATUS_FAILURE;
@@ -445,7 +378,7 @@ hal_parsing_rx_wd_8852b(struct rtw_phl_com_t *phl_com,
 			desc = buf;
 
 		if (!halmac_rx) {
-			hstatus = _hal_parsing_rx_wd_8852b(hal, phl_com, desc, mdata);
+			hstatus = _hal_parsing_rx_wd_8852b(hal, desc, mdata);
 		} else {
 			/* halmac_ax_ops->parse_rxdesc( */
 			/* hm_info->halmac_ax_apter, */
@@ -461,9 +394,7 @@ hal_parsing_rx_wd_8852b(struct rtw_phl_com_t *phl_com,
 		desc_l = mdata->long_rxd ? RX_DESC_L_SIZE_8852B :
 					   RX_DESC_S_SIZE_8852B;
 
-		shift = (u8)(mdata->shift * 2 +
-			     mdata->drv_info_size * RX_DESC_DRV_INFO_UNIT_8852B +
-			     desc_l);
+		shift = (u8)(mdata->shift * 2 + mdata->drv_info_size * 8 + desc_l);
 
 		if ((1 == mdata->mac_info_vld) &&
 		    (RX_8852B_DESC_PKT_T_PPDU_STATUS != mdata->rpkt_type))
@@ -532,19 +463,9 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 	struct rtw_recv_pkt *r = &phl_rx->r;
 	struct rtw_pkt_buf_list *pkt = &r->pkt_list[0];
 	struct rtw_r_meta_data *mdata = &r->mdata;
-#ifdef PHL_RXSC_AMPDU
-	struct rtw_rxsc_cache_entry *rxsc_entry = &phl_com->rxsc_entry;
-#endif
 #ifdef CONFIG_PHL_TEST_SUITE
 	struct test_bp_info bp_info;
 #endif
-#ifdef CONFIG_PHL_CSUM_OFFLOAD_RX
-	struct mac_ax_adapter *mac = hal_to_mac(hal);
-	u8 status;
-	u32 result;
-	u32 offset;
-#endif
-
 	hstatus = hal_parsing_rx_wd_8852b(phl_com, hal, buf,
 					&pkt->vir_addr, &pkt->length, mdata);
 
@@ -553,16 +474,6 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 	if( (pkt->vir_addr + pkt->length) > (buf + buf_len) )
 		return RTW_HAL_STATUS_FAILURE;
 
-#ifdef CONFIG_PHL_CSUM_OFFLOAD_RX
-	if (mdata->chksum_ofld_en) {
-		offset = pkt->length;
-		offset = _ALIGN(offset, 8);
-		status = *(pkt->vir_addr + offset);
-		result = mac->ops->chk_rx_tcpip_chksum_ofd(mac, status);
-		rtw_hal_mac_parse_rxd_checksume(hal->hal_com, mdata, result);
-	}
-#endif /* CONFIG_PHL_CSUM_OFFLOAD_RX */
-
 	/* hana_todo */
 	r->pkt_cnt = 1;
 
@@ -570,14 +481,9 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 	case RX_8852B_DESC_PKT_T_WIFI :
 	{
 		phl_rx->type = RTW_RX_TYPE_WIFI;
-#ifdef PHL_RXSC_AMPDU /* todo: ppdu status, err ?*/
-		if (PHL_MACID_MAX_NUM == rxsc_entry->cached_rx_macid)
-#endif
-		{
-			_hal_rx_wlanhdr_check_8852b(drv, pkt->vir_addr, mdata);
-			hal_rx_ppdu_sts_normal_data(phl_com, pkt->vir_addr, mdata);
-		}
+		_hal_rx_wlanhdr_check_8852b(drv, pkt->vir_addr, mdata);
 		_hal_rx_sts_8852b(hal, mdata);
+		hal_rx_ppdu_sts_normal_data(phl_com, pkt->vir_addr, mdata);
 	}
 	break;
 	case RX_8852B_DESC_PKT_T_TX_PD_RELEASE_HOST :
@@ -598,27 +504,17 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 					      pkt->vir_addr, mdata->pktlen,
 					      (void *)&ppdu_sts,
 					      (void *)mdata);
-		/*
 		if (ppdu_sts.rx_cnt_size != 0) {
 			_hal_trx_8852b_dump_rxcnt(&ppdu_sts);
 		}
-		*/
 		if (ppdu_sts.phy_st_size != 0) {
 			if((mdata->ppdu_type == RX_8852B_DESC_PPDU_T_VHT_MU)||
 			   (mdata->ppdu_type == RX_8852B_DESC_PPDU_T_HE_MU)||
 			   (mdata->ppdu_type == RX_8852B_DESC_PPDU_T_HE_TB)) {
 				is_su = 0;
 			}
-			if(rtw_hal_bb_parse_phy_sts(hal,
-						(void *)&ppdu_sts,
-						 phl_rx,
-						is_su,
-						(phl_com->drv_mode == RTW_DRV_MODE_SNIFFER)? true : false
-						) != RTW_HAL_STATUS_SUCCESS)
-				PHL_TRACE(COMP_PHL_PSTS, _PHL_DEBUG_,
-					  "rtw_hal_bb_parse_phy_sts fail\n");
-
-
+			rtw_hal_bb_parse_phy_sts(hal, (void *)&ppdu_sts,
+						 phl_rx, is_su);
 
 			hal_rx_ppdu_sts(phl_com, phl_rx, &ppdu_sts);
 #ifdef CONFIG_PHL_TEST_SUITE
@@ -635,7 +531,6 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 		#ifdef CONFIG_PHL_DFS
 		struct mac_ax_dfs_rpt dfs_rpt = {0};
 		struct hal_dfs_rpt hal_dfs = {0};
-		struct phl_msg msg = {0};
 
 		phl_rx->type = RTW_RX_TYPE_DFS_RPT;
 
@@ -651,14 +546,9 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 		hal_dfs.dfs_num = dfs_rpt.dfs_num;
 		hal_dfs.phy_idx = 0;
 
-		if (rtw_hal_bb_radar_detect(hal, &hal_dfs)) {
-			SET_MSG_MDL_ID_FIELD(msg.msg_id, PHL_MDL_RX);
-			SET_MSG_EVT_ID_FIELD(msg.msg_id, MSG_EVT_DFS_RD_IS_DETECTING);
-			rtw_phl_msg_hub_hal_send(phl_com, NULL, &msg);
-
-			phl_com->dfs_info.is_radar_detectd = true;
+		if (rtw_hal_bb_radar_detect(hal, &hal_dfs))
 			PHL_INFO("[DFS] radar detected\n");
-		}
+
 		#endif
 	}
 	break;
@@ -687,7 +577,8 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 			break;
 		}
 		buf_addr = phl_com->chan_info->chan_info_buffer;
-		status = rtw_hal_bb_ch_info_parsing(hal, pkt->vir_addr, mdata,
+		status = rtw_hal_bb_ch_info_parsing(hal, pkt->vir_addr,
+			mdata->pktlen,
 			buf_addr + phl_com->chan_info->length,
 			&ch_hdr_rpt, &phy_rpt, &drv_rpt);
 
@@ -703,9 +594,6 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 			/* Fill remain csi header to buffer  */
 			_hal_fill_csi_header_remain(hal,
 				&(phl_com->chan_info->csi_header), mdata);
-#ifdef CONFIG_PHL_CHANNEL_INFO_DBG
-			hal_print_csi_raw_data(phl_com->chan_info);
-#endif
 			/* push compelete channel info resourecs to busy queue */
 			chan_info_old = rtw_phl_recycle_busy_chaninfo(drv, phl_com, phl_com->chan_info);
 			if (chan_info_old)
@@ -736,7 +624,21 @@ hal_handle_rx_buffer_8852b(struct rtw_phl_com_t *phl_com,
 	break;
 	case RX_8852B_DESC_PKT_T_TX_RPT:
 	{
+		u8 expected_pkt_num = 0;
+		u8 diff_pkt_num = 0;
+		u8 tx_pkt_num = 0;
 		phl_rx->type = RTW_RX_TYPE_TX_RPT;
+		/*
+		 *	Write CR 0xC660[3:2] = 0, Dump TXRPT to driver
+		 *	TXRPT offset12[7:0]: PTCL expected_pkt_num
+		 *	TXRPT offset16[27:24]: diff_pkt_num
+		 */
+		expected_pkt_num = pkt->vir_addr[12];
+		diff_pkt_num = (pkt->vir_addr[19] & 0xF);
+		tx_pkt_num = expected_pkt_num - diff_pkt_num;
+		PHL_TRACE(COMP_PHL_DBG, _PHL_DEBUG_,
+                          "expected_pkt_num: %d, diff_pkt_num: %d, tx_pkt_num: %d\n",
+                          expected_pkt_num, diff_pkt_num, tx_pkt_num);
 	}
 	break;
 

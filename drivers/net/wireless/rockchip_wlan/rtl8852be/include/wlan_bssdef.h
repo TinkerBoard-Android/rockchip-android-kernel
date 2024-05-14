@@ -40,11 +40,10 @@ typedef struct _NDIS_802_11_SSID {
 	ODI Handler will convert the channel number to freq. number.
 */
 typedef struct _NDIS_802_11_CONFIGURATION {
-	u32	Length;		/* Length of structure */
-	u32	BeaconPeriod;	/* units are Kusec */
-	u32	ATIMWindow;	/* units are Kusec */
-	u32	Band;		/* wifi band */
-	u32	DSConfig;	/* channel number */
+	u32           Length;             /* Length of structure */
+	u32           BeaconPeriod;       /* units are Kusec */
+	u32           ATIMWindow;         /* units are Kusec */
+	u32           DSConfig;           /* channel number */
 } NDIS_802_11_CONFIGURATION, *PNDIS_802_11_CONFIGURATION;
 
 typedef enum _NDIS_802_11_NETWORK_INFRASTRUCTURE {
@@ -196,7 +195,6 @@ typedef struct _NDIS_802_11_WEP {
 
 /*RTW_WKARD_CORE_RSSI_V1 - GEORGIA MUST REFINE*/
 typedef struct _WLAN_PHY_INFO {
-	u8	isValid;
 	u8	SignalStrength;/* (in percentage) */
 	u8	SignalQuality;/* (in percentage) */
 	s8 	rssi; /*dbm*/
@@ -224,20 +222,10 @@ typedef struct _WLAN_BCN_INFO {
 
 enum bss_type {
 	BSS_TYPE_UNDEF,
-	BSS_TYPE_PROB_REQ = 1,
-	BSS_TYPE_BCN = 2,
+	BSS_TYPE_BCN = 1,
+	BSS_TYPE_PROB_REQ = 2,
 	BSS_TYPE_PROB_RSP = 3,
 };
-
-struct wlan_mld_network {
-	_list	list;
-	u8 mac_addr[ETH_ALEN];
-	systime last_scanned; /* timestamp for the mld network */
-	struct wlan_network *link_network[RTW_NETWORK_LINK_MAX];
-	u8 network_num;
-};
-
-#define GET_LINK_NETWORK(mld_network, lidx) (((struct wlan_mld_network *) mld_network)->link_network[lidx])
 
 /* temporally add #pragma pack for structure alignment issue of
 *   WLAN_BSSID_EX and get_WLAN_BSSID_EX_sz()
@@ -253,28 +241,11 @@ typedef struct _WLAN_BSSID_EX {
 	NDIS_802_11_NETWORK_INFRASTRUCTURE  InfrastructureMode;
 	NDIS_802_11_RATES_EX  SupportedRates;
 	WLAN_PHY_INFO	PhyInfo;
-	u8 is_mld;
-#ifdef CONFIG_80211BE_EHT
-	struct wlan_mld_network *mld_network;
-	u8 link_id; /* parse from ML IEs of AP */
-	u8 is_complete_profile;
-#endif
-#ifdef CONFIG_STA_MULTIPLE_BSSID
-	u8 is_mbssid;
-	u8 mbssid_index;
-#endif
 	u32  IELength;
 	u8  IEs[MAX_IE_SZ];	/* (timestamp, beacon interval, and capability information) */
 }
 __attribute__((packed)) WLAN_BSSID_EX, *PWLAN_BSSID_EX;
 
-#define BSS_EX_OP_CH(bss_ex) ((bss_ex)->Configuration.DSConfig)
-#define BSS_EX_OP_BAND(bss_ex) ((bss_ex)->Configuration.Band)
-#ifdef CONFIG_STA_MULTIPLE_BSSID
-#define BSS_EX_MBSSID_IDX(bss_ex) ((bss_ex)->mbssid_index)
-#else
-#define BSS_EX_MBSSID_IDX(bss_ex) 0
-#endif
 #define BSS_EX_IES(bss_ex) ((bss_ex)->IEs)
 #define BSS_EX_IES_LEN(bss_ex) ((bss_ex)->IELength)
 #define BSS_EX_FIXED_IE_OFFSET(bss_ex) ((bss_ex)->Reserved[0] == BSS_TYPE_PROB_REQ ? 0 : 12)
@@ -286,23 +257,21 @@ __inline  static uint get_WLAN_BSSID_EX_sz(WLAN_BSSID_EX *bss)
 	return sizeof(WLAN_BSSID_EX) - MAX_IE_SZ + bss->IELength;
 }
 
-struct beacon_keys {
-	u8 ssid[IW_ESSID_MAX_SIZE];
-	u32 ssid_len;
-	enum band_type band;
-	u8 ch;
-	u8 bw;
-	u8 offset;
-	u8 proto_cap; /* PROTO_CAP_XXX */
-	u8 rate_set[12];
-	u8 rate_num;
-	int encryp_protocol;
-	int pairwise_cipher;
-	int group_cipher;
-	u32 akm;
+struct	wlan_network {
+	_list	list;
+	int	network_type;	/* refer to ieee80211.h for WIRELESS_11A/B/G */
+	int	fixed;			/* set to fixed when not to be removed as site-surveying */
+	systime last_scanned; /* timestamp for the network */
+#ifdef CONFIG_RTW_MESH
+#if CONFIG_RTW_MESH_ACNODE_PREVENT
+	systime acnode_stime;
+	systime acnode_notify_etime;
+#endif
+#endif
+	int	aid;			/* will only be valid when a BSS is joinned. */
+	int	join_res;
+	WLAN_BSSID_EX	network; /* must be the last item */
 };
-
-struct wlan_network;
 
 enum VRTL_CARRIER_SENSE {
 	DISABLE_VCS,

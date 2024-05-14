@@ -114,10 +114,6 @@ struct phydm_phyinfo_struct {
 	s8 rx_pwr[4];		/* per-path's pwdb */
 	s8 rx_snr[4];		/* per-path's SNR	*/
 	u8 rx_count:2;		/* RX path counter---*/
-	u8 snr_fd_avg;
-	u8 snr_fd[4];
-	u8 snr_td_avg;
-	u8 snr_td[4];
 };
 
 
@@ -164,8 +160,8 @@ struct rx_pkt_attrib {
 	u8	ack_policy;
 
 	u8	key_index;
-	u16	data_rate; /* enum rtw_data_rate */
-	u8	gi_ltf;
+
+	u8	data_rate;
 	u8 ch; /* RX channel */
 	u8	bw;
 	u8	stbc;
@@ -194,8 +190,7 @@ struct rx_pkt_attrib {
 #ifdef CONFIG_RTW_CORE_RXSC
 	u8	bsnaphdr;
 #endif
-	u8	addr_cam_vld;
-	u16	macid;
+
 };
 
 #ifdef CONFIG_RTW_MESH
@@ -275,11 +270,6 @@ struct recv_info {
 	u64 rx_pkts;
 	u64 rx_drop;
 
-#ifdef PRIVATE_R
-	// total data rate index = 84 (refer to DESC_RATEVHTSS4MCS9 = 0x53)
-	u64 rx_vo_pkt_count_per_data_rate[84];
-	u64 rx_vo_pkt_retry_count;
-#endif
 	u64 dbg_rx_drop_count;
 	u64 dbg_rx_ampdu_drop_count;
 	u64 dbg_rx_ampdu_forced_indicate_count;
@@ -309,8 +299,6 @@ struct recv_info {
 
 
 	u16 sink_udpport, pre_rtp_rxseq, cur_rtp_rxseq;
-
-	boolean store_law_data_flag;
 };
 #ifdef CONFIG_SIGNAL_STAT_PROCESS
 #define rtw_set_signal_stat_timer(recvinfo) _set_timer(&(recvinfo)->signal_stat_timer, (recvinfo)->signal_stat_sampling_interval)
@@ -371,7 +359,6 @@ struct recv_frame_hdr {
 	struct sk_buff *pkt;
 
 	_adapter  *adapter;
-	struct _ADAPTER_LINK *adapter_link;
 	struct dvobj_priv *dvobj;
 
 	u8 fragcnt;

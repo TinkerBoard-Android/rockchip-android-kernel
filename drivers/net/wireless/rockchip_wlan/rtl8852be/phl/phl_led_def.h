@@ -28,8 +28,6 @@ enum rtw_led_ctrl_mode {
 
 enum rtw_led_id { RTW_LED_ID_0, RTW_LED_ID_1, RTW_LED_ID_LENGTH };
 
-#define RTW_LED_TIMER_LENGTH (RTW_LED_ID_LENGTH + 1)
-
 /*
  * led_event here is not integrated with msg_evt_id due to the following reason:
  *
@@ -55,7 +53,6 @@ enum rtw_led_event {
 	RTW_LED_EVENT_LINKED_NOCIPHER,
 	RTW_LED_EVENT_LINKED_24G,
 	RTW_LED_EVENT_LINKED_5G,
-	RTW_LED_EVENT_WPS,
 	RTW_LED_EVENT_LENGTH
 };
 

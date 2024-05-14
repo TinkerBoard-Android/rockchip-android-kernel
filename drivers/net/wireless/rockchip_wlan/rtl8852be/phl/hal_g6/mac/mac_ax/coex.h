@@ -22,6 +22,76 @@
 #define MAC_AX_NOTIFY_TP_MAJOR 0x81
 #define MAC_AX_NOTIFY_PWR_MAJOR 0x80
 
+#define MAC_AX_NOTIFY_SH 24
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_coex_init
+ *
+ * @param *adapter
+ * @param *coex
+ * @return Please Place Description here.
+ * @retval u32
+ */
+u32 mac_coex_init(struct mac_ax_adapter *adapter,
+		  struct mac_ax_coex *coex);
+/**
+ * @}
+ * @}
+ */
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_cfg_gnt
+ *
+ * @param *adapter
+ * @param *gnt_cfg
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_cfg_gnt(struct mac_ax_adapter *adapter,
+		struct mac_ax_coex_gnt *gnt_cfg);
+/**
+ * @}
+ * @}
+ */
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_get_gnt
+ *
+ * @param *adapter
+ * @param *gnt_cfg
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_get_gnt(struct mac_ax_adapter *adapter,
+		struct mac_ax_coex_gnt *gnt_cfg);
+/**
+ * @}
+ * @}
+ */
+
 /**
  * @addtogroup Common
  * @{
@@ -39,6 +109,54 @@
  */
 
 u32 mac_cfg_plt(struct mac_ax_adapter *adapter, struct mac_ax_plt *plt);
+/**
+ * @}
+ * @}
+ */
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_write_coex_reg
+ *
+ * @param *adapter
+ * @param offset
+ * @param val
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_write_coex_reg(struct mac_ax_adapter *adapter,
+		       const u32 offset, const u32 val);
+/**
+ * @}
+ * @}
+ */
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_read_coex_reg
+ *
+ * @param *adapter
+ * @param offset
+ * @param *val
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_read_coex_reg(struct mac_ax_adapter *adapter,
+		      const u32 offset, u32 *val);
 /**
  * @}
  * @}
@@ -71,6 +189,43 @@ void mac_cfg_sb(struct mac_ax_adapter *adapter, u32 val);
  * @{
  * @addtogroup BTCoex
  * @{
+ */
+
+/**
+ * @brief mac_cfg_ctrl_path
+ *
+ * @param *adapter
+ * @param wl
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_cfg_ctrl_path(struct mac_ax_adapter *adapter, u32 wl);
+/**
+ * @}
+ * @}
+ */
+
+/**
+ * @addtogroup Common
+ * @{
+ * @addtogroup BTCoex
+ * @{
+ */
+
+/**
+ * @brief mac_get_ctrl_path
+ *
+ * @param *adapter
+ * @param *wl
+ * @return Please Place Description here.
+ * @retval u32
+ */
+
+u32 mac_get_ctrl_path(struct mac_ax_adapter *adapter, u32 *wl);
+/**
+ * @}
+ * @}
  */
 
 /**
