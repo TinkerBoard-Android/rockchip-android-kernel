@@ -1282,7 +1282,9 @@ static int rk817_probe(struct snd_soc_component *component)
 	struct rk817_codec_priv *rk817 = snd_soc_component_get_drvdata(component);
 	int chip_name = 0;
 	int chip_ver = 0;
-
+#ifdef CONFIG_RK3568_TB3N
+	int ret = 0;
+#endif
 	DBG("%s\n", __func__);
 
 	if (!rk817) {
@@ -1291,7 +1293,7 @@ static int rk817_probe(struct snd_soc_component *component)
 		return -EINVAL;
 	}
 #ifdef CONFIG_RK3568_TB3N
-	int ret = spk_enable_init();
+	ret = spk_enable_init();
 	dev_warn(component->dev, "=====spk_enable_init======)\n");
 	if (ret)
                 dev_err(component->dev, "Request SPK_EN Failed (%d)\n", ret);
