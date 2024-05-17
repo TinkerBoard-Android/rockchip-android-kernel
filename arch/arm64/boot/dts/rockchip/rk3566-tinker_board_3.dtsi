@@ -553,10 +553,6 @@
 	WIFI,poweren_gpio = <&gpio2 RK_PB1 GPIO_ACTIVE_HIGH>;
 };
 
-&work_led {
-	gpios = <&gpio0 RK_PB7 GPIO_ACTIVE_HIGH>;
-};
-
 &wireless_bluetooth {
 	compatible = "bluetooth-platdata";
 	clocks = <&rk809 1>;

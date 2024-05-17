@@ -87,6 +87,20 @@
 		io-channels = <&saradc 3>;
 		io-channel-names = "RK3566-ADC3-PRJID";
 	};
+
+	gpio_leds: gpio-leds {
+		compatible = "gpio-leds";
+
+		act-led {
+			gpios = <&gpio0 RK_PD4 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="mmc0";
+		};
+
+		rsv-led {
+			gpios = <&gpio0 RK_PD6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger="none";
+		};
+	};
 };
 
 &reserved_memory {
