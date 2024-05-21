@@ -26,6 +26,7 @@
 #include <linux/of_graph.h>
 #include <linux/acpi.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/gpio.h>
 #include <linux/reset.h>
 #include <linux/bitfield.h>
 
@@ -1721,6 +1722,35 @@ static void dwc3_check_params(struct dwc3 *dwc)
 	}
 }
 
+static void dwc3_check_vendor_params(struct dwc3 *dwc)
+{
+        struct device *dev = dwc->dev;
+
+	dwc->gpio_hub_reset = devm_gpiod_get_index_optional(dev, "hub-reset", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(dwc->gpio_hub_reset)) {
+		dev_err(dev, "Could not get named GPIO for hub-reset-gpios.\n");
+		dwc->gpio_hub_reset = NULL;
+	}
+	if (dwc->gpio_hub_reset) {
+		dev_info(dev, "Reset usb hub on boot.\n");
+		gpiod_set_value(dwc->gpio_hub_reset, 0);
+		msleep(1);
+		gpiod_set_value(dwc->gpio_hub_reset, 1);
+	}
+
+	dwc->gpio_hub_vbus = devm_gpiod_get_index_optional(dev, "hub-vbus", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(dwc->gpio_hub_vbus)) {
+		dev_err(dev, "Could not get named GPIO for hub-vbus-gpios.\n");
+		dwc->gpio_hub_vbus = NULL;
+	}
+
+	dwc->gpio_connector_vbus = devm_gpiod_get_index_optional(dev, "connector-vbus", 0, GPIOD_OUT_HIGH);
+	if (IS_ERR(dwc->gpio_connector_vbus)) {
+		dev_err(dev, "Could not get named GPIO for connrctor-vbus-gpios.\n");
+		dwc->gpio_connector_vbus = NULL;
+	}
+}
+
 static struct extcon_dev *dwc3_get_extcon(struct dwc3 *dwc)
 {
 	struct device *dev = dwc->dev;
@@ -1940,11 +1970,18 @@ static int dwc3_probe(struct platform_device *pdev)
 	}
 
 	dwc3_check_params(dwc);
+	dwc3_check_vendor_params(dwc);
 	dwc3_debugfs_init(dwc);
 
 	ret = dwc3_core_init_mode(dwc);
 	if (ret)
 		goto err5;
+
+	if (dwc->gpio_hub_vbus && dwc->dr_mode == USB_DR_MODE_HOST)
+			gpiod_set_value(dwc->gpio_hub_vbus, 1);
+
+	if (dwc->gpio_connector_vbus && dwc->dr_mode == USB_DR_MODE_HOST)
+		gpiod_set_value(dwc->gpio_connector_vbus, 1);
 
 	if (dwc->dr_mode == USB_DR_MODE_OTG &&
 	    of_device_is_compatible(dev->parent->of_node,
@@ -2003,6 +2040,12 @@ static int dwc3_remove(struct platform_device *pdev)
 	struct dwc3	*dwc = platform_get_drvdata(pdev);
 
 	pm_runtime_get_sync(&pdev->dev);
+
+	if (dwc->gpio_hub_vbus)
+		gpiod_set_value(dwc->gpio_hub_vbus, 0);
+
+	if (dwc->gpio_connector_vbus)
+		gpiod_set_value(dwc->gpio_connector_vbus, 0);
 
 	dwc3_core_exit_mode(dwc);
 	dwc3_debugfs_exit(dwc);

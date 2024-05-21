@@ -1361,6 +1361,10 @@ struct dwc3 {
 	int			num_ep_resized;
 	struct dentry		*debug_root;
 
+	struct gpio_desc	*gpio_hub_reset;
+	struct gpio_desc	*gpio_hub_vbus;
+	struct gpio_desc        *gpio_connector_vbus;
+
 	ANDROID_KABI_RESERVE(1);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
