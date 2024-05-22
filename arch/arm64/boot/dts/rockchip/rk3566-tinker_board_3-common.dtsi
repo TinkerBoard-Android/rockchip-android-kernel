@@ -231,42 +231,6 @@
 		vin-supply = <&dc_12v>;
 	};
 
-	vcc5v0_usb: vcc5v0-usb {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc5v0_usb";
-		regulator-always-on;
-		regulator-boot-on;
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		vin-supply = <&dc_12v>;
-	};
-
-	vcc5v0_host: vcc5v0-host-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc5v0_host";
-		regulator-boot-on;
-		regulator-always-on;
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		enable-active-high;
-		gpio = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&vcc5v0_usb>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_host_en>;
-	};
-
-	vcc5v0_otg: vcc5v0-otg-regulator {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc5v0_otg";
-		regulator-min-microvolt = <5000000>;
-		regulator-max-microvolt = <5000000>;
-		enable-active-high;
-		gpio = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
-		vin-supply = <&vcc5v0_usb>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&vcc5v0_otg_en>;
-	};
-
 	vcc3v3_lcd0_n: vcc3v3-lcd0-n {
 		compatible = "regulator-fixed";
 		regulator-name = "vcc3v3_lcd0_n";
@@ -1494,12 +1458,16 @@
 	};
 
 	usb {
-		vcc5v0_host_en: vcc5v0-host-en {
+		vcc5v0_u2_host_en: vcc5v0-u2-host-en {
 			rockchip,pins = <0 RK_PA6 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 
-		vcc5v0_otg_en: vcc5v0-otg-en {
+		vcc5v0_u3_host_en: vcc5v0-u3-host-en {
 			rockchip,pins = <0 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		u2_host_reset: u2-host-reset {
+			rockchip,pins = <2 RK_PC6 RK_FUNC_GPIO &pcfg_output_high>;
 		};
 	};
 
@@ -1749,22 +1717,18 @@
 };
 
 &u2phy0_host {
-	phy-supply = <&vcc5v0_host>;
 	status = "okay";
 };
 
 &u2phy0_otg {
-	vbus-supply = <&vcc5v0_otg>;
 	status = "okay";
 };
 
 &u2phy1_host {
-	phy-supply = <&vcc5v0_host>;
 	status = "okay";
 };
 
 &u2phy1_otg {
-	phy-supply = <&vcc5v0_host>;
 	status = "okay";
 };
 
@@ -1777,6 +1741,10 @@
 };
 
 &usb_host0_ehci {
+	pinctrl-names = "default";
+	pinctrl-0 = <&u2_host_reset &vcc5v0_u2_host_en>;
+	hub-reset-gpios = <&gpio2 RK_PC6 GPIO_ACTIVE_HIGH>;
+	hub-vbus-gpios = <&gpio0 RK_PA6 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 
@@ -1803,6 +1771,9 @@
 };
 
 &usbhost_dwc3 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&vcc5v0_u3_host_en>;
+	hub-vbus-gpios = <&gpio0 RK_PA5 GPIO_ACTIVE_HIGH>;
 	status = "okay";
 };
 

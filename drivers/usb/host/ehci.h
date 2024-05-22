@@ -244,9 +244,7 @@ struct ehci_hcd {			/* one per controller */
 #endif
 
 	/* debug files */
-#ifdef CONFIG_DYNAMIC_DEBUG
 	struct dentry		*debug_dir;
-#endif
 
 	/* bandwidth usage */
 #define EHCI_BANDWIDTH_SIZE	64
@@ -256,6 +254,9 @@ struct ehci_hcd {			/* one per controller */
 	u8			tt_budget[EHCI_BANDWIDTH_SIZE];
 						/* us budgeted per uframe */
 	struct list_head	tt_list;
+
+	struct gpio_desc	*gpio_hub_reset;
+	struct gpio_desc	*gpio_hub_vbus;
 
 	/* platform-specific data -- must come last */
 	unsigned long		priv[] __aligned(sizeof(s64));
