@@ -391,6 +391,16 @@ static const struct dphy_pll_parameter_map dppa_map[] = {
 	{1500, 0x3c, CP_CURRENT_12UA, LPF_RESISTORS_10_5KOHM }
 };
 
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+extern int tinker_mcu_is_connected(int dsi_id);
+extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
+#else
+static int tinker_mcu_is_connected(int dsi_id)  { return 0; }
+static int tinker_mcu_ili9881c_is_connected(int dsi_id)  { return 0; }
+#endif
+
+extern bool sn65dsi86_is_connected(void);
+extern bool is_dsi_panel_connected(void);
 static int max_mbps_to_parameter(unsigned int max_mbps)
 {
 	int i;
@@ -1033,12 +1043,20 @@ static int dw_mipi_dsi_rockchip_bind(struct device *dev,
 	struct device *second;
 	int ret;
 
-	if(!lt9211_is_connected()) {
-		pr_info("dsi-%d panel or lt9211 aren't connected\n", dsi->id);
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+	if(!tinker_mcu_is_connected(dsi->id) &&
+		!tinker_mcu_ili9881c_is_connected(dsi->id) &&
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
+		!sn65dsi86_is_connected() &&
+#endif
+		!lt9211_is_connected() &&
+		!is_dsi_panel_connected()) {
+		pr_info("dsi-%d panel and sn65dsi8x and lt9211 aren't connected\n", dsi->id);
 		return 0;
 	} else {
 		pr_info("dsi-%d panel or lt9211 is connected\n", dsi->id);
 	}
+#endif
 
 	second = dw_mipi_dsi_rockchip_find_second(dsi);
 	if (IS_ERR(second))

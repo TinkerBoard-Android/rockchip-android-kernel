@@ -75,6 +75,22 @@ static void lt9211_backlight_sys_enable(void) { return ; }
 static void lt9211_backlight_sys_disable(void) { return ; }
 #endif
 
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+extern struct backlight_device * tinker_mcu_get_backlightdev(int dsi_id);
+extern int tinker_mcu_set_bright(int bright, int dsi_id);
+extern int tinker_mcu_screen_power_up(int dsi_id);
+extern int tinker_mcu_screen_power_off(int dsi_id);
+extern int tinker_mcu_is_connected(int dsi_id);
+extern struct backlight_device * tinker_mcu_ili9881c_get_backlightdev(int dsi_id);
+extern int tinker_mcu_ili9881c_set_bright(int bright, int dsi_id);
+extern int tinker_mcu_ili9881c_screen_power_up(int dsi_id);
+extern int tinker_mcu_ili9881c_screen_power_off(int dsi_id);
+extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
+//extern void tinker_ft5406_start_polling(int dsi_id);
+
+extern int lcd_size_flag[2];
+#endif
+
 enum panel_simple_cmd_type {
 	CMD_TYPE_DEFAULT,
 	CMD_TYPE_SPI
@@ -209,6 +225,9 @@ struct panel_desc {
 		 */
 		unsigned int unprepare;
 		unsigned int reset;
+		unsigned int reset_high;
+		unsigned int reset_low;
+		unsigned int reset_high2;
 		unsigned int init;
 	} delay;
 
@@ -261,7 +280,11 @@ struct panel_simple {
 
 	struct drm_dsc_picture_parameter_set *pps;
 	enum drm_panel_orientation orientation;
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+	int dsi_id;
+#endif
 };
+static enum mipi_dsi_panel dsi_panel;
 
 static inline void panel_simple_msleep(unsigned int msecs)
 {
@@ -578,7 +601,7 @@ int panel_simple_loader_protect(struct drm_panel *panel)
 {
 	struct panel_simple *p = to_panel_simple(panel);
 	int err;
-
+	printk("%s\n", __func__);
 	err = pm_runtime_get_sync(panel->dev);
 	if (err < 0) {
 		pm_runtime_put_autosuspend(panel->dev);
@@ -679,6 +702,14 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 		}
 	}
 
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 0);
+	}
+	else
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
+	}
 	pm_runtime_mark_last_busy(panel->dev);
 	ret = pm_runtime_put_autosuspend(panel->dev);
 	if (ret < 0)
@@ -733,12 +764,32 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		return ret;
 	}
 
-	gpiod_set_value_cansleep(p->reset_gpio, 1);
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
 
-	if (p->desc->delay.reset)
-		panel_simple_msleep(p->desc->delay.reset);
+		if (p->desc->delay.reset_high)
+			msleep(p->desc->delay.reset_high);
 
-	gpiod_set_value_cansleep(p->reset_gpio, 0);
+		gpiod_set_value_cansleep(p->reset_gpio, 0);
+
+		if (p->desc->delay.reset_low)
+			msleep(p->desc->delay.reset_low);
+
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
+
+		if (p->desc->delay.reset_high2)
+			msleep(p->desc->delay.reset_high2);
+	}
+	else
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
+
+		if (p->desc->delay.reset)
+			panel_simple_msleep(p->desc->delay.reset);
+
+		gpiod_set_value_cansleep(p->reset_gpio, 0);
+	}
 
 	if (p->desc->delay.init)
 		panel_simple_msleep(p->desc->delay.init);
@@ -1018,6 +1069,9 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (!panel)
 		return -ENOMEM;
 
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+	panel->dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
+#endif
 	panel->enabled = false;
 	panel->prepared_time = 0;
 	panel->desc = desc;
@@ -1045,7 +1099,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		return err;
 	}
 
-	panel->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_ASIS);
+	panel->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(panel->reset_gpio)) {
 		err = PTR_ERR(panel->reset_gpio);
 		if (err != -EPROBE_DEFER)
@@ -1059,18 +1113,49 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 		return err;
 	}
 
-	backlight = of_parse_phandle(dev->of_node, "backlight", 0);
-	if (backlight) {
-		panel->backlight = of_find_backlight_by_node(backlight);
-		of_node_put(backlight);
+	panel->power_invert = of_property_read_bool(dev->of_node, "power-invert");
 
-		if (!panel->backlight) {
-			dev_err(dev, "failed to get backlihgt");
-			return -EPROBE_DEFER;
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+		if (tinker_mcu_is_connected(panel->dsi_id)) {
+			panel->backlight =  tinker_mcu_get_backlightdev(panel->dsi_id);
+			if (!panel->backlight) {
+				printk("tinker mcu get backlight fail, dsi_id=%d\n", panel->dsi_id);
+				return -ENODEV;
+			}
+
+			panel->backlight->props.brightness = 255;
+			printk("tinker mcu  get backlight device successful\n");
+		} else if (tinker_mcu_ili9881c_is_connected(panel->dsi_id)) {
+			panel->backlight =  tinker_mcu_ili9881c_get_backlightdev(panel->dsi_id);
+			if (!panel->backlight) {
+				printk("tinker mcu ili9881c  get backlight fail, dsi_id=%d\n", panel->dsi_id);
+				return -ENODEV;
+			}
+
+			panel->backlight->props.brightness = 255;
+			printk("tinker mcu ili9881c get backlight device successful\n");
+	} else {
+		backlight = of_parse_phandle(dev->of_node, "backlight", 0);
+		if (backlight) {
+			panel->backlight = of_find_backlight_by_node(backlight);
+			of_node_put(backlight);
+
+			if (!panel->backlight) {
+				dev_err(dev, "failed to get backlihgt");
+				return -EPROBE_DEFER;
+			}
 		}
 	}
+#else
+		backlight = of_parse_phandle(dev->of_node, "backlight", 0);
+		if (backlight) {
+			panel->backlight = of_find_backlight_by_node(backlight);
+			of_node_put(backlight);
 
-	panel->power_invert = of_property_read_bool(dev->of_node, "power-invert");
+			if (!panel->backlight)
+				return -EPROBE_DEFER;
+		}
+#endif
 
 	ddc = of_parse_phandle(dev->of_node, "ddc-i2c-bus", 0);
 	if (ddc) {
@@ -4822,6 +4907,78 @@ static const struct of_device_id platform_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, platform_of_match);
 
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+static int panel_simple_of_get_cmd(struct device *dev,
+					 struct panel_desc *desc, int dsi_id)
+{
+	struct device_node *np = dev->of_node;
+	const void *data = NULL;
+	int len;
+	int err;
+
+	if (tinker_mcu_is_connected(dsi_id))
+		data = of_get_property(np, "rpi-init-sequence",
+			       &len);
+	else if (tinker_mcu_ili9881c_is_connected(dsi_id)) {
+			if (lcd_size_flag[dsi_id] == 0)
+				data = of_get_property(np, "powertip-rev-b-init-sequence",
+			       &len);
+			else
+				data = of_get_property(np, "powertip-rev-a-init-sequence",
+			       &len);
+	}
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		data = of_get_property(np, "lkw070n13000-v2-init-sequence", &len);
+
+		of_property_read_u32(np, "reset-high-delay-ms", &desc->delay.reset_high);
+		of_property_read_u32(np, "reset-high2-delay-ms", &desc->delay.reset_high2);
+		of_property_read_u32(np, "reset-low-delay-ms", &desc->delay.reset_low);
+	}
+
+	if (data) {
+		desc->init_seq = devm_kzalloc(dev, sizeof(*desc->init_seq),
+					      GFP_KERNEL);
+		if (!desc->init_seq)
+			return -ENOMEM;
+
+		err = panel_simple_parse_cmd_seq(dev, data, len,
+						 desc->init_seq);
+		if (err) {
+			dev_err(dev, "failed to parse init sequence\n");
+			return err;
+		}
+	}
+
+	if (tinker_mcu_is_connected(dsi_id))
+		data = of_get_property(np, "rpi-exit-sequence",
+			       &len);
+	else if (tinker_mcu_ili9881c_is_connected(dsi_id))
+		data = of_get_property(np, "powertip-exit-sequence",
+			       &len);
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		data = of_get_property(np, "lkw070n13000-v2-exit-sequence", &len);
+	}
+
+	if (data) {
+		desc->exit_seq = devm_kzalloc(dev, sizeof(*desc->exit_seq),
+					      GFP_KERNEL);
+		if (!desc->exit_seq)
+			return -ENOMEM;
+
+		err = panel_simple_parse_cmd_seq(dev, data, len,
+						 desc->exit_seq);
+		if (err) {
+			dev_err(dev, "failed to parse exit sequence\n");
+			return err;
+		}
+	}
+
+	return 0;
+}
+#endif
+
 static bool of_child_node_is_present(const struct device_node *node,
 				     const char *name)
 {
@@ -5146,6 +5303,97 @@ static const struct panel_desc_dsi panasonic_vvx10f004b00 = {
 	.lanes = 4,
 };
 
+static const struct drm_display_mode lkw070n13000_v2_mode = {
+	.clock = 70000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 40,
+	.hsync_end = 800 + 40 + 8,
+	.htotal = 800 + 80 + 20 + 80,
+	.vdisplay = 1280,
+	.vsync_start = 1280 + 10,
+	.vsync_end = 1280 + 10 + 4,
+	.vtotal = 1280 + 10 + 4 + 20,
+
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi lkw070n13000_v2_dec= {
+	.desc = {
+		.modes = &lkw070n13000_v2_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 151,
+			.height = 92,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		MIPI_DSI_MODE_VIDEO_BURST |
+		MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 4,
+};
+
+static const struct drm_display_mode tc358762_mode = {
+	.clock = 26101800 / 1000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 1,
+	.hsync_end = 800 + 1 + 2,
+	.htotal = 800 + 1 + 2 + 52,
+	.vdisplay = 480,
+	.vsync_start = 480 + 7,
+	.vsync_end = 480 + 7 + 2,
+	.vtotal = 480 + 7 + 2 + 21,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi tc358762_dec= {
+	.desc = {
+		.modes = &tc358762_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 217,
+			.height = 136,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		 MIPI_DSI_MODE_VIDEO_BURST |
+		 MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 1,
+};
+
+static const struct drm_display_mode asus_ili9881c_default_mode_7inch= {
+	.clock		= 66800,
+	.hdisplay	= 720,
+	.hsync_start	= 720 + 8,
+	.hsync_end	= 720 + 8 + 55,
+	.htotal		= 720 + 8 + 55 + 55,
+	.vdisplay	= 1280,
+	.vsync_start	= 1280 + 8,
+	.vsync_end	= 1280 + 8 + 20,
+	.vtotal		= 1280 + 8 + 20 + 20,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi asus_ili9881c_dec= {
+	.desc = {
+		.modes = &asus_ili9881c_default_mode_7inch,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 88,
+			.height = 153,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+			MIPI_DSI_MODE_VIDEO_BURST |
+			MIPI_DSI_MODE_LPM,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 2,
+};
+
 static const struct drm_display_mode lg_acx467akm_7_mode = {
 	.clock = 150000,
 	.hdisplay = 1080,
@@ -5266,6 +5514,13 @@ void lt9211_setup_desc(struct panel_desc_dsi *desc)
     drm_display_mode_to_videomode(desc->desc.modes, &vm);
     lt9211_set_videomode(vm);
 }
+bool is_dsi_panel_connected(void)
+{
+	if (dsi_panel != MIPI_DSI_NONE)
+		return true;
+	else
+		return false;
+}
 
 static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 {
@@ -5276,19 +5531,65 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	const struct of_device_id *id;
 	int err;
 	int dsi_id;
+	struct device_node *np = dev->of_node;
 
 	pr_info("panel_simple_dsi_probe ++++\n");
+	if(of_property_read_bool(np, "lkw070n13000-v2-panel-exist"))
+	{
+		dsi_panel = MIPI_DSI_LKW070N13000_V2;
+		pr_err("%s: lkw070n13000-v2 is connected\n", __func__);
+	}
+	else
+	{
+		dsi_panel = MIPI_DSI_NONE;
+	}
+
 	id = of_match_node(dsi_of_match, dsi->dev.of_node);
 	if (!id)
 		return -ENODEV;
 
-	if(lt9211_is_probed() > 1)
+	if((lt9211_is_probed() > 1) && (dsi_panel == MIPI_DSI_NONE))
 		return -EPROBE_DEFER;
 
-	if (!id->data) {
-		dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
-		pr_info("panel_simple_dsi_probe dsi_id =%d\n", dsi_id);
+#if IS_ENABLED(CONFIG_TINKER_MCU)
+	dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
+	d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
+	if (!d)
+			return -ENOMEM;
+	if (tinker_mcu_is_connected(dsi_id)) {
+		memcpy(d, &tc358762_dec, sizeof(tc358762_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+	else if (tinker_mcu_ili9881c_is_connected(dsi_id)) {
+		memcpy(d, &asus_ili9881c_dec, sizeof(asus_ili9881c_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+	else if (lt9211_is_connected()) {
+		err = panel_simple_dsi_of_get_desc_data(dev, d);
+		if (err) {
+			dev_err(dev, "failed to get desc data: %d\n", err);
+			return err;
+		}
+			lt9211_setup_desc(d);
+	}
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		memcpy(d, &lkw070n13000_v2_dec, sizeof(lkw070n13000_v2_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
+	else if (sn65dsi86_is_connected()) {
+		err = panel_simple_dsi_of_get_desc_data(dev, d);
+		if (err) {
+			dev_err(dev, "failed to get desc data: %d\n", err);
+			return err;
+		}
 
+		sn65dsi86_setup_desc(d);
+	}
+#endif
+#else
+	if (!id->data) {
 		d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
 		if (!d)
 			return -ENOMEM;
@@ -5299,10 +5600,7 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 			return err;
 		}
 	}
-
-	if (lt9211_is_connected()){
-		lt9211_setup_desc(d);
-	}
+#endif
 
 	desc = id->data ? id->data : d;
 
