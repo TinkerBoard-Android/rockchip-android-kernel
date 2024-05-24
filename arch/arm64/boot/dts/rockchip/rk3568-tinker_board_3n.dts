@@ -152,7 +152,6 @@
 	status = "okay";
         rockchip,sleep-mode-config = <
                 (0
-                | RKPM_SLP_ARMOFF_LOGOFF
                 | RKPM_SLP_CENTER_OFF
                 | RKPM_SLP_HW_PLLS_OFF
                 | RKPM_SLP_PMUALIVE_32K
