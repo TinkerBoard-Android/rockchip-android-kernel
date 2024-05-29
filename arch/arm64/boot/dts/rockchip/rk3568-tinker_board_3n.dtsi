@@ -306,10 +306,14 @@
 	phy-mode = "rgmii";
 	clock_in_out = "output";
 
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac0_pmeb_gpios>;
+	wolirq-gpio = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
+
 	snps,reset-gpio = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
-	/* Reset time is 20ms, 100ms for rtl8211f */
-	snps,reset-delays-us = <0 20000 100000>;
+	/* Reset time > 20ms, 100ms for rtl8211f */
+	snps,reset-delays-us = <0 50000 200000>;
 
 	assigned-clocks = <&cru SCLK_GMAC0_RX_TX>, <&cru SCLK_GMAC0>;
 	assigned-clock-parents = <&cru SCLK_GMAC0_RGMII_SPEED>, <&cru CLK_MAC0_2TOP>;
@@ -333,10 +337,14 @@
 	phy-mode = "rgmii";
 	clock_in_out = "output";
 
+	pinctrl-names = "default";
+	pinctrl-0 = <&gmac1_pmeb_gpios>;
+	wolirq-gpio = <&gpio3 RK_PA7 GPIO_ACTIVE_LOW>;
+
 	snps,reset-gpio = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
 	snps,reset-active-low;
-	/* Reset time is 20ms, 100ms for rtl8211f */
-	snps,reset-delays-us = <0 20000 100000>;
+	/* Reset time > 20ms, 100ms for rtl8211f */
+	snps,reset-delays-us = <0 50000 200000>;
 
 	assigned-clocks = <&cru SCLK_GMAC1_RX_TX>, <&cru SCLK_GMAC1>;
 	assigned-clock-parents = <&cru SCLK_GMAC1_RGMII_SPEED>, <&cru CLK_MAC1_2TOP>;
@@ -583,6 +591,16 @@
 
 		pcie30_2_clkreqn_m1: pcie30-2-clkreqn-m1 {
 			rockchip,pins = <2 RK_PD4 RK_FUNC_GPIO &pcfg_pull_up>;
+		};
+	};
+
+	gmac-wol {
+		gmac0_pmeb_gpios:  gmac0-pmeb-gpios {
+			rockchip,pins = <3 RK_PA5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		gmac1_pmeb_gpios:  gmac1-pmeb-gpios {
+			rockchip,pins = <3 RK_PA7 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
 	};
 };

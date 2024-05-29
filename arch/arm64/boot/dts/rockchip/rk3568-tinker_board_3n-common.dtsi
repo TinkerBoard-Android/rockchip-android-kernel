@@ -1035,7 +1035,7 @@
 				regulator-max-microvolt = <1800000>;
 				regulator-name = "vcc_1v8";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 
@@ -1044,7 +1044,7 @@
 				regulator-boot-on;
 				regulator-name = "vcc_3v3";
 				regulator-state-mem {
-					regulator-off-in-suspend;
+					regulator-on-in-suspend;
 				};
 			};
 

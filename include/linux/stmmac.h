@@ -14,6 +14,7 @@
 
 #include <linux/platform_device.h>
 #include <linux/phy.h>
+#include <linux/wakelock.h>
 
 #define MTL_MAX_RX_QUEUES	8
 #define MTL_MAX_TX_QUEUES	8
@@ -277,5 +278,9 @@ struct plat_stmmacenet_data {
 	int msi_tx_base_vec;
 	bool use_phy_wol;
 	bool sph_disable;
+	int wolirq_io;
+	bool is_in_suspend;
+	int wol_irq;
+	struct wake_lock wol_wake_lock;
 };
 #endif

@@ -2685,13 +2685,73 @@ EXPORT_SYMBOL(genphy_write_mmd_unsupported);
 
 int genphy_suspend(struct phy_device *phydev)
 {
-	return phy_set_bits(phydev, MII_BMCR, BMCR_PDOWN);
+//	return phy_set_bits(phydev, MII_BMCR, BMCR_PDOWN);
+	int value;
+	struct net_device * ndev = phydev->attached_dev;
+
+	//RTL8211F
+	if(ndev != NULL) {
+		pr_info("RTL8211F enter WOL: genphy_suspend\n");
+		//set INTB pin
+		phy_write(phydev, 31, 0x0d40);
+		value = phy_read(phydev, 22);
+		phy_write(phydev, 22, value | BIT(5));
+
+		//set MAC address
+		phy_write(phydev, 31, 0x0d8c);
+		phy_write(phydev, 16, ((u16)ndev->dev_addr[1] << 8) + ndev->dev_addr[0]);
+		phy_write(phydev, 17, ((u16)ndev->dev_addr[3] << 8) + ndev->dev_addr[2]);
+		phy_write(phydev, 18, ((u16)ndev->dev_addr[5] << 8) + ndev->dev_addr[4]);
+
+		//set max packet length
+		phy_write(phydev, 31, 0x0d8a);
+		phy_write(phydev, 17, 0x9fff);
+
+		//enable wol event
+		phy_write(phydev, 31, 0x0d8a);
+		phy_write(phydev, 16, 0x1000);
+
+		//disable rgmii pad
+		phy_write(phydev, 31, 0x0d8a);
+		value = phy_read(phydev, 19);
+		phy_write(phydev, 19, value | BIT(15));
+
+		phy_write(phydev, 31, 0xa42);
+	}
+
+	return 0;
 }
 EXPORT_SYMBOL(genphy_suspend);
 
 int genphy_resume(struct phy_device *phydev)
 {
-	return phy_clear_bits(phydev, MII_BMCR, BMCR_PDOWN);
+//	return phy_clear_bits(phydev, MII_BMCR, BMCR_PDOWN);
+	int value;
+
+	pr_info("RTL8211F exit WOL: genphy_resume\n");
+	//RTL8211F
+	//disable wol event
+	phy_write(phydev, 31, 0x0d8a);
+	phy_write(phydev, 16, 0x0);
+
+	//reset wol
+	phy_write(phydev, 31, 0x0d8a);
+	value = phy_read(phydev, 17);
+	phy_write(phydev, 17, value & (~BIT(15)));
+
+	//enable rgmii pad
+	phy_write(phydev, 31, 0x0d8a);
+	value = phy_read(phydev, 19);
+	phy_write(phydev, 19, value & (~BIT(15)));
+
+	//set INTB pin
+	phy_write(phydev, 31, 0x0d40);
+	value = phy_read(phydev, 22);
+	phy_write(phydev, 22, value & (~BIT(5)));
+	phy_write(phydev, 31, 0xa42);
+	msleep(100);
+
+	return 0;
 }
 EXPORT_SYMBOL(genphy_resume);
 
