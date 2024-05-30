@@ -5317,7 +5317,7 @@ static const struct panel_desc_dsi panasonic_vvx10f004b00 = {
 };
 
 static const struct drm_display_mode lkw070n13000_v2_mode = {
-	.clock = 70000,
+	.clock = 77000,
 	.hdisplay = 800,
 	.hsync_start = 800 + 40,
 	.hsync_end = 800 + 40 + 8,
