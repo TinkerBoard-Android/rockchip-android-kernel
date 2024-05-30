@@ -149,6 +149,8 @@ static void stmmac_exit_fs(struct net_device *dev);
 
 #define STMMAC_COAL_TIMER(x) (ns_to_ktime((x) * NSEC_PER_USEC))
 
+extern int get_board_model(void);
+
 //RTL8211F_FI_VD
 #define RTL8211F_FI_VD_PHY_ID  0x001cc878
 static int phy_rtl8211x_eee_fixup(struct phy_device *phydev)
@@ -2940,8 +2942,14 @@ static void stmmac_check_ether_addr(struct stmmac_priv *priv)
 			 priv->dev->dev_addr);
 	}
 */
-	if (!strcmp(dev_name(priv->device), "fe010000.ethernet"))
-		eth_mac_eeprom(addr, 1);
+	if (get_board_model() == 3568) {
+		if (!strcmp(dev_name(priv->device), "fe2a0000.ethernet"))
+			eth_mac_eeprom(addr, 0);
+		else if (!strcmp(dev_name(priv->device), "fe010000.ethernet"))
+			eth_mac_eeprom(addr, 1);
+		else
+			eth_mac_eeprom(addr, 0);
+	}
 	else
 		eth_mac_eeprom(addr, 0);
 
@@ -3881,6 +3889,8 @@ static int __stmmac_open(struct net_device *dev,
 	ret = pm_runtime_resume_and_get(priv->device);
 	if (ret < 0)
 		return ret;
+
+	printk("rk_gmac-dwmac: board_model= %d\n", get_board_model());
 
 	if (priv->hw->pcs != STMMAC_PCS_TBI &&
 	    priv->hw->pcs != STMMAC_PCS_RTBI &&
@@ -7448,10 +7458,12 @@ int stmmac_dvr_probe(struct device *device,
 		goto error_phy_setup;
 	}
 
-	if (!strcmp(dev_name(device), "fe2a0000.ethernet"))
-		strcpy(ndev->name, "eth0");
-	else if (!strcmp(dev_name(device), "fe010000.ethernet"))
-		strcpy(ndev->name, "eth1");
+	if (get_board_model() == 3568) {
+		if (!strcmp(dev_name(device), "fe2a0000.ethernet"))
+			strcpy(ndev->name, "eth0");
+		else if (!strcmp(dev_name(device), "fe010000.ethernet"))
+			strcpy(ndev->name, "eth1");
+	}
 
 	ret = register_netdev(ndev);
 	if (ret) {
