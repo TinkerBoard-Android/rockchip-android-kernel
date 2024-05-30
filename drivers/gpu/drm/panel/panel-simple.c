@@ -46,6 +46,14 @@
 #include <drm/display/drm_dsc.h>
 
 #include "panel-simple.h"
+#include "../bridge/sn65dsi8x/sn65dsi86.h"
+
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
+extern void sn65dsi86_loader_protect(bool on);
+extern void sn65dsi86_bridge_disable(void);
+extern bool sn65dsi86_is_connected(void);
+extern struct sn65dsi86_data *g_sn65dsi86;
+#endif
 
 #if IS_ENABLED(CONFIG_DRM_I2C_LT9211)
 //extern void lt9211_loader_protect(bool on);
@@ -622,6 +630,9 @@ static int panel_simple_disable(struct drm_panel *panel)
 	pr_info("panel_simple_disable: p->enabled = %d ++++\n", p->prepared);
 	if (!p->enabled)
 		return 0;
+
+	if (sn65dsi86_is_connected())
+		sn65dsi86_bridge_disable();
 
 	if (lt9211_is_connected()) {
 		if(p->desc->pwseq_delay.t3){
@@ -5506,6 +5517,15 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 		desc->flags, desc->format, desc->lanes);
 
 	return 0;
+}
+
+void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
+{
+	drm_display_mode_to_videomode(desc->desc.modes, &g_sn65dsi86->vm);
+	memcpy(&g_sn65dsi86->mode, desc->desc.modes, sizeof(struct drm_display_mode));
+	g_sn65dsi86->dsi_lanes = desc->lanes;
+	g_sn65dsi86->format = desc->format;
+	g_sn65dsi86->bpc = desc->desc.bpc;
 }
 
 void lt9211_setup_desc(struct panel_desc_dsi *desc)

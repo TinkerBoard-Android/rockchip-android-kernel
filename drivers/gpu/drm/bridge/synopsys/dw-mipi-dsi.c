@@ -997,6 +997,9 @@ static void dw_mipi_dsi_bridge_atomic_pre_enable(struct drm_bridge *bridge,
 		drm_panel_prepare(dsi->panel);
 }
 
+extern void sn65dsi86_bridge_enable(void);
+extern bool sn65dsi86_is_connected(void);
+
 static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 {
 	u32 val;
@@ -1006,6 +1009,10 @@ static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 		val |= AUTO_CLKLANE_CTRL;
 
 	dsi_write(dsi, DSI_LPCLK_CTRL, val);
+
+
+	if (sn65dsi86_is_connected())
+		sn65dsi86_bridge_enable();
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
 		dw_mipi_dsi_set_mode(dsi, MIPI_DSI_MODE_VIDEO);

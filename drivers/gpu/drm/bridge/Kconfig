@@ -450,4 +450,6 @@ source "drivers/gpu/drm/bridge/synopsys/Kconfig"
 
 source "drivers/gpu/drm/bridge/lt9211/Kconfig"
 
+source "drivers/gpu/drm/bridge/sn65dsi8x/Kconfig"
+
 endmenu
