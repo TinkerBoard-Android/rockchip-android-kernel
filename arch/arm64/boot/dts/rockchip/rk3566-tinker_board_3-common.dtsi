@@ -309,6 +309,15 @@
 		power-gpios = <&gpio3 RK_PD3 GPIO_ACTIVE_HIGH>;
 		status = "okay";
 	};
+
+        rtc_wakeup_gpio: rtc-wakeup-gpio {
+                compatible = "regulator-fixed";
+                regulator-name = "rtc_wakeup_gpio";
+                gpio = <&gpio3 RK_PC4 GPIO_ACTIVE_HIGH>;
+                enable-active-high;
+                regulator-always-on;
+                regulator-boot-on;
+        };
 };
 
 &bus_npu {
@@ -1643,15 +1652,6 @@
 
 &i2c1 {
 	status = "okay";
-
-	gt1x: gt1x@14 {
-		compatible = "goodix,gt1x";
-		reg = <0x14>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&touch_gpio>;
-		goodix,rst-gpio = <&gpio0 RK_PB6 GPIO_ACTIVE_HIGH>;
-		goodix,irq-gpio = <&gpio0 RK_PB5 IRQ_TYPE_LEVEL_LOW>;
-	};
 };
 
 &i2c5 {
