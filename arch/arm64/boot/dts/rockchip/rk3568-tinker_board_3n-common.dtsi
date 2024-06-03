@@ -166,6 +166,7 @@
 	};
 
 	leds: leds {
+		status = "disabled";
 		compatible = "gpio-leds";
 		work_led: work {
 			gpios = <&gpio0 RK_PC0 GPIO_ACTIVE_HIGH>;
@@ -267,6 +268,18 @@
 		};
 	};
 
+	uart0_enable: uart0_enable {
+		compatible = "regulator-fixed";
+		regulator-name = "uart0_enable";
+		regulator-boot-on;
+	};
+
+	uart8_enable: uart8_enable {
+		compatible = "regulator-fixed";
+		regulator-name = "uart8_enable";
+		regulator-boot-on;
+	};
+
         rtc_wakeup_gpio: rtc-wakeup-gpio {
                 compatible = "regulator-fixed";
                 regulator-name = "rtc_wakeup_gpio";
@@ -306,10 +319,6 @@
 		clocks = <&rk809 1>;
 		clock-names = "ext_clock";
 		//wifi-bt-power-toggle;
-		uart_rts_gpios = <&gpio2 RK_PB1 GPIO_ACTIVE_LOW>;
-		pinctrl-names = "default", "rts_gpio";
-		pinctrl-0 = <&uart8m0_rtsn>;
-		pinctrl-1 = <&uart8_gpios>;
 		status = "disabled";
 	};
 };
@@ -1218,11 +1227,6 @@
 		};
 	};
 
-	wireless-bluetooth {
-		uart8_gpios: uart8-gpios {
-			rockchip,pins = <2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
 };
 
  /*
@@ -1257,7 +1261,7 @@
 };
 
 &pwm5 {
-	status = "okay";
+	status = "disabled";
 };
 
 &pwm7 {
