@@ -997,8 +997,10 @@ static void dw_mipi_dsi_bridge_atomic_pre_enable(struct drm_bridge *bridge,
 		drm_panel_prepare(dsi->panel);
 }
 
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
 extern void sn65dsi86_bridge_enable(void);
 extern bool sn65dsi86_is_connected(void);
+#endif
 
 static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 {
@@ -1010,9 +1012,10 @@ static void dw_mipi_dsi_enable(struct dw_mipi_dsi *dsi)
 
 	dsi_write(dsi, DSI_LPCLK_CTRL, val);
 
-
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
 	if (sn65dsi86_is_connected())
 		sn65dsi86_bridge_enable();
+#endif
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
 		dw_mipi_dsi_set_mode(dsi, MIPI_DSI_MODE_VIDEO);

@@ -631,8 +631,10 @@ static int panel_simple_disable(struct drm_panel *panel)
 	if (!p->enabled)
 		return 0;
 
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
 	if (sn65dsi86_is_connected())
 		sn65dsi86_bridge_disable();
+#endif
 
 	if (lt9211_is_connected()) {
 		if(p->desc->pwseq_delay.t3){
@@ -5519,6 +5521,7 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
 void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
 {
 	drm_display_mode_to_videomode(desc->desc.modes, &g_sn65dsi86->vm);
@@ -5527,6 +5530,7 @@ void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
 	g_sn65dsi86->format = desc->format;
 	g_sn65dsi86->bpc = desc->desc.bpc;
 }
+#endif
 
 void lt9211_setup_desc(struct panel_desc_dsi *desc)
 {

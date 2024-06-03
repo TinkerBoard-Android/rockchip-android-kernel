@@ -399,7 +399,10 @@ static int tinker_mcu_is_connected(int dsi_id)  { return 0; }
 static int tinker_mcu_ili9881c_is_connected(int dsi_id)  { return 0; }
 #endif
 
+#if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
 extern bool sn65dsi86_is_connected(void);
+#endif
+
 extern bool is_dsi_panel_connected(void);
 static int max_mbps_to_parameter(unsigned int max_mbps)
 {
