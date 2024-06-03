@@ -12,7 +12,7 @@
 #include "rk3568-tinker_board_3n-common.dtsi"
 
 / {
-	model = "Rockchip RK3568 EVB1 DDR4 V10 Board";
+	model = "ASUS Tinker Board 3N";
 	compatible = "rockchip,rk3568-evb1-ddr4-v10", "rockchip,rk3568";
 
 	rk_headset: rk-headset {
