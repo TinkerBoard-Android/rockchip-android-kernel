@@ -69,7 +69,7 @@
 		default-brightness-level = <200>;
 		minimal-brightness-level = <30>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&pinctrl_lvds_bl_en>;// &dsi_pwren &fourty_pin5v0 &fourty_pin3v3>;
+		pinctrl-0 = <&pinctrl_lvds_bl_en>;// &dsi_pwren>;
 		soc_enablekl-gpios = <&gpio2 RK_PC3 GPIO_ACTIVE_HIGH>;
 		enable_delay = <15>;//EDP T14,min 10
 		post-pwm-on-delay-ms = <15>;//EDP T15,min 10ms, Backlight node:post-pwm-on-delay-ms = <15>;
@@ -241,23 +241,23 @@
 		vin-supply = <&dc_12v>;
 	};
 
-	vcc3v3_lcd0_n: vcc3v3-lcd0-n {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_lcd0_n";
-		regulator-boot-on;
-		regulator-state-mem {
-			regulator-off-in-suspend;
-		};
-	};
+	fourty_vcc3v3: fourty-vcc3v3 {
+                compatible = "regulator-fixed";
+                regulator-name = "fourty_vcc3v3";
+                gpio = <&gpio0 RK_PC5 GPIO_ACTIVE_HIGH>;
+                enable-active-high;
+                regulator-always-on;
+                regulator-boot-on;
+        };
 
-	vcc3v3_lcd1_n: vcc3v3-lcd1-n {
-		compatible = "regulator-fixed";
-		regulator-name = "vcc3v3_lcd1_n";
-		regulator-boot-on;
-		regulator-state-mem {
-			regulator-off-in-suspend;
-		};
-	};
+	fourty_vcc5v0: fourty-vcc5v0 {
+                compatible = "regulator-fixed";
+                regulator-name = "fourty_vcc5v0";
+                gpio = <&gpio0 RK_PC3 GPIO_ACTIVE_HIGH>;
+                enable-active-high;
+                regulator-always-on;
+                regulator-boot-on;
+        };
 
 	sdio_pwrseq: sdio-pwrseq {
 		compatible = "mmc-pwrseq-simple";
@@ -1844,16 +1844,112 @@
 	vccio7-supply = <&vcc_3v3>;
 };
 
-&pwm4 {
-	status = "okay";
-};
-
-&pwm5 {
-	status = "okay";
-};
-
 &pwm7 {
-	status = "okay";
+	status = "disabled";
+
+	compatible = "rockchip,remotectl-pwm";
+	remote_pwm_id = <3>;
+	handle_cpu_id = <1>;
+	remote_support_psci = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pwm7_pins>;
+
+	ir_key1 {
+		rockchip,usercode = <0x4040>;
+		rockchip,key_table =
+			<0xf2	KEY_REPLY>,
+			<0xba	KEY_BACK>,
+			<0xf4	KEY_UP>,
+			<0xf1	KEY_DOWN>,
+			<0xef	KEY_LEFT>,
+			<0xee	KEY_RIGHT>,
+			<0xbd	KEY_HOME>,
+			<0xea	KEY_VOLUMEUP>,
+			<0xe3	KEY_VOLUMEDOWN>,
+			<0xe2	KEY_SEARCH>,
+			<0xb2	KEY_POWER>,
+			<0xbc	KEY_MUTE>,
+			<0xec	KEY_MENU>,
+			<0xbf	0x190>,
+			<0xe0	0x191>,
+			<0xe1	0x192>,
+			<0xe9	183>,
+			<0xe6	248>,
+			<0xe8	185>,
+			<0xe7	186>,
+			<0xf0	388>,
+			<0xbe	0x175>;
+	};
+
+	ir_key2 {
+		rockchip,usercode = <0xff00>;
+		rockchip,key_table =
+			<0xf9	KEY_HOME>,
+			<0xbf	KEY_BACK>,
+			<0xfb	KEY_MENU>,
+			<0xaa	KEY_REPLY>,
+			<0xb9	KEY_UP>,
+			<0xe9	KEY_DOWN>,
+			<0xb8	KEY_LEFT>,
+			<0xea	KEY_RIGHT>,
+			<0xeb	KEY_VOLUMEDOWN>,
+			<0xef	KEY_VOLUMEUP>,
+			<0xf7	KEY_MUTE>,
+			<0xe7	KEY_POWER>,
+			<0xfc	KEY_POWER>,
+			<0xa9	KEY_VOLUMEDOWN>,
+			<0xa8	KEY_VOLUMEDOWN>,
+			<0xe0	KEY_VOLUMEDOWN>,
+			<0xa5	KEY_VOLUMEDOWN>,
+			<0xab	183>,
+			<0xb7	388>,
+			<0xe8	388>,
+			<0xf8	184>,
+			<0xaf	185>,
+			<0xed	KEY_VOLUMEDOWN>,
+			<0xee	186>,
+			<0xb3	KEY_VOLUMEDOWN>,
+			<0xf1	KEY_VOLUMEDOWN>,
+			<0xf2	KEY_VOLUMEDOWN>,
+			<0xf3	KEY_SEARCH>,
+			<0xb4	KEY_VOLUMEDOWN>,
+			<0xbe	KEY_SEARCH>;
+	};
+
+	ir_key3 {
+		rockchip,usercode = <0x1dcc>;
+		rockchip,key_table =
+			<0xee	KEY_REPLY>,
+			<0xf0	KEY_BACK>,
+			<0xf8	KEY_UP>,
+			<0xbb	KEY_DOWN>,
+			<0xef	KEY_LEFT>,
+			<0xed	KEY_RIGHT>,
+			<0xfc	KEY_HOME>,
+			<0xf1	KEY_VOLUMEUP>,
+			<0xfd	KEY_VOLUMEDOWN>,
+			<0xb7	KEY_SEARCH>,
+			<0xff	KEY_POWER>,
+			<0xf3	KEY_MUTE>,
+			<0xbf	KEY_MENU>,
+			<0xf9	0x191>,
+			<0xf5	0x192>,
+			<0xb3	388>,
+			<0xbe	KEY_1>,
+			<0xba	KEY_2>,
+			<0xb2	KEY_3>,
+			<0xbd	KEY_4>,
+			<0xf9	KEY_5>,
+			<0xb1	KEY_6>,
+			<0xfc	KEY_7>,
+			<0xf8	KEY_8>,
+			<0xb0	KEY_9>,
+			<0xb6	KEY_0>,
+			<0xb5	KEY_BACKSPACE>;
+	};
+};
+&pwm15 {
+	status = "disabled";
 
 	compatible = "rockchip,remotectl-pwm";
 	remote_pwm_id = <3>;
@@ -2140,4 +2236,104 @@
 
 &vop_mmu {
 	status = "okay";
+};
+
+&i2c1 {
+	status = "disabled";
+};
+&i2c5 {
+	status = "disabled";
+};
+
+&uart0 {
+	pinctrl-names = "default";
+        pinctrl-0 = <&uart0_xfer &uart0_rtsn &uart0_ctsn>;
+	status = "disabled";
+};
+&uart1 {
+	status = "disabled";
+};
+
+&uart4 {
+	pinctrl-0 = <&uart4m1_xfer>;
+	status = "disabled";
+};
+&uart9 {
+        pinctrl-0 = <&uart9m1_xfer>;
+        status = "disabled";
+};
+&spi3 {
+        pinctrl-0 = <&spi3m1_pins &spi3m1_cs0>;
+        cs-gpios = <0>;
+        status = "disabled";
+        spidev@0 {
+                compatible = "rockchip,spidev";
+                reg = <0>;
+                spi-max-frequency = <50000000>;
+                status = "okay";
+        };
+};
+
+&spi2 {
+        pinctrl-0 = <&spi2m0_pins &spi2m0_cs0 &spi2m0_cs1>;
+        cs-gpios = <0>, <0>;
+        status = "disabled";
+        spidev@0 {
+                compatible = "rockchip,spidev";
+                reg = <0>;
+                spi-max-frequency = <50000000>;
+                status = "okay";
+        };
+	spidev@1 {
+                compatible = "rockchip,spidev";
+                reg = <1>;
+                spi-max-frequency = <50000000>;
+                status = "okay";
+        };
+};
+&spdif_8ch {
+       pinctrl-0 = <&spdifm1_tx>;
+       status = "disabled";
+};
+&pwm0 {
+	pinctrl-0 = <&pwm0m1_pins>;
+	status = "disabled";
+};
+&pwm1 {
+	status = "disabled";
+};
+&pwm2 {
+	status = "disabled";
+};
+&pwm4 {
+	status = "disabled";
+};
+
+&pwm5 {
+	status = "disabled";
+};
+&pwm7 {
+	status = "disabled";
+};
+&pwm8 {
+	status = "disabled";
+};
+&pwm12 {
+	pinctrl-0 = <&pwm12m1_pins>;
+	status = "disabled";
+};
+&pwm13 {
+	pinctrl-0 = <&pwm13m1_pins>;
+	status = "disabled";
+};
+&pwm14 {
+	pinctrl-0 = <&pwm14m1_pins>;
+	status = "disabled";
+};
+&pwm15 {
+	pinctrl-0 = <&pwm15m0_pins &pwm15m1_pins>;
+	status = "disabled";
+};
+&xin32k {
+	status = "disabled";
 };
