@@ -5554,7 +5554,9 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	struct panel_desc_dsi *d;
 	const struct of_device_id *id;
 	int err;
+#if IS_ENABLED(CONFIG_TINKER_MCU)
 	int dsi_id;
+#endif
 	struct device_node *np = dev->of_node;
 
 	pr_info("panel_simple_dsi_probe ++++\n");

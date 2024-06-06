@@ -394,9 +394,6 @@ static const struct dphy_pll_parameter_map dppa_map[] = {
 #if IS_ENABLED(CONFIG_TINKER_MCU)
 extern int tinker_mcu_is_connected(int dsi_id);
 extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
-#else
-static int tinker_mcu_is_connected(int dsi_id)  { return 0; }
-static int tinker_mcu_ili9881c_is_connected(int dsi_id)  { return 0; }
 #endif
 
 #if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
