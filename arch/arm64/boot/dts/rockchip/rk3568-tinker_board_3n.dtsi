@@ -441,7 +441,7 @@
 		dsi-lanes = <4>;//u-boot
 		de-mode;
 		//dual-link;
-		//Tinker3;
+		Tinker3;
 		//enable-overlay;
 		//uboot-logo;
 		//test-pattern;

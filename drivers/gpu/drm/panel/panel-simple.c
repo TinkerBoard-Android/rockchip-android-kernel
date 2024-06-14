@@ -66,6 +66,7 @@ extern bool lt9211_test_pattern(void);
 extern void lt9211_lvds_pattern_config(void);
 //extern void lt9211_lvds_power_on(void);
 extern void lt9211_lvds_power_off(void);
+extern bool lt9211_is_tinker3(void);
 extern void lt9211_backlight_sys_enable(void);
 extern void lt9211_backlight_sys_disable(void);
 #else
@@ -637,12 +638,16 @@ static int panel_simple_disable(struct drm_panel *panel)
 #endif
 
 	if (lt9211_is_connected()) {
-		if(p->desc->pwseq_delay.t3){
-			msleep(p->desc->pwseq_delay.t7);//Backlight off to Backlight sys Disable
-			lt9211_backlight_sys_disable();
-			msleep(p->desc->pwseq_delay.t3 - p->desc->pwseq_delay.t7);//Backlight sys Disable or backlight power off to stop lvds signal
+		if(lt9211_is_tinker3()) {
+			if(p->desc->pwseq_delay.t3){
+				msleep(p->desc->pwseq_delay.t7);//Backlight off to Backlight sys Disable
+				lt9211_backlight_sys_disable();
+				msleep(p->desc->pwseq_delay.t3 - p->desc->pwseq_delay.t7);//Backlight sys Disable or backlight power off to stop lvds signal
+			}
+		} else {
+			if(p->desc->pwseq_delay.t3)
+				msleep(p->desc->pwseq_delay.t3);//backlight power off to stop lvds signal
 		}
-
 		lt9211_bridge_disable();
 		if(p->desc->pwseq_delay.t4)
 			msleep(p->desc->pwseq_delay.t4);//stop lvds signal to turn VCC off
@@ -835,10 +840,15 @@ static int panel_simple_enable(struct drm_panel *panel)
 
 	if (lt9211_is_connected()) {
 		lt9211_bridge_enable(p->desc->pwseq_delay.t1);
-		if(p->desc->pwseq_delay.t2){
-			msleep(p->desc->pwseq_delay.t2 - p->desc->pwseq_delay.t6);//lvds signal to turn on backlight or Backlight sys Enable
-			lt9211_backlight_sys_enable();
-			msleep(p->desc->pwseq_delay.t6);//Backlight sys Enable to turn Backlight on
+		if(lt9211_is_tinker3()) {
+			if(p->desc->pwseq_delay.t2){
+				msleep(p->desc->pwseq_delay.t2 - p->desc->pwseq_delay.t6);//lvds signal to turn on backlight or Backlight sys Enable
+				lt9211_backlight_sys_enable();
+				msleep(p->desc->pwseq_delay.t6);//Backlight sys Enable to turn Backlight on
+			}
+		} else {
+			if(p->desc->pwseq_delay.t2)
+				msleep(p->desc->pwseq_delay.t2);//lvds signal to turn on backlight
 		}
 	}
 
