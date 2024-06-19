@@ -5564,9 +5564,7 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	struct panel_desc_dsi *d;
 	const struct of_device_id *id;
 	int err;
-#if IS_ENABLED(CONFIG_TINKER_MCU)
 	int dsi_id;
-#endif
 	struct device_node *np = dev->of_node;
 
 	pr_info("panel_simple_dsi_probe ++++\n");
@@ -5587,11 +5585,12 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	if((lt9211_is_probed() > 1) && (dsi_panel == MIPI_DSI_NONE))
 		return -EPROBE_DEFER;
 
-#if IS_ENABLED(CONFIG_TINKER_MCU)
 	dsi_id = of_alias_get_id(dev->of_node->parent, "dsi");
 	d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
 	if (!d)
 			return -ENOMEM;
+
+#if IS_ENABLED(CONFIG_TINKER_MCU)
 	if (tinker_mcu_is_connected(dsi_id)) {
 		memcpy(d, &tc358762_dec, sizeof(tc358762_dec));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
@@ -5600,21 +5599,15 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 		memcpy(d, &asus_ili9881c_dec, sizeof(asus_ili9881c_dec));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
-	else if (lt9211_is_connected()) {
-		err = panel_simple_dsi_of_get_desc_data(dev, d);
-		if (err) {
-			dev_err(dev, "failed to get desc data: %d\n", err);
-			return err;
-		}
-			lt9211_setup_desc(d);
-	}
+
 	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
 	{
 		memcpy(d, &lkw070n13000_v2_dec, sizeof(lkw070n13000_v2_dec));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
+#endif
 #if IS_ENABLED(CONFIG_DRM_I2C_SN65DSI86)
-	else if (sn65dsi86_is_connected()) {
+	if (sn65dsi86_is_connected()) {
 		err = panel_simple_dsi_of_get_desc_data(dev, d);
 		if (err) {
 			dev_err(dev, "failed to get desc data: %d\n", err);
@@ -5624,6 +5617,15 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 		sn65dsi86_setup_desc(d);
 	}
 #endif
+#if IS_ENABLED(CONFIG_DRM_I2C_LT9211)
+	if (lt9211_is_connected()) {
+		err = panel_simple_dsi_of_get_desc_data(dev, d);
+		if (err) {
+			dev_err(dev, "failed to get desc data: %d\n", err);
+			return err;
+		}
+			lt9211_setup_desc(d);
+	}
 #else
 	if (!id->data) {
 		d = devm_kzalloc(dev, sizeof(*d), GFP_KERNEL);
