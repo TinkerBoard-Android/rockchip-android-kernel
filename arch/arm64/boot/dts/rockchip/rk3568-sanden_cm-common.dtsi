@@ -1400,7 +1400,7 @@
 };
 
 &route_hdmi {
-	status = "okay";
+	status = "disabled";
 	connect = <&vp0_out_hdmi>;
 };
 
