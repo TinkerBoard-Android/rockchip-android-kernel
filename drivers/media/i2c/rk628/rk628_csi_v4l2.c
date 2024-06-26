@@ -9,6 +9,7 @@
 #include <linux/compat.h>
 #include <linux/debugfs.h>
 #include <linux/delay.h>
+#include <linux/extcon-provider.h>
 #include <linux/gpio/consumer.h>
 #include <linux/i2c.h>
 #include <linux/interrupt.h>
@@ -35,6 +36,9 @@
 #include <media/v4l2-fwnode.h>
 #include <video/videomode.h>
 #include <linux/rk_hdmirx_config.h>
+#if IS_REACHABLE(CONFIG_VIDEO_ROCKCHIP_CIF)
+#include "../../platform/rockchip/cif/rkcif-externel.h"
+#endif
 
 #include "rk628.h"
 #include "rk628_combrxphy.h"
@@ -56,6 +60,12 @@ MODULE_PARM_DESC(debug, "debug level (0-3)");
 enum tx_mode_type {
 	CSI_MODE,
 	DSI_MODE,
+};
+
+enum output_color_range {
+	OUT_RANGE_AUTO = 0,
+	OUT_RANGE_LIMIT = 1,
+	OUT_RANGE_FULL = 2,
 };
 
 struct rk628_plat_data {
@@ -105,7 +115,6 @@ struct rk628_csi {
 	u32 stream_state;
 	int hdmirx_irq;
 	int plugin_irq;
-	int avi_rdy;
 	bool nosignal;
 	bool rxphy_pwron;
 	bool txphy_pwron;
@@ -117,16 +126,18 @@ struct rk628_csi {
 	bool continues_clk;
 	bool cec_enable;
 	struct rk628_hdmirx_cec *cec;
-	bool is_dvi;
 	struct rk628_hdcp hdcp;
 	bool i2s_enable_default;
 	HAUDINFO audio_info;
+	struct extcon_dev *extcon;
 	struct rk628_combtxphy *txphy;
 	struct rk628_dsi dsi;
 	const struct rk628_plat_data *plat_data;
 	struct device *classdev;
 	bool is_streaming;
 	bool csi_ints_en;
+	bool dual_mipi_use;
+	int output_range;
 };
 
 struct rk628_csi_mode {
@@ -226,6 +237,11 @@ static u8 rk628f_edid_init_data[] = {
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xD3,
+};
+
+static const unsigned int rk628_csi_extcon_cable[] = {
+	EXTCON_JACK_VIDEO_IN,
+	EXTCON_NONE,
 };
 
 static const struct mipi_timing rk628d_csi_mipi = {
@@ -459,6 +475,7 @@ static void rk628_hdmirx_plugout(struct v4l2_subdev *sd)
 	rk628_hdmirx_hpd_ctrl(sd, false);
 	rk628_hdmirx_inno_phy_power_off(sd);
 	rk628_hdmirx_controller_reset(csi->rk628);
+	rk628_clk_set_rate(csi->rk628, CGU_CLK_CPLL, CPLL_REF_CLK);
 }
 
 static void rk628_hdmirx_config_all(struct v4l2_subdev *sd)
@@ -497,9 +514,10 @@ static void rk628_csi_delayed_work_enable_hotplug(struct work_struct *work)
 	v4l2_ctrl_s_ctrl(csi->detect_tx_5v_ctrl, plugin);
 	v4l2_dbg(1, debug, sd, "%s: 5v_det:%d\n", __func__, plugin);
 	if (plugin) {
+		extcon_set_state_sync(csi->extcon, EXTCON_JACK_VIDEO_IN, true);
 		rk628_csi_enable_interrupts(sd, false);
 		rk628_hdmirx_audio_setup(csi->audio_info);
-		rk628_hdmirx_set_hdcp(csi->rk628, &csi->hdcp, csi->enable_hdcp);
+		rk628_hdmirx_set_hdcp(csi->rk628, &csi->hdcp, csi->hdcp.enable);
 		rk628_hdmirx_controller_setup(csi->rk628);
 		rk628_hdmirx_hpd_ctrl(sd, true);
 		rk628_hdmirx_config_all(sd);
@@ -507,6 +525,7 @@ static void rk628_csi_delayed_work_enable_hotplug(struct work_struct *work)
 			rk628_hdmirx_cec_state_reconfiguration(csi->rk628, csi->cec);
 		rk628_csi_enable_interrupts(sd, true);
 	} else {
+		extcon_set_state_sync(csi->extcon, EXTCON_JACK_VIDEO_IN, false);
 		rk628_hdmirx_plugout(sd);
 	}
 	mutex_unlock(&csi->confctl_mutex);
@@ -570,7 +589,7 @@ static void rk628_delayed_work_res_change(struct work_struct *work)
 				rk628_hdmirx_inno_phy_power_off(sd);
 				rk628_hdmirx_controller_reset(csi->rk628);
 				rk628_hdmirx_audio_setup(csi->audio_info);
-				rk628_hdmirx_set_hdcp(csi->rk628, &csi->hdcp, csi->enable_hdcp);
+				rk628_hdmirx_set_hdcp(csi->rk628, &csi->hdcp, csi->hdcp.enable);
 				rk628_hdmirx_controller_setup(csi->rk628);
 				rk628_hdmirx_hpd_ctrl(sd, true);
 				rk628_hdmirx_config_all(sd);
@@ -657,19 +676,29 @@ static void rk628_csi1_cru_reset(struct v4l2_subdev *sd)
 	rk628_control_deassert(csi->rk628, RGU_CSI1);
 }
 
+static void rk628_mipi_txdata_reset(struct v4l2_subdev *sd)
+{
+	struct rk628_csi *csi = to_csi(sd);
+
+	rk628_control_assert(csi->rk628, RGU_TXDATA);
+	rk628_control_assert(csi->rk628, RGU_TXBYTEHS);
+	usleep_range(1000, 1100);
+	rk628_control_deassert(csi->rk628, RGU_TXDATA);
+	rk628_control_deassert(csi->rk628, RGU_TXBYTEHS);
+}
+
 static void rk628_csi_soft_reset(struct v4l2_subdev *sd)
 {
 	struct rk628_csi *csi = to_csi(sd);
 
 	rk628_i2c_write(csi->rk628, CSITX_SYS_CTRL0_IMD, 0x1);
-	usleep_range(1000, 1100);
-	rk628_i2c_write(csi->rk628, CSITX_SYS_CTRL0_IMD, 0x0);
-
-	if (csi->rk628->version >= RK628F_VERSION) {
+	if (csi->rk628->version >= RK628F_VERSION)
 		rk628_i2c_write(csi->rk628, CSITX1_SYS_CTRL0_IMD, 0x1);
-		usleep_range(1000, 1100);
+
+	rk628_mipi_txdata_reset(sd);
+	rk628_i2c_write(csi->rk628, CSITX_SYS_CTRL0_IMD, 0x0);
+	if (csi->rk628->version >= RK628F_VERSION)
 		rk628_i2c_write(csi->rk628, CSITX1_SYS_CTRL0_IMD, 0x0);
-	}
 }
 
 static void enable_csitx(struct v4l2_subdev *sd)
@@ -721,11 +750,9 @@ static void rk628_dsi_set_scs(struct rk628_csi *csi)
 {
 	u8 video_fmt;
 	u32 val;
+	int avi_rdy;
 
-	mutex_lock(&csi->confctl_mutex);
-	csi->avi_rdy = rk628_is_avi_ready(csi->rk628, csi->avi_rcv_rdy);
-	mutex_unlock(&csi->confctl_mutex);
-
+	avi_rdy = rk628_is_avi_ready(csi->rk628, csi->avi_rcv_rdy);
 	rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_AVI_PB, &val);
 	video_fmt = (val & VIDEO_FORMAT_MASK) >> 5;
 	v4l2_info(&csi->sd, "%s PDEC_AVI_PB:%#x, video format:%d\n",
@@ -747,12 +774,21 @@ static void rk628_dsi_set_scs(struct rk628_csi *csi)
 						SW_Y2R_EN(0) | SW_YUV2VYU_SWP(0));
 		}
 	} else {
+		u8 color_range;
+
+		color_range = rk628_hdmirx_get_range(csi->rk628);
 		rk628_i2c_write(csi->rk628, GRF_CSC_CTRL_CON, SW_YUV2VYU_SWP(0));
-		rk628_post_process_csc_en(csi->rk628);
+		if (csi->output_range == OUT_RANGE_AUTO)
+			rk628_post_process_csc_en(csi->rk628,
+					color_range == HDMIRX_LIMIT_RANGE ? false : true);
+		else if (csi->output_range == OUT_RANGE_LIMIT)
+			rk628_post_process_csc_en(csi->rk628, false);
+		else
+			rk628_post_process_csc_en(csi->rk628, true);
 	}
 
 	/* if avi packet is not stable, reset ctrl*/
-	if (!csi->avi_rdy) {
+	if (!avi_rdy) {
 		csi->nosignal = true;
 		schedule_delayed_work(&csi->delayed_work_enable_hotplug, HZ / 20);
 	}
@@ -825,7 +861,7 @@ static void rk628_csi_disable_stream(struct v4l2_subdev *sd)
 				DPHY_EN(0) | CSITX_EN(0));
 	rk628_i2c_update_bits(csi->rk628, CSITX_SYS_CTRL3_IMD, CONT_MODE_CLK_CLR_MASK,
 			csi->continues_clk ? CONT_MODE_CLK_CLR(1) : CONT_MODE_CLK_CLR(0));
-	rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE);
+	rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE_IMD);
 
 	if (csi->rk628->version >= RK628F_VERSION) {
 		rk628_i2c_update_bits(csi->rk628, CSITX1_CSITX_EN,
@@ -833,7 +869,7 @@ static void rk628_csi_disable_stream(struct v4l2_subdev *sd)
 					DPHY_EN(0) | CSITX_EN(0));
 		rk628_i2c_update_bits(csi->rk628, CSITX1_SYS_CTRL3_IMD, CONT_MODE_CLK_CLR_MASK,
 				csi->continues_clk ? CONT_MODE_CLK_CLR(1) : CONT_MODE_CLK_CLR(0));
-		rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE);
+		rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE_IMD);
 	}
 }
 
@@ -850,7 +886,6 @@ static void enable_stream(struct v4l2_subdev *sd, bool en)
 			return;
 		}
 
-		rk628_hdmirx_vid_enable(sd, true);
 		if (csi->plat_data->tx_mode == DSI_MODE) {
 			enable_dsitx(sd);
 		} else {
@@ -858,6 +893,7 @@ static void enable_stream(struct v4l2_subdev *sd, bool en)
 			/* csitx int en */
 			rk628_csi_enable_csi_interrupts(sd, true);
 		}
+		rk628_hdmirx_vid_enable(sd, true);
 		csi->is_streaming = true;
 	} else {
 		if (csi->plat_data->tx_mode == CSI_MODE) {
@@ -920,6 +956,7 @@ static void rk628_csi_set_csi(struct v4l2_subdev *sd)
 	u8 lanes = csi->csi_lanes_in_use;
 	u8 lane_num;
 	u32 wc_usrdef, val;
+	int avi_rdy;
 
 	lane_num = lanes - 1;
 	csi->rk628->dphy_lane_en = (1 << (lanes + 1)) - 1;
@@ -1076,9 +1113,7 @@ static void rk628_csi_set_csi(struct v4l2_subdev *sd)
 		v4l2_dbg(1, debug, sd, "%s csi1 config done\n", __func__);
 	}
 
-	mutex_lock(&csi->confctl_mutex);
-	csi->avi_rdy = rk628_is_avi_ready(csi->rk628, csi->avi_rcv_rdy);
-	mutex_unlock(&csi->confctl_mutex);
+	avi_rdy = rk628_is_avi_ready(csi->rk628, csi->avi_rcv_rdy);
 
 	rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_AVI_PB, &val);
 	video_fmt = (val & VIDEO_FORMAT_MASK) >> 5;
@@ -1097,11 +1132,20 @@ static void rk628_csi_set_csi(struct v4l2_subdev *sd)
 				SW_R2Y_EN(1) | SW_R2Y_CSC_MODE(2));
 		}
 	} else {
+		u8 color_range;
+
+		color_range = rk628_hdmirx_get_range(csi->rk628);
 		rk628_i2c_write(csi->rk628, GRF_CSC_CTRL_CON, SW_YUV2VYU_SWP(1));
-		rk628_post_process_csc_en(csi->rk628);
+		if (csi->output_range == OUT_RANGE_AUTO)
+			rk628_post_process_csc_en(csi->rk628,
+					color_range == HDMIRX_LIMIT_RANGE ? false : true);
+		else if (csi->output_range == OUT_RANGE_LIMIT)
+			rk628_post_process_csc_en(csi->rk628, false);
+		else
+			rk628_post_process_csc_en(csi->rk628, true);
 	}
 	/* if avi packet is not stable, reset ctrl*/
-	if (!csi->avi_rdy) {
+	if (!avi_rdy) {
 		csi->nosignal = true;
 		schedule_delayed_work(&csi->delayed_work_enable_hotplug, HZ / 20);
 	}
@@ -1242,12 +1286,8 @@ static int rk628_hdmirx_phy_setup(struct v4l2_subdev *sd)
 				 __func__, width, height, frame_width, frame_height, status, cnt);
 
 			rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_STS, &val);
-			if (csi->rk628->version < RK628F_VERSION && (val & DVI_DET)) {
-				csi->is_dvi = true;
+			if (csi->rk628->version < RK628F_VERSION && (val & DVI_DET))
 				dev_info(csi->dev, "DVI mode detected\n");
-			} else {
-				csi->is_dvi = false;
-			}
 
 			if (!tx_5v_power_present(sd)) {
 				v4l2_info(sd, "HDMI pull out, return!\n");
@@ -1277,14 +1317,14 @@ static int rk628_hdmirx_phy_setup(struct v4l2_subdev *sd)
 	return 0;
 }
 
-static void rk628_csi_initial_setup(struct v4l2_subdev *sd)
+static void rk628_csi_initial(struct v4l2_subdev *sd)
 {
 	struct rk628_csi *csi = to_csi(sd);
 	struct v4l2_subdev_edid def_edid;
 	u32 mask = SW_OUTPUT_MODE_MASK;
 	u32 val = SW_OUTPUT_MODE(OUTPUT_MODE_CSI);
 
-	/* selete int io function */
+	/* select int io function */
 	rk628_i2c_write(csi->rk628, GRF_GPIO3AB_SEL_CON, 0x30002000);
 	rk628_i2c_write(csi->rk628, GRF_GPIO1AB_SEL_CON, HIWORD_UPDATE(0xf, 11, 8));
 	/* I2S_SCKM0 */
@@ -1335,13 +1375,19 @@ static void rk628_csi_initial_setup(struct v4l2_subdev *sd)
 	def_edid.pad = 0;
 	def_edid.start_block = 0;
 	def_edid.blocks = 2;
-	if (csi->rk628->version >= RK628F_VERSION)
+	if (csi->rk628->version >= RK628F_VERSION && csi->dual_mipi_use)
 		def_edid.edid = rk628f_edid_init_data;
 	else
 		def_edid.edid = edid_init_data;
 	rk628_csi_s_edid(sd, &def_edid);
 	rk628_hdmirx_set_hdcp(csi->rk628, &csi->hdcp, false);
+}
 
+static void rk628_csi_initial_setup(struct v4l2_subdev *sd)
+{
+	struct rk628_csi *csi = to_csi(sd);
+
+	rk628_csi_initial(sd);
 	if (csi->rk628->version >= RK628F_VERSION) {
 		csi->rk628->mipi_timing[0] = rk628f_csi0_mipi;
 		csi->rk628->mipi_timing[1] = rk628f_csi1_mipi;
@@ -1392,6 +1438,50 @@ static int rk628_csi_format_change(struct v4l2_subdev *sd)
 
 	return 0;
 }
+
+#if IS_REACHABLE(CONFIG_VIDEO_ROCKCHIP_CIF)
+static void rk628_get_remote_dev(struct media_entity *sensor_entity,
+				  struct video_device **video)
+{
+	struct media_graph graph;
+	struct media_device *mdev = sensor_entity->graph_obj.mdev;
+	struct media_entity *entity;
+	int ret = 0;
+
+	mutex_lock(&mdev->graph_mutex);
+	ret = media_graph_walk_init(&graph, mdev);
+	if (ret) {
+		mutex_unlock(&mdev->graph_mutex);
+		return;
+	}
+
+	media_graph_walk_start(&graph, sensor_entity);
+	while ((entity = media_graph_walk_next(&graph))) {
+		if (strcmp(entity->name, "stream_cif_mipi_id0") == 0)
+			break;
+	}
+	mutex_unlock(&mdev->graph_mutex);
+	media_graph_walk_cleanup(&graph);
+
+	if (entity)
+		*video = media_entity_to_video_device(entity);
+	else
+		*video = NULL;
+}
+
+static void rk628_csi_reset_rkcif(struct v4l2_subdev *sd)
+{
+	struct video_device *vdev = NULL;
+
+	rk628_get_remote_dev(&sd->entity, &vdev);
+	if (vdev != NULL) {
+		rkcif_external_soft_reset(vdev);
+		v4l2_dbg(1, debug, sd, "%s, do reset rkcif\n", __func__);
+	} else {
+		v4l2_dbg(1, debug, sd, "%s, get remote rkcif failed\n", __func__);
+	}
+}
+#endif
 
 static void rk628_csi_enable_csi_interrupts(struct v4l2_subdev *sd, bool en)
 {
@@ -1478,33 +1568,51 @@ static void rk628_csi_clear_csi_interrupts(struct v4l2_subdev *sd)
 		rk628_i2c_write(csi->rk628, CSITX1_ERR_INTR_CLR_IMD, 0xffffffff);
 
 	if (csi->rk628->version >= RK628F_VERSION)
-		rk628_i2c_update_bits(csi->rk628, GRF_INTR0_CLR_EN, CSI_INT_EN_MASK |
-				CSI_INT_WRITE_EN_MASK, CSI_INT_EN(3) | CSI_INT_WRITE_EN(3));
+		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0xc000c0);
 	else
-		rk628_i2c_update_bits(csi->rk628, GRF_INTR0_CLR_EN, CSI_INT_EN_MASK |
-				CSI_INT_WRITE_EN_MASK, CSI_INT_EN(1) | CSI_INT_WRITE_EN(1));
+		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0x400040);
+}
+
+static void rk628_csi_clear_hdmirx_interrupts(struct v4l2_subdev *sd)
+{
+	struct rk628_csi *csi = to_csi(sd);
+
+	v4l2_dbg(2, debug, sd, "%s: clear hdmirx ints\n", __func__);
+	/* clear interrupts */
+	rk628_i2c_write(csi->rk628, HDMI_RX_MD_ICLR, 0xffffffff);
+	rk628_i2c_write(csi->rk628, HDMI_RX_PDEC_ICLR, 0xffffffff);
+	if (csi->rk628->version >= RK628F_VERSION)
+		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0x02000200);
+	else
+		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0x01000100);
 }
 
 static void rk628_csi_error_process(struct v4l2_subdev *sd)
 {
 	struct rk628_csi *csi = to_csi(sd);
+	u32 val, val_csi1 = 0;
+	int i;
 
 	if (csi->is_streaming) {
 		v4l2_info(sd,
 			"%s: csitx is streaming, reset csitx and restart cstitx!\n", __func__);
+		rk628_hdmirx_vid_enable(sd, false);
 		rk628_csi_enable_csi_interrupts(sd, false);
 		rk628_i2c_update_bits(csi->rk628, CSITX_CSITX_EN, CSITX_EN_MASK, CSITX_EN(0));
 		if (csi->rk628->version >= RK628F_VERSION)
 			rk628_i2c_update_bits(csi->rk628, CSITX1_CSITX_EN,
 						CSITX_EN_MASK, CSITX_EN(0));
-		rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE);
+		rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE_IMD);
 		if (csi->rk628->version >= RK628F_VERSION)
-			rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE);
+			rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE_IMD);
 
 		usleep_range(5000, 5500);
 		rk628_csi_soft_reset(sd);
 		usleep_range(5000, 5500);
 
+#if IS_REACHABLE(CONFIG_VIDEO_ROCKCHIP_CIF)
+		rk628_csi_reset_rkcif(sd);
+#endif
 		rk628_i2c_update_bits(csi->rk628, CSITX_CSITX_EN, CSITX_EN_MASK, CSITX_EN(1));
 		rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE_IMD);
 		if (csi->rk628->version >= RK628F_VERSION) {
@@ -1512,9 +1620,31 @@ static void rk628_csi_error_process(struct v4l2_subdev *sd)
 						CSITX_EN_MASK, CSITX_EN(1));
 			rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE_IMD);
 		}
-		//clr int status
-		rk628_csi_clear_csi_interrupts(sd);
+
+		for (i = 0; i < 3; i++) {
+			rk628_i2c_read(csi->rk628, CSITX_CSITX_EN, &val);
+			if (csi->rk628->version >= RK628F_VERSION)
+				rk628_i2c_read(csi->rk628, CSITX1_CSITX_EN, &val_csi1);
+			v4l2_dbg(1, debug, sd, "%s, csi0_status: 0x%x, csi1_status: 0x%x, i=%d\n",
+							__func__, val, val_csi1, i);
+
+			if (csi->rk628->version >= RK628F_VERSION ?
+				((val & BIT(0)) && (val_csi1 & BIT(0))) : (val & BIT(0)))
+				break;
+
+			rk628_i2c_update_bits(csi->rk628, CSITX_CSITX_EN,
+							CSITX_EN_MASK, CSITX_EN(1));
+			rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE_IMD);
+			if (csi->rk628->version >= RK628F_VERSION) {
+				rk628_i2c_update_bits(csi->rk628, CSITX1_CSITX_EN,
+								CSITX_EN_MASK, CSITX_EN(1));
+				rk628_i2c_write(csi->rk628,
+						CSITX1_CONFIG_DONE, CONFIG_DONE_IMD);
+			}
+		}
 		rk628_csi_enable_csi_interrupts(sd, true);
+		rk628_hdmirx_vid_enable(sd, true);
+		v4l2_dbg(1, debug, sd, "%s, do reset successful\n", __func__);
 	} else {
 		v4l2_info(sd,
 			"%s: csitx is not streaming\n", __func__);
@@ -1525,11 +1655,11 @@ static void rk628_work_isr(struct work_struct *work)
 {
 	struct rk628_csi *csi = container_of(work, struct rk628_csi, work_isr);
 	struct v4l2_subdev *sd = &csi->sd;
-	u32 md_ints, pdec_ints, fifo_ints, hact, vact;
+	u32 md_ints = 0x0, pdec_ints = 0x0, fifo_ints, hact, vact;
 	bool plugin;
 	void *audio_info = csi->audio_info;
 	bool handled = false;
-	u32 csi0_raw_ints, csi1_raw_ints = 0x0;
+	u32 csi0_raw_ints = 0x0, csi1_raw_ints = 0x0;
 	u32 int0_status;
 	const struct v4l2_event evt_signal_lost = {
 		.type = RK_HDMIRX_V4L2_EVENT_SIGNAL_LOST,
@@ -1539,20 +1669,28 @@ static void rk628_work_isr(struct work_struct *work)
 	rk628_i2c_read(csi->rk628, GRF_INTR0_STATUS, &int0_status);
 	v4l2_dbg(1, debug, sd, "%s: int0 status: 0x%x\n", __func__, int0_status);
 
-	rk628_i2c_read(csi->rk628, HDMI_RX_MD_ISTS, &md_ints);
-	rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_ISTS, &pdec_ints);
-	if (csi->rk628->version >= RK628F_VERSION &&
-	    rk628_hdmirx_is_signal_change_ists(csi->rk628))
-		rk628_set_bg_enable(csi->rk628, true);
+	if (int0_status & (BIT(8) | BIT(9))) {
+		rk628_i2c_read(csi->rk628, HDMI_RX_MD_ISTS, &md_ints);
+		rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_ISTS, &pdec_ints);
+		if (csi->rk628->version >= RK628F_VERSION &&
+			rk628_hdmirx_is_signal_change_ists(csi->rk628, md_ints, pdec_ints))
+			rk628_set_bg_enable(csi->rk628, true);
+		rk628_csi_clear_hdmirx_interrupts(sd);
+	}
+	if ((int0_status & (BIT(6) | BIT(7)))) {
+		rk628_i2c_read(csi->rk628, CSITX_ERR_INTR_RAW_STATUS_IMD, &csi0_raw_ints);
+		if (csi->rk628->version >= RK628F_VERSION)
+			rk628_i2c_read(csi->rk628, CSITX1_ERR_INTR_RAW_STATUS_IMD, &csi1_raw_ints);
+		rk628_csi_clear_csi_interrupts(sd);
+	}
 
 	plugin = tx_5v_power_present(sd);
 	if (!plugin) {
 		rk628_csi_enable_interrupts(sd, false);
 		rk628_csi_enable_csi_interrupts(sd, false);
-		goto __clear_int;
 	}
 
-	if (csi->rk628->version < RK628F_VERSION) {
+	if (csi->rk628->version < RK628F_VERSION && (int0_status & BIT(8))) {
 		if (rk628_audio_ctsnints_enabled(audio_info)) {
 			if (pdec_ints & (ACR_N_CHG_ICLR | ACR_CTS_CHG_ICLR)) {
 				rk628_csi_isr_ctsn(audio_info, pdec_ints);
@@ -1568,11 +1706,11 @@ static void rk628_work_isr(struct work_struct *work)
 			}
 		}
 	}
-	if (csi->vid_ints_en) {
+	if (csi->vid_ints_en && (int0_status & (BIT(8) | BIT(9)))) {
 		v4l2_dbg(1, debug, sd, "%s: md_ints: %#x, pdec_ints:%#x, plugin: %d\n",
 			 __func__, md_ints, pdec_ints, plugin);
 
-		if (rk628_hdmirx_is_signal_change_ists(csi->rk628)) {
+		if (rk628_hdmirx_is_signal_change_ists(csi->rk628, md_ints, pdec_ints)) {
 			rk628_i2c_read(csi->rk628, HDMI_RX_MD_HACT_PX, &hact);
 			rk628_i2c_read(csi->rk628, HDMI_RX_MD_VAL, &vact);
 			v4l2_dbg(1, debug, sd, "%s: HACT:%#x, VACT:%#x\n",
@@ -1603,32 +1741,16 @@ static void rk628_work_isr(struct work_struct *work)
 		}
 	}
 
-	if (int0_status & (BIT(6) | BIT(7))) {
-		rk628_i2c_read(csi->rk628, CSITX_ERR_INTR_RAW_STATUS_IMD, &csi0_raw_ints);
-		if (csi->rk628->version >= RK628F_VERSION)
-			rk628_i2c_read(csi->rk628, CSITX1_ERR_INTR_RAW_STATUS_IMD, &csi1_raw_ints);
-
-		if (csi0_raw_ints || csi1_raw_ints) {
-			v4l2_info(sd,
-				"%s: csi interrupt: csi0_raw_ints: 0x%x, csi1_raw_ints: 0x%x!\n",
+	if (csi0_raw_ints || csi1_raw_ints) {
+		v4l2_info(sd,
+			"%s: csi interrupt: csi0_raw_ints: 0x%x, csi1_raw_ints: 0x%x!\n",
 				__func__, csi0_raw_ints, csi1_raw_ints);
-			rk628_csi_error_process(sd);
-		}
+		rk628_csi_error_process(sd);
 		handled = true;
 	}
 
 	if (!handled)
 		v4l2_dbg(1, debug, sd, "%s: unhandled interrupt!\n", __func__);
-
-__clear_int:
-	/* clear interrupts */
-	rk628_i2c_write(csi->rk628, HDMI_RX_MD_ICLR, 0xffffffff);
-	rk628_i2c_write(csi->rk628, HDMI_RX_PDEC_ICLR, 0xffffffff);
-	if (csi->rk628->version >= RK628F_VERSION)
-		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0x02000200);
-	else
-		rk628_i2c_write(csi->rk628, GRF_INTR0_CLR_EN, 0x01000100);
-	rk628_csi_clear_csi_interrupts(sd);
 
 	mutex_unlock(&csi->rk628->rst_lock);
 }
@@ -2151,9 +2273,7 @@ static int rk628_csi_g_frame_interval(struct v4l2_subdev *sd,
 	struct rk628_csi *csi = to_csi(sd);
 	const struct rk628_csi_mode *mode = csi->cur_mode;
 
-	mutex_lock(&csi->confctl_mutex);
 	fi->interval = mode->max_fps;
-	mutex_unlock(&csi->confctl_mutex);
 
 	return 0;
 }
@@ -2168,12 +2288,75 @@ static void rk628_csi_get_module_inf(struct rk628_csi *rk628_csi,
 	strscpy(inf->base.lens, rk628_csi->len_name, sizeof(inf->base.lens));
 }
 
+static void rk628_csi_reset_streaming(struct v4l2_subdev *sd, int on)
+{
+	struct rk628_csi *csi = to_csi(sd);
+
+	if (on) {
+		if (csi->plat_data->tx_mode == CSI_MODE) {
+			rk628_csi_soft_reset(sd);
+			usleep_range(5000, 5500);
+			if (csi->continues_clk) {
+				rk628_i2c_update_bits(csi->rk628, CSITX_SYS_CTRL3_IMD,
+					CONT_MODE_CLK_CLR_MASK | CONT_MODE_CLK_SET_MASK |
+					NON_CONTINUOUS_MODE_MASK, CONT_MODE_CLK_CLR(0) |
+					CONT_MODE_CLK_SET(1) | NON_CONTINUOUS_MODE(0));
+				if (csi->rk628->version >= RK628F_VERSION)
+					rk628_i2c_update_bits(csi->rk628, CSITX1_SYS_CTRL3_IMD,
+						CONT_MODE_CLK_CLR_MASK | CONT_MODE_CLK_SET_MASK |
+						NON_CONTINUOUS_MODE_MASK, CONT_MODE_CLK_CLR(0) |
+						CONT_MODE_CLK_SET(1) | NON_CONTINUOUS_MODE(0));
+			} else {
+				rk628_i2c_update_bits(csi->rk628, CSITX_SYS_CTRL3_IMD,
+					CONT_MODE_CLK_CLR_MASK | CONT_MODE_CLK_SET_MASK |
+					NON_CONTINUOUS_MODE_MASK, CONT_MODE_CLK_CLR(0) |
+					CONT_MODE_CLK_SET(0) | NON_CONTINUOUS_MODE(1));
+				if (csi->rk628->version >= RK628F_VERSION)
+					rk628_i2c_update_bits(csi->rk628, CSITX1_SYS_CTRL3_IMD,
+						CONT_MODE_CLK_CLR_MASK | CONT_MODE_CLK_SET_MASK |
+						NON_CONTINUOUS_MODE_MASK, CONT_MODE_CLK_CLR(0) |
+						CONT_MODE_CLK_SET(0) | NON_CONTINUOUS_MODE(1));
+			}
+
+			rk628_i2c_update_bits(csi->rk628, CSITX_CSITX_EN,
+					DPHY_EN_MASK | CSITX_EN_MASK, DPHY_EN(1) | CSITX_EN(1));
+			rk628_i2c_write(csi->rk628, CSITX_CONFIG_DONE, CONFIG_DONE_IMD);
+			if (csi->rk628->version >= RK628F_VERSION) {
+				rk628_i2c_update_bits(csi->rk628, CSITX1_CSITX_EN,
+					DPHY_EN_MASK | CSITX_EN_MASK, DPHY_EN(1) | CSITX_EN(1));
+				rk628_i2c_write(csi->rk628, CSITX1_CONFIG_DONE, CONFIG_DONE_IMD);
+			}
+			rk628_csi_enable_csi_interrupts(sd, true);
+		} else {
+			enable_dsitx(sd);
+		}
+		rk628_hdmirx_vid_enable(sd, true);
+		csi->is_streaming = true;
+	} else {
+		rk628_hdmirx_vid_enable(sd, false);
+		if (csi->plat_data->tx_mode == CSI_MODE) {
+			rk628_csi_enable_csi_interrupts(sd, false);
+			msleep(20);
+			rk628_csi_disable_stream(sd);
+		} else {
+			rk628_dsi_enable_stream(sd, false);
+		}
+		csi->is_streaming = false;
+	}
+	v4l2_info(sd, "%s: on: %d, %dx%d@%d\n", __func__, on,
+				csi->timings.bt.width,
+				csi->timings.bt.height,
+				fps_calc(&csi->timings.bt));
+}
+
 static long rk628_csi_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	struct rk628_csi *csi = to_csi(sd);
 	long ret = 0;
 	struct rkmodule_csi_dphy_param *dphy_param;
 	struct rkmodule_capture_info  *capture_info;
+	u32 val;
+	u32 stream = 0;
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
@@ -2207,6 +2390,10 @@ static long rk628_csi_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 			capture_info->multi_dev = csi->multi_dev_info;
 		}
 		break;
+	case RKMODULE_SET_QUICK_STREAM:
+		stream = *((u32 *)arg);
+		rk628_csi_reset_streaming(sd, !!stream);
+		break;
 	case RKMODULE_GET_CSI_DSI_INFO:
 		if (csi->plat_data->tx_mode == DSI_MODE)
 			*(int *)arg = RKMODULE_DSI_INPUT;
@@ -2220,10 +2407,11 @@ static long rk628_csi_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		*(int *)arg = rk628_hdmirx_get_hdcp_enc_status(csi->rk628);
 		break;
 	case RK_HDMIRX_CMD_GET_INPUT_MODE:
-		*(int *)arg = csi->is_dvi;
+		rk628_i2c_read(csi->rk628, HDMI_RX_PDEC_STS, &val);
+		*(int *)arg = val & DVI_DET;
 		break;
 	case RK_HDMIRX_CMD_GET_SIGNAL_STABLE_STATUS:
-		*(int *)arg = csi->avi_rdy;
+		*(int *)arg = !csi->nosignal;
 		break;
 	case RK_HDMIRX_CMD_GET_SCAN_MODE:
 		if (csi->timings.bt.interlaced == V4L2_DV_INTERLACED)
@@ -2238,6 +2426,16 @@ static long rk628_csi_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		break;
 	case RK_HDMIRX_CMD_GET_COLOR_RANGE:
 		*(int *)arg = rk628_hdmirx_get_range(csi->rk628);
+		break;
+	case RK_HDMIRX_CMD_GET_COLOR_SPACE:
+		*(int *)arg = rk628_hdmirx_get_color_space(csi->rk628);
+		break;
+	case RKMODULE_GET_DSI_MODE:
+		*(int *)arg = csi->dsi.vid_mode;
+		break;
+	case RK_HDMIRX_CMD_SET_OUTPUT_RANGE:
+		csi->output_range = *((int *)arg);
+		v4l2_dbg(1, debug, sd, "set output_range: %d\n", csi->output_range);
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -2278,10 +2476,12 @@ static int mipi_dphy_power_on(struct rk628_csi *csi)
 		rk628_mipi_dphy_init_hsmanual(csi->rk628, true, 1);
 	} else if (csi->lane_mbps == MIPI_DATARATE_MBPS_HIGH && !csi->rk628->dual_mipi) {
 		rk628_mipi_dphy_init_hsmanual(csi->rk628, true, 0);
-		rk628_mipi_dphy_init_hsmanual(csi->rk628, false, 1);
+		if (csi->rk628->version >= RK628F_VERSION)
+			rk628_mipi_dphy_init_hsmanual(csi->rk628, false, 1);
 	} else {
 		rk628_mipi_dphy_init_hsmanual(csi->rk628, false, 0);
-		rk628_mipi_dphy_init_hsmanual(csi->rk628, false, 1);
+		if (csi->rk628->version >= RK628F_VERSION)
+			rk628_mipi_dphy_init_hsmanual(csi->rk628, false, 1);
 	}
 
 	usleep_range(1500, 2000);
@@ -2321,6 +2521,8 @@ static long rk628_csi_compat_ioctl32(struct v4l2_subdev *sd,
 	int *seq;
 	struct rkmodule_csi_dphy_param *dphy_param;
 	struct rkmodule_capture_info  *capture_info;
+	u32 stream = 0;
+	int is_full_range = 0;
 
 	switch (cmd) {
 	case RKMODULE_GET_MODULE_INFO:
@@ -2397,6 +2599,13 @@ static long rk628_csi_compat_ioctl32(struct v4l2_subdev *sd,
 		}
 		kfree(capture_info);
 		break;
+	case RKMODULE_SET_QUICK_STREAM:
+		ret = copy_from_user(&stream, up, sizeof(u32));
+		if (!ret)
+			ret = rk628_csi_ioctl(sd, cmd, &stream);
+		else
+			ret = -EFAULT;
+		break;
 	case RKMODULE_GET_CSI_DSI_INFO:
 		seq = kzalloc(sizeof(*seq), GFP_KERNEL);
 		if (!seq) {
@@ -2522,6 +2731,41 @@ static long rk628_csi_compat_ioctl32(struct v4l2_subdev *sd,
 				ret = -EFAULT;
 		}
 		kfree(seq);
+		break;
+	case RK_HDMIRX_CMD_GET_COLOR_SPACE:
+		seq = kzalloc(sizeof(*seq), GFP_KERNEL);
+		if (!seq) {
+			ret = -ENOMEM;
+			return ret;
+		}
+		ret = rk628_csi_ioctl(sd, cmd, seq);
+		if (!ret) {
+			ret = copy_to_user(up, seq, sizeof(*seq));
+			if (ret)
+				ret = -EFAULT;
+		}
+		kfree(seq);
+		break;
+	case RKMODULE_GET_DSI_MODE:
+		seq = kzalloc(sizeof(*seq), GFP_KERNEL);
+		if (!seq) {
+			ret = -ENOMEM;
+			return ret;
+		}
+		ret = rk628_csi_ioctl(sd, cmd, seq);
+		if (!ret) {
+			ret = copy_to_user(up, seq, sizeof(*seq));
+			if (ret)
+				ret = -EFAULT;
+		}
+		kfree(seq);
+		break;
+	case RK_HDMIRX_CMD_SET_OUTPUT_RANGE:
+		ret = copy_from_user(&is_full_range, up, sizeof(int));
+		if (!ret)
+			ret = rk628_csi_ioctl(sd, cmd, &is_full_range);
+		else
+			ret = -EFAULT;
 		break;
 	default:
 		ret = -ENOIOCTLCMD;
@@ -2627,6 +2871,91 @@ static irqreturn_t plugin_detect_irq(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int rk628_csi_power_on(struct rk628_csi *csi)
+{
+	clk_prepare_enable(csi->soc_24M);
+	if (csi->enable_gpio) {
+		gpiod_set_value(csi->enable_gpio, 1);
+		usleep_range(10000, 11000);
+	}
+	gpiod_set_value(csi->reset_gpio, 0);
+	usleep_range(10000, 11000);
+	gpiod_set_value(csi->reset_gpio, 1);
+	usleep_range(10000, 11000);
+	gpiod_set_value(csi->reset_gpio, 0);
+	usleep_range(10000, 11000);
+
+	if (csi->power_gpio) {
+		gpiod_set_value(csi->power_gpio, 1);
+		usleep_range(10000, 11000);
+	}
+
+	return 0;
+}
+
+static int rk628_csi_power_off(struct rk628_csi *csi)
+{
+	if (csi->enable_gpio) {
+		gpiod_set_value(csi->enable_gpio, 0);
+		usleep_range(10000, 11000);
+	}
+	gpiod_set_value(csi->reset_gpio, 1);
+	usleep_range(10000, 11000);
+	gpiod_set_value(csi->reset_gpio, 0);
+	usleep_range(10000, 11000);
+	gpiod_set_value(csi->reset_gpio, 1);
+	usleep_range(10000, 11000);
+
+	if (csi->power_gpio) {
+		gpiod_set_value(csi->power_gpio, 0);
+		usleep_range(10000, 11000);
+	}
+	clk_disable_unprepare(csi->soc_24M);
+
+	return 0;
+}
+
+static int rk628_csi_resume(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct rk628_csi *csi = to_csi(sd);
+
+	v4l2_info(sd, "%s: resume!\n", __func__);
+
+	rk628_csi_power_on(csi);
+	rk628_cru_initialize(csi->rk628);
+	rk628_csi_initial(sd);
+	rk628_hdmirx_plugout(sd);
+	enable_irq(csi->hdmirx_irq);
+	schedule_delayed_work(&csi->delayed_work_enable_hotplug,
+			     msecs_to_jiffies(500));
+
+	return 0;
+}
+
+static int rk628_csi_suspend(struct device *dev)
+{
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct rk628_csi *csi = to_csi(sd);
+
+	v4l2_info(sd, "%s: suspend!\n", __func__);
+
+	disable_irq(csi->hdmirx_irq);
+	cancel_delayed_work_sync(&csi->delayed_work_res_change);
+	cancel_delayed_work_sync(&csi->delayed_work_enable_hotplug);
+	rk628_hdmirx_audio_cancel_work_audio(csi->audio_info, true);
+	rk628_csi_power_off(csi);
+
+	return 0;
+}
+
+static const struct dev_pm_ops rk628_csi_pm_ops = {
+	.suspend = rk628_csi_suspend,
+	.resume = rk628_csi_resume,
+};
+
 static int rk628_csi_probe_of(struct rk628_csi *csi)
 {
 	struct device *dev = csi->dev;
@@ -2644,28 +2973,27 @@ static int rk628_csi_probe_of(struct rk628_csi *csi)
 		ret = PTR_ERR(csi->soc_24M);
 		dev_err(dev, "Unable to get soc_24M: %d\n", ret);
 	}
-	clk_prepare_enable(csi->soc_24M);
 
 	csi->enable_gpio = devm_gpiod_get_optional(dev, "enable",
 						     GPIOD_OUT_LOW);
 	if (IS_ERR(csi->enable_gpio)) {
 		ret = PTR_ERR(csi->enable_gpio);
 		dev_err(dev, "failed to request enable GPIO: %d\n", ret);
-		goto clk_put;
+		return ret;
 	}
 
 	csi->reset_gpio = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
 	if (IS_ERR(csi->reset_gpio)) {
 		ret = PTR_ERR(csi->reset_gpio);
 		dev_err(dev, "failed to request reset GPIO: %d\n", ret);
-		goto clk_put;
+		return ret;
 	}
 
 	csi->power_gpio = devm_gpiod_get_optional(dev, "power", GPIOD_OUT_HIGH);
 	if (IS_ERR(csi->power_gpio)) {
 		dev_err(dev, "failed to get power gpio\n");
 		ret = PTR_ERR(csi->power_gpio);
-		goto clk_put;
+		return ret;
 	}
 
 	csi->plugin_det_gpio = devm_gpiod_get_optional(dev, "plugin-det",
@@ -2673,25 +3001,9 @@ static int rk628_csi_probe_of(struct rk628_csi *csi)
 	if (IS_ERR(csi->plugin_det_gpio)) {
 		dev_err(dev, "failed to get hdmirx det gpio\n");
 		ret = PTR_ERR(csi->plugin_det_gpio);
-		goto clk_put;
+		return ret;
 	}
 	csi->rk628->hdmirx_det_gpio = csi->plugin_det_gpio;
-
-	if (csi->enable_gpio) {
-		gpiod_set_value(csi->enable_gpio, 1);
-		usleep_range(10000, 11000);
-	}
-	gpiod_set_value(csi->reset_gpio, 0);
-	usleep_range(10000, 11000);
-	gpiod_set_value(csi->reset_gpio, 1);
-	usleep_range(10000, 11000);
-	gpiod_set_value(csi->reset_gpio, 0);
-	usleep_range(10000, 11000);
-
-	if (csi->power_gpio) {
-		gpiod_set_value(csi->power_gpio, 1);
-		usleep_range(500, 510);
-	}
 
 	if (of_property_read_bool(dev->of_node, "hdcp-enable"))
 		hdcp1x_enable = true;
@@ -2719,7 +3031,7 @@ static int rk628_csi_probe_of(struct rk628_csi *csi)
 	if (!ep) {
 		dev_err(dev, "missing endpoint node\n");
 		ret = -EINVAL;
-		goto clk_put;
+		return ret;
 	}
 
 	ret = v4l2_fwnode_endpoint_alloc_parse(of_fwnode_handle(ep), &endpoint);
@@ -2736,6 +3048,7 @@ static int rk628_csi_probe_of(struct rk628_csi *csi)
 
 	csi->csi_lanes_in_use = endpoint.bus.mipi_csi2.num_data_lanes;
 	csi->enable_hdcp = hdcp1x_enable;
+	csi->hdcp.enable = hdcp1x_enable;
 	csi->i2s_enable_default = i2s_enable_default;
 	csi->scaler_en = scaler_en;
 	if (csi->scaler_en)
@@ -2747,6 +3060,7 @@ static int rk628_csi_probe_of(struct rk628_csi *csi)
 	csi->nosignal = true;
 	csi->stream_state = 0;
 	csi->avi_rcv_rdy = false;
+	csi->output_range = OUT_RANGE_AUTO;
 
 	ret = 0;
 
@@ -2754,8 +3068,6 @@ free_endpoint:
 	v4l2_fwnode_endpoint_free(&endpoint);
 put_node:
 	of_node_put(ep);
-clk_put:
-	clk_disable_unprepare(csi->soc_24M);
 
 	return ret;
 }
@@ -2821,6 +3133,7 @@ static int rk628_csi_get_multi_dev_info(struct rk628_csi *csi)
 	struct device_node *node = dev->of_node;
 	struct device_node *multi_info_np;
 
+	csi->dual_mipi_use = false;
 	multi_info_np = of_get_child_by_name(node, "multi-dev-info");
 	if (!multi_info_np) {
 		dev_info(dev, "failed to get multi dev info\n");
@@ -2837,6 +3150,8 @@ static int rk628_csi_get_multi_dev_info(struct rk628_csi *csi)
 			&csi->multi_dev_info.pixel_offset);
 	of_property_read_u32(multi_info_np, "dev-num",
 			&csi->multi_dev_info.dev_num);
+
+	csi->dual_mipi_use = true;
 	dev_info(dev,
 		"multi dev left: mipi%d, multi dev right: mipi%d, combile mipi%d, dev num: %d\n",
 		csi->multi_dev_info.dev_idx[0], csi->multi_dev_info.dev_idx[1],
@@ -2912,6 +3227,7 @@ static int rk628_csi_probe(struct i2c_client *client,
 		return err;
 	}
 
+	rk628_csi_power_on(csi);
 	rk628_cru_initialize(csi->rk628);
 
 	rk628_version_parse(rk628);
@@ -2922,14 +3238,15 @@ static int rk628_csi_probe(struct i2c_client *client,
 			v4l2_info(sd, "get multi dev info failed, not use dual mipi mode\n");
 	}
 
-	v4l2_subdev_init(sd, &rk628_csi_ops);
+	v4l2_i2c_subdev_init(sd, client, &rk628_csi_ops);
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 
 	/* i2c access, read chip id*/
 	err = rk628_i2c_read(csi->rk628, CSITX_CSITX_VERSION, &val);
 	if (err) {
 		v4l2_err(sd, "i2c access failed! err:%d\n", err);
-		return -ENODEV;
+		err = -ENODEV;
+		goto power_off;
 	}
 	v4l2_dbg(1, debug, sd, "CSITX VERSION: %#x\n", val);
 
@@ -2937,7 +3254,8 @@ static int rk628_csi_probe(struct i2c_client *client,
 		err = rk628_i2c_read(csi->rk628, CSITX1_CSITX_VERSION, &val);
 		if (err) {
 			v4l2_err(sd, "i2c access failed! err:%d\n", err);
-			return -ENODEV;
+			err = -ENODEV;
+			goto power_off;
 		}
 		v4l2_dbg(1, debug, sd, "CSITX1 VERSION: %#x\n", val);
 	}
@@ -2947,7 +3265,8 @@ static int rk628_csi_probe(struct i2c_client *client,
 	csi->txphy = rk628_txphy_register(rk628);
 	if (!csi->txphy) {
 		v4l2_err(sd, "register txphy failed\n");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto power_off;
 	}
 
 	/* control handlers */
@@ -3018,6 +3337,19 @@ static int rk628_csi_probe(struct i2c_client *client,
 	if (IS_ERR(csi->classdev))
 		goto err_hdl;
 
+	csi->extcon = devm_extcon_dev_allocate(dev, rk628_csi_extcon_cable);
+	if (IS_ERR(csi->extcon)) {
+		err = PTR_ERR(csi->extcon);
+		v4l2_err(sd, "allocate extcon failed\n");
+		goto err_hdl;
+	}
+
+	err = devm_extcon_dev_register(dev, csi->extcon);
+	if (err) {
+		v4l2_err(sd, "failed to register extcon: %d\n", err);
+		goto err_hdl;
+	}
+
 	INIT_DELAYED_WORK(&csi->delayed_work_enable_hotplug,
 			rk628_csi_delayed_work_enable_hotplug);
 	INIT_DELAYED_WORK(&csi->delayed_work_res_change,
@@ -3028,6 +3360,7 @@ static int rk628_csi_probe(struct i2c_client *client,
 						       rk628,
 						       csi->i2s_enable_default);
 	if (!csi->audio_info) {
+		err = -ENOMEM;
 		v4l2_err(sd, "request audio info fail\n");
 		goto err_work_queues;
 	}
@@ -3078,6 +3411,10 @@ static int rk628_csi_probe(struct i2c_client *client,
 	}
 	csi->rk628->dual_mipi = false;
 	rk628_debugfs_create(csi->rk628);
+	rk628_hdmirx_debugfs_create(rk628, &csi->hdcp);
+
+	if (csi->cec_enable)
+		csi->cec = rk628_hdmirx_cec_register(rk628);
 
 	v4l2_info(sd, "%s found @ 0x%x (%s)\n", client->name,
 		  client->addr << 1, client->adapter->name);
@@ -3095,6 +3432,9 @@ err_hdl:
 	mutex_destroy(&csi->confctl_mutex);
 	media_entity_cleanup(&sd->entity);
 	v4l2_ctrl_handler_free(&csi->hdl);
+power_off:
+	rk628_csi_power_off(csi);
+
 	return err;
 }
 
@@ -3136,6 +3476,7 @@ static int rk628_csi_remove(struct i2c_client *client)
 	rk628_control_assert(csi->rk628, RGU_CSI);
 	if (csi->rk628->version >= RK628F_VERSION)
 		rk628_control_assert(csi->rk628, RGU_CSI1);
+	rk628_csi_power_off(csi);
 #if KERNEL_VERSION(6, 1, 0) > LINUX_VERSION_CODE
 	return 0;
 #endif
@@ -3144,6 +3485,7 @@ static int rk628_csi_remove(struct i2c_client *client)
 static struct i2c_driver rk628_csi_i2c_driver = {
 	.driver = {
 		.name = "rk628-csi-v4l2",
+		.pm = &rk628_csi_pm_ops,
 		.of_match_table = of_match_ptr(rk628_csi_of_match),
 	},
 	.id_table = rk628_csi_i2c_id,

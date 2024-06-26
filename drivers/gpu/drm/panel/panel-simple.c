@@ -32,6 +32,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 #include <linux/spi/spi.h>
+#include <linux/rockchip-panel-notifier.h>
 
 #include <video/display_timing.h>
 #include <video/mipi_display.h>
@@ -292,6 +293,7 @@ struct panel_simple {
 #if IS_ENABLED(CONFIG_TINKER_MCU)
 	int dsi_id;
 #endif
+	struct rockchip_panel_notifier panel_notifier;
 };
 static enum mipi_dsi_panel dsi_panel;
 
@@ -629,6 +631,13 @@ static int panel_simple_disable(struct drm_panel *panel)
 	struct panel_simple *p = to_panel_simple(panel);
 
 	pr_info("panel_simple_disable: p->enabled = %d ++++\n", p->prepared);
+	/*
+	 * notify other devices (such as TP) to perform the action before the
+	 * panel is disabled.
+	 */
+	rockchip_panel_notifier_call_chain(&p->panel_notifier,
+					   PANEL_PRE_DISABLE, NULL);
+
 	if (!p->enabled)
 		return 0;
 
@@ -866,6 +875,13 @@ static int panel_simple_enable(struct drm_panel *panel)
 
 	p->enabled = true;
 	pr_info("panel_simple_enable: p->enabled = %d ----\n", p->enabled);
+
+	/*
+	 * notify other devices (such as TP) to perform the action after the
+	 * panel is enabled.
+	 */
+	rockchip_panel_notifier_call_chain(&p->panel_notifier,
+					   PANEL_ENABLED, NULL);
 
 	return 0;
 }
@@ -1259,6 +1275,8 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 
 	dev_set_drvdata(dev, panel);
 
+	devm_rockchip_panel_notifier_register(dev, &panel->base,
+					      &panel->panel_notifier);
 	/*
 	 * We use runtime PM for prepare / unprepare since those power the panel
 	 * on and off and those can be very slow operations. This is important

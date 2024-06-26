@@ -42,6 +42,10 @@
 #define UART_NPCM_TOR          7
 #define UART_NPCM_TOIE         BIT(7)  /* Timeout Interrupt Enable */
 
+#ifdef CONFIG_NO_GKI
+#define UART_RS485_TCR 0x2b
+#endif
+
 /*
  * Debugging.
  */
@@ -2711,6 +2715,7 @@ void serial8250_do_set_divisor(struct uart_port *port, unsigned int baud,
 	struct uart_8250_port *up = up_to_u8250p(port);
 
 #ifdef CONFIG_ARCH_ROCKCHIP
+	int mcr = serial_port_in(port, UART_MCR);
 	serial_port_out(port, UART_MCR, UART_MCR_LOOP);
 #endif
 	/* Workaround to enable 115200 baud on OMAP1510 internal ports */
@@ -2740,7 +2745,7 @@ void serial8250_do_set_divisor(struct uart_port *port, unsigned int baud,
 	if (port->type != PORT_16750)
 		serial_port_out(port, UART_LCR, up->lcr);	/* reset DLAB */
 
-	serial_port_out(port, UART_MCR, up->mcr);
+	serial_port_out(port, UART_MCR, mcr);
 #endif
 }
 EXPORT_SYMBOL_GPL(serial8250_do_set_divisor);
@@ -2954,7 +2959,7 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 			serial_port_out(port, UART_EFR, efr);
 	}
 
-#ifdef CONFIG_ARCH_ROCKCHIP
+#if defined(CONFIG_ARCH_ROCKCHIP) && defined(CONFIG_NO_GKI)
 	/* Reset uart to make sure it is idle, then set baud rate */
 	serial_port_out(port, 0x88 >> 2, 0x7);
 #endif
@@ -3001,6 +3006,9 @@ serial8250_do_set_termios(struct uart_port *port, struct ktermios *termios,
 		up->ier |= UART_IER_RTOIE;
 
 	serial_port_out(port, UART_IER, up->ier);
+#ifdef CONFIG_NO_GKI
+	serial_port_out(port, UART_RS485_TCR, up->tcr);
+#endif
 #endif
 	spin_unlock_irqrestore(&port->lock, flags);
 	serial8250_rpm_put(up);

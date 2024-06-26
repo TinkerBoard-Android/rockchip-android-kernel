@@ -528,7 +528,7 @@ static void rockchip_canfd_tx_err_delay_work(struct work_struct *work)
  * [ can_id ] [flags] [len] [can data (up to 8 bytes]
  */
 static netdev_tx_t rockchip_canfd_start_xmit(struct sk_buff *skb,
-				     struct net_device *ndev)
+					     struct net_device *ndev)
 {
 	struct rockchip_canfd *rcan = netdev_priv(ndev);
 	struct canfd_frame *cf = (struct canfd_frame *)skb->data;

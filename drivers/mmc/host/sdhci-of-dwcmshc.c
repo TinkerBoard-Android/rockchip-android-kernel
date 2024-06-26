@@ -15,6 +15,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
+#include <linux/pm_domain.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 #include <linux/sizes.h>
@@ -495,7 +496,7 @@ static const struct dwcmshc_driver_data dwcmshc_drvdata = {
 
 static const struct dwcmshc_driver_data rk3568_drvdata = {
 	.pdata = &sdhci_dwcmshc_rk35xx_pdata,
-	.flags = RK_PLATFROM | RK_RXCLK_NO_INVERTER,
+	.flags = RK_PLATFROM | RK_RXCLK_NO_INVERTER | RK_TAP_VALUE_SEL,
 	.hs200_tx_tap = 16,
 	.hs400_tx_tap = 8,
 	.hs400_cmd_tap = 8,
@@ -505,7 +506,7 @@ static const struct dwcmshc_driver_data rk3568_drvdata = {
 
 static const struct dwcmshc_driver_data rk3588_drvdata = {
 	.pdata = &sdhci_dwcmshc_rk35xx_pdata,
-	.flags = RK_PLATFROM | RK_DLL_CMD_OUT,
+	.flags = RK_PLATFROM | RK_DLL_CMD_OUT | RK_TAP_VALUE_SEL,
 	.hs200_tx_tap = 16,
 	.hs400_tx_tap = 9,
 	.hs400_cmd_tap = 8,
@@ -533,10 +534,24 @@ static const struct dwcmshc_driver_data rk3562_drvdata = {
 	.ddr50_strbin_delay_num = 10,
 };
 
+static const struct dwcmshc_driver_data rk3576_drvdata = {
+	.pdata = &sdhci_dwcmshc_rk35xx_pdata,
+	.flags = RK_PLATFROM | RK_DLL_CMD_OUT | RK_TAP_VALUE_SEL,
+	.hs200_tx_tap = 16,
+	.hs400_tx_tap = 7,
+	.hs400_cmd_tap = 7,
+	.hs400_strbin_tap = 5,
+	.ddr50_strbin_delay_num = 10,
+};
+
 static const struct of_device_id sdhci_dwcmshc_dt_ids[] = {
 	{
 		.compatible = "rockchip,rk3588-dwcmshc",
 		.data = &rk3588_drvdata,
+	},
+	{
+		.compatible = "rockchip,rk3576-dwcmshc",
+		.data = &rk3576_drvdata,
 	},
 	{
 		.compatible = "rockchip,rk3568-dwcmshc",
@@ -678,6 +693,12 @@ static int dwcmshc_probe(struct platform_device *pdev)
 		goto err_setup_host;
 
 	if (rk_priv && !rk_priv->acpi_en) {
+		if (dev->pm_domain) {
+			struct generic_pm_domain *genpd;
+
+			genpd = pd_to_genpd(dev->pm_domain);
+			genpd->flags |= GENPD_FLAG_RPM_ALWAYS_ON;
+		}
 		pm_runtime_get_noresume(&pdev->dev);
 		pm_runtime_set_active(&pdev->dev);
 		pm_runtime_enable(&pdev->dev);

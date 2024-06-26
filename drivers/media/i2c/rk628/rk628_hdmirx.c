@@ -10,6 +10,7 @@
 #include <linux/kernel.h>
 #include <linux/soc/rockchip/rk_vendor_storage.h>
 #include <linux/slab.h>
+#include <linux/rk_hdmirx_config.h>
 
 #include "rk628.h"
 #include "rk628_combrxphy.h"
@@ -49,6 +50,30 @@ struct hdmirx_tmdsclk_cnt {
 	u8  cnt;
 };
 
+enum hdmirx_pix_fmt {
+	HDMIRX_RGB888 = 0,
+	HDMIRX_YUV422 = 1,
+	HDMIRX_YUV444 = 2,
+	HDMIRX_YUV420 = 3,
+};
+
+static const char * const bus_format_str[] = {
+	"RGB",
+	"YUV422",
+	"YUV444",
+	"YUV420",
+	"UNKNOWN",
+};
+
+static const char *bus_color_range_str[3] = {
+	"Default", "Limited", "Full"
+};
+
+static const char *bus_color_space_str[8] = {
+	"xvYCC601", "xvYCC709", "sYCC601", "Adobe_YCC601",
+	"Adobe_RGB", "BT2020_YcCbcCrc", "BT2020_RGB_OR_YCbCr", "RGB"
+};
+
 #define HDMIRX_GET_TMDSCLK_TIME		21
 
 static int supported_fs[] = {
@@ -81,7 +106,7 @@ static int hdcp_load_keys_cb(struct rk628 *rk628, struct rk628_hdcp *hdcp)
 
 	size = rk_vendor_read(HDMIRX_HDCP1X_ID, hdcp_vendor_data, 314);
 	if (size < (HDCP_KEY_SIZE + HDCP_KEY_SEED_SIZE)) {
-		dev_dbg(rk628->dev, "HDCP: read size %d\n", size);
+		rk628_dbg(rk628, "HDCP: read size %d\n", size);
 		kfree(hdcp->keys);
 		hdcp->keys = NULL;
 		kfree(hdcp->seeds);
@@ -162,8 +187,10 @@ static int rk628_hdmi_hdcp_load_key(struct rk628 *rk628, struct rk628_hdcp *hdcp
 
 void rk628_hdmirx_set_hdcp(struct rk628 *rk628, struct rk628_hdcp *hdcp, bool en)
 {
-	dev_dbg(rk628->dev, "%s: %sable\n", __func__, en ? "en" : "dis");
+	rk628_dbg(rk628, "%s: %sable\n", __func__, en ? "en" : "dis");
 
+	hdcp->rk628 = rk628;
+	hdcp->enable = en;
 	if (en) {
 		rk628_hdmi_hdcp_load_key(rk628, hdcp);
 	} else {
@@ -1140,7 +1167,7 @@ void rk628_hdmirx_verisyno_phy_power_on(struct rk628 *rk628)
 	rk628_i2c_read(rk628, HDMI_RX_HDMI20_STATUS, &val);
 	scramble = (val & SCRAMBDET_MASK) ? true : false;
 
-	dev_info(rk628->dev, "%s: %s, %s\n", __func__, is_hdmi2 ? "hdmi2.0" : "hdmi1.4",
+	rk628_dbg(rk628, "%s: %s, %s\n", __func__, is_hdmi2 ? "hdmi2.0" : "hdmi1.4",
 		 scramble ? "Scramble" : "Descramble");
 	/* power down phy */
 	rk628_i2c_write(rk628, GRF_SW_HDMIRXPHY_CRTL, 0x17);
@@ -1167,7 +1194,7 @@ void rk628_hdmirx_phy_prepclk_cfg(struct rk628 *rk628)
 	usleep_range(20 * 1000, 30 * 1000);
 	rk628_i2c_read(rk628, HDMI_RX_PDEC_AVI_PB, &format);
 	format = (format & VIDEO_FORMAT_MASK) >> 5;
-	dev_info(rk628->dev, "%s: format = %d from AVI\n", __func__, format);
+	rk628_dbg(rk628, "%s: format = %d from AVI\n", __func__, format);
 
 	/* yuv420 should set phy color depth 8bit */
 	if (format == 3)
@@ -1175,7 +1202,7 @@ void rk628_hdmirx_phy_prepclk_cfg(struct rk628 *rk628)
 
 	rk628_i2c_read(rk628, HDMI_RX_PDEC_GCP_AVMUTE, &format);
 	format = (format & PKTDEC_GCP_CD_MASK) >> 4;
-	dev_info(rk628->dev, "%s: format = %d from GCP\n", __func__, format);
+	rk628_dbg(rk628, "%s: format = %d from GCP\n", __func__, format);
 
 	/* 10bit color depth should set phy color depth 8bit */
 	if (format == 5)
@@ -1184,14 +1211,6 @@ void rk628_hdmirx_phy_prepclk_cfg(struct rk628 *rk628)
 	rk628_hdmirxphy_set_clrdpt(rk628, is_clrdpt_8bit);
 }
 EXPORT_SYMBOL(rk628_hdmirx_phy_prepclk_cfg);
-
-static const char * const bus_format_str[] = {
-	"RGB",
-	"YUV422",
-	"YUV444",
-	"YUV420",
-	"UNKNOWN",
-};
 
 u8 rk628_hdmirx_get_format(struct rk628 *rk628)
 {
@@ -1202,7 +1221,7 @@ u8 rk628_hdmirx_get_format(struct rk628 *rk628)
 	video_fmt = (val & VIDEO_FORMAT_MASK) >> 5;
 	if (video_fmt > BUS_FMT_UNKNOWN)
 		video_fmt = BUS_FMT_UNKNOWN;
-	dev_info(rk628->dev, "%s: format = %s\n", __func__, bus_format_str[video_fmt]);
+	rk628_dbg(rk628, "%s: format = %s\n", __func__, bus_format_str[video_fmt]);
 
 	/*
 	 * set avmute value to black
@@ -1258,7 +1277,7 @@ u32 rk628_hdmirx_get_tmdsclk_cnt(struct rk628 *rk628)
 		if (!tmdsclk[i].tmds_cnt)
 			return tmdsclk_cnt;
 
-		dev_info(rk628->dev, "tmdsclk_cnt: %d, cnt: %d\n",
+		rk628_dbg(rk628, "tmdsclk_cnt: %d, cnt: %d\n",
 			 tmdsclk[i].tmds_cnt, tmdsclk[i].cnt);
 		if (!i)
 			tmdsclk_cnt = tmdsclk[i].tmds_cnt;
@@ -1280,7 +1299,7 @@ static int rk628_hdmirx_read_timing(struct rk628 *rk628,
 	u32 hofs_pix, hbp, hfp, vbp, vfp;
 	u32 tmds_clk, tmdsclk_cnt;
 	u64 tmp_data;
-	u8 video_fmt;
+	u8 video_fmt, vic, color_range, color_space;
 
 	memset(timings, 0, sizeof(struct v4l2_dv_timings));
 	timings->type = V4L2_DV_BT_656_1120;
@@ -1341,7 +1360,11 @@ static int rk628_hdmirx_read_timing(struct rk628 *rk628,
 	hfp = htotal - hact - hofs_pix;
 	vfp = vtotal - vact - vs - vbp;
 
+	rk628_i2c_read(rk628, HDMI_RX_PDEC_AVI_PB, &val);
+	vic = (val & VID_IDENT_CODE_MASK) >> 24;
 	video_fmt = rk628_hdmirx_get_format(rk628);
+	color_range = rk628_hdmirx_get_range(rk628);
+	color_space = rk628_hdmirx_get_color_space(rk628);
 	if (video_fmt == BUS_FMT_YUV420) {
 		htotal *= 2;
 		hact *= 2;
@@ -1350,8 +1373,10 @@ static int rk628_hdmirx_read_timing(struct rk628 *rk628,
 		hs *= 2;
 	}
 
-	dev_info(rk628->dev, "cnt_num:%d, tmds_cnt:%d, hs_cnt:%d, vs_cnt:%d, hofs:%d\n",
+	rk628_dbg(rk628, "cnt_num:%d, tmds_cnt:%d, hs_cnt:%d, vs_cnt:%d, hofs:%d\n",
 		 HDMIRX_MODETCLK_CNT_NUM, tmdsclk_cnt, modetclk_cnt_hs, modetclk_cnt_vs, hofs_pix);
+	rk628_dbg(rk628, "get current aviif:  vic:%d, color_range: %s, color_space %s",
+		 vic, bus_color_range_str[color_range], bus_color_space_str[color_space]);
 
 	bt->width = hact;
 	bt->height = vact;
@@ -1377,7 +1402,7 @@ static int rk628_hdmirx_read_timing(struct rk628 *rk628,
 	if (vact == 1080 && vtotal > 1500)
 		goto TIMING_ERR;
 
-	dev_info(rk628->dev, "SCDC_REGS1:%#x, act:%dx%d, total:%dx%d, fps:%d, pixclk:%llu\n",
+	rk628_dbg(rk628, "SCDC_REGS1:%#x, act:%dx%d, total:%dx%d, fps:%d, pixclk:%llu\n",
 		 status, hact, vact, htotal, vtotal, fps, bt->pixelclock);
 
 	return 0;
@@ -1476,10 +1501,10 @@ int rk628_hdmirx_get_timings(struct rk628 *rk628,
 	if (rk628->version >= RK628F_VERSION) {
 		val = DIV_ROUND_CLOSEST_ULL(1188000000, bt->pixelclock);
 		val *= bt->pixelclock;
-		if (val > 1188000000) {
+		if (bt->pixelclock > 594000000) {
 			/* set pll rate according hdmirx tmds clk */
 			rk628_clk_set_rate(rk628, CGU_CLK_CPLL, val);
-			dev_dbg(rk628->dev, "set CPLL to %d\n", val);
+			rk628_dbg(rk628, "set CPLL to %d\n", val);
 			msleep(50);
 		}
 	}
@@ -1490,19 +1515,58 @@ EXPORT_SYMBOL(rk628_hdmirx_get_timings);
 
 u8 rk628_hdmirx_get_range(struct rk628 *rk628)
 {
-	u32 val;
 	u8 color_range;
+	u32 val, vic, fmt;
 
 	rk628_i2c_read(rk628, HDMI_RX_PDEC_AVI_PB, &val);
 	color_range = (val & RGB_COLORRANGE_MASK) >> 18;
-	if (color_range == 0x1)
-		color_range = CSC_LIMIT_RANGE;
-	else
-		color_range = CSC_FULL_RANGE;
+	vic = (val & VID_IDENT_CODE_MASK) >> 24;
+	fmt = (val & VIDEO_FORMAT_MASK) >> 5;
+	if (fmt == HDMIRX_RGB888 && color_range == HDMIRX_DEFAULT_RANGE) {
+		(vic) ?
+		(color_range = HDMIRX_LIMIT_RANGE) :
+		(color_range = HDMIRX_FULL_RANGE);
+	}
 
 	return color_range;
 }
 EXPORT_SYMBOL(rk628_hdmirx_get_range);
+
+u8 rk628_hdmirx_get_color_space(struct rk628 *rk628)
+{
+	u32 val, EC2_0, C1_C0, fmt;
+	u8 color_space;
+
+	rk628_i2c_read(rk628, HDMI_RX_PDEC_AVI_PB, &val);
+	EC2_0 = (val & EXT_COLORIMETRY_MASK) >> 20;
+	C1_C0 = (val & COLORIMETRY_MASK) >> 14;
+	fmt = (val & VIDEO_FORMAT_MASK) >> 5;
+	if (HDMIRX_RGB888 == fmt) {
+		if (HDMIRX_ADOBE_RGB == EC2_0 ||
+		    HDMIRX_BT2020_RGB_OR_YCC == EC2_0)
+			color_space = EC2_0;
+		else
+			color_space = HDMIRX_RGB;
+	} else {
+		switch (C1_C0) {
+		case 0:
+			color_space = HDMIRX_XVYCC709;
+			break;
+		case 1:
+			color_space = HDMIRX_XVYCC601;
+			break;
+		case 2:
+			color_space = HDMIRX_XVYCC709;
+			break;
+		default:
+			color_space = EC2_0;
+			break;
+		}
+	}
+
+	return color_space;
+}
+EXPORT_SYMBOL(rk628_hdmirx_get_color_space);
 
 void rk628_hdmirx_controller_reset(struct rk628 *rk628)
 {
@@ -1540,20 +1604,17 @@ bool rk628_hdmirx_scdc_ced_err(struct rk628 *rk628)
 }
 EXPORT_SYMBOL(rk628_hdmirx_scdc_ced_err);
 
-bool rk628_hdmirx_is_signal_change_ists(struct rk628 *rk628)
+bool rk628_hdmirx_is_signal_change_ists(struct rk628 *rk628, u32 md_ints, u32 pdec_ints)
 {
-	u32 md_ints, pdec_ints;
 	u32 md_mask, pded_madk;
 
 	md_mask = VACT_LIN_ISTS | HACT_PIX_ISTS |
 		  HS_CLK_ISTS | DE_ACTIVITY_ISTS |
 		  VS_ACT_ISTS | HS_ACT_ISTS | VS_CLK_ISTS;
-	rk628_i2c_read(rk628, HDMI_RX_MD_ISTS, &md_ints);
 	if (md_ints & md_mask)
 		return true;
 
 	pded_madk = AVI_CKS_CHG_ISTS;
-	rk628_i2c_read(rk628, HDMI_RX_PDEC_ISTS, &pdec_ints);
 	if (pdec_ints & pded_madk)
 		return true;
 
@@ -1628,3 +1689,222 @@ void rk628_hdmirx_phy_debugfs_register_create(struct rk628 *rk628, struct dentry
 	debugfs_create_file("hdmirxphy", 0600, dir, rk628, &rk628_hdmirx_phy_reg_fops);
 }
 EXPORT_SYMBOL(rk628_hdmirx_phy_debugfs_register_create);
+
+static int rk628_hdmirx_hdcp_enable_show(struct seq_file *s, void *v)
+{
+	struct rk628_hdcp *hdcp = s->private;
+
+	seq_printf(s, "%d\n", hdcp->enable);
+
+	return 0;
+}
+
+static ssize_t rk628_hdmirx_hdcp_enable_write(struct file *file, const char __user *buf,
+					      size_t count, loff_t *ppos)
+{
+	struct rk628_hdcp *hdcp = file->f_path.dentry->d_inode->i_private;
+	char kbuf[25];
+	int enable;
+
+	if (!hdcp || !hdcp->rk628)
+		return -EINVAL;
+
+	if (count >= sizeof(kbuf))
+		return -ENOSPC;
+
+	if (copy_from_user(kbuf, buf, count))
+		return -EFAULT;
+
+	kbuf[count] = '\0';
+
+	if (kstrtoint(kbuf, 10, &enable))
+		return -EINVAL;
+
+	rk628_hdmirx_set_hdcp(hdcp->rk628, hdcp, enable);
+
+	return count;
+}
+
+static int rk628_hdmirx_hdcp_enable_open(struct inode *inode, struct file *file)
+{
+	struct rk628_hdcp *hdcp = inode->i_private;
+
+	return single_open(file, rk628_hdmirx_hdcp_enable_show, hdcp);
+}
+
+static const struct file_operations rk628_hdmirx_hdcp_enable_fops = {
+	.owner          = THIS_MODULE,
+	.open           = rk628_hdmirx_hdcp_enable_open,
+	.read           = seq_read,
+	.write          = rk628_hdmirx_hdcp_enable_write,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void rk628_hdmirx_hdcp_enable_node(struct rk628_hdcp *hdcp, struct dentry *dir)
+{
+	if (IS_ERR(dir))
+		return;
+
+	debugfs_create_file("enable", 0600, dir, hdcp, &rk628_hdmirx_hdcp_enable_fops);
+}
+
+static int rk628_hdmirx_hdcp_status_show(struct seq_file *s, void *v)
+{
+	struct rk628_hdcp *hdcp = s->private;
+	struct rk628 *rk628 = hdcp->rk628;
+	u32 val;
+
+	if (!rk628 || !hdcp->enable) {
+		seq_puts(s, "HDCP Disable\n");
+		return 0;
+	}
+
+	rk628_i2c_read(rk628, HDMI_RX_HDCP_STS, &val);
+	if (val & (HDCP_ENC_STATE | HDCP_AUTH_START))
+		seq_puts(s, "HDCP Authenticated success\n");
+	else if (val & HDCP_ENC_STATE)
+		seq_puts(s, "HDCP Authenticated failed\n");
+	else
+		seq_puts(s, "HDCP Source No encrypted\n");
+
+	return 0;
+}
+
+static int rk628_hdmirx_hdcp_status_open(struct inode *inode, struct file *file)
+{
+	struct rk628_hdcp *hdcp = inode->i_private;
+
+	return single_open(file, rk628_hdmirx_hdcp_status_show, hdcp);
+}
+
+static const struct file_operations rk628_hdmirx_hdcp_status_fops = {
+	.owner          = THIS_MODULE,
+	.open           = rk628_hdmirx_hdcp_status_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void rk628_hdmirx_hdcp_status_node(struct rk628_hdcp *hdcp, struct dentry *dir)
+{
+	if (IS_ERR(dir))
+		return;
+
+	debugfs_create_file("status", 0600, dir, hdcp, &rk628_hdmirx_hdcp_status_fops);
+}
+
+static int rk628_hdmirx_status_show(struct seq_file *s, void *v)
+{
+	struct rk628 *rk628 = s->private;
+	struct v4l2_dv_timings timings;
+	struct v4l2_bt_timings *bt = &timings.bt;
+	bool plugin;
+	u32 val, htot, vtot, fps, format;
+	u8 fmt, range, space;
+
+	plugin = rk628_hdmirx_tx_5v_power_detect(rk628->hdmirx_det_gpio);
+	seq_printf(s, "status: %s\n",  plugin ? "plugin" : "plugout");
+	if (!plugin)
+		return 0;
+
+	rk628_i2c_read(rk628, HDMI_RX_SCDC_REGS1, &val);
+	seq_puts(s, "Clk-Ch:");
+	if (val & 0x100)
+		seq_puts(s, "Lock\t");
+	else
+		seq_puts(s, "Unlock\t");
+	seq_puts(s, "Ch0:");
+	if (val & 0x200)
+		seq_puts(s, "Lock\t");
+	else
+		seq_puts(s, "Unlock\t");
+	seq_puts(s, "Ch1:");
+	if (val & 0x400)
+		seq_puts(s, "Lock\t");
+	else
+		seq_puts(s, "Unlock\t");
+	seq_puts(s, "Ch2:");
+	if (val & 0x800)
+		seq_puts(s, "Lock\n");
+	else
+		seq_puts(s, "Unlock\n");
+
+	fmt = rk628_hdmirx_get_format(rk628);
+	seq_printf(s, "Color Format: %s\n", bus_format_str[fmt]);
+	rk628_hdmirx_read_timing(rk628, &timings);
+	htot = bt->width + bt->hfrontporch + bt->hsync + bt->hbackporch;
+	vtot = bt->height + bt->vfrontporch + bt->vsync + bt->vbackporch;
+	fps = div_u64(bt->pixelclock,  (htot * vtot));
+	seq_printf(s, "Timing: %ux%u%s%u (%ux%u)",
+		   bt->width, bt->height, bt->interlaced ? "i" : "p",
+		   fps, htot, vtot);
+	seq_printf(s, "\t\thfp:%d  hs:%d  hbp:%d  vfp:%d  vs:%d  vbp:%d\n",
+		   bt->hfrontporch, bt->hsync, bt->hbackporch,
+		   bt->vfrontporch, bt->vsync, bt->vbackporch);
+	seq_printf(s, "Pixel Clk: %llu\n", bt->pixelclock);
+
+	rk628_i2c_read(rk628, HDMI_RX_PDEC_STS, &val);
+	seq_printf(s, "Mode: %s\n", (val & DVI_DET) ? "DVI" : "HDMI");
+
+	rk628_i2c_read(rk628, HDMI_RX_PDEC_GCP_AVMUTE, &format);
+	format = (format & PKTDEC_GCP_CD_MASK) >> 4;
+	seq_printf(s, "Color Depth: %u bit\n", format == 5 ? 10 : 8);
+
+	range = rk628_hdmirx_get_range(rk628);
+	seq_puts(s, "Color Range: ");
+	seq_printf(s, "%s\n", bus_color_range_str[range]);
+
+	space = rk628_hdmirx_get_color_space(rk628);
+	seq_puts(s, "Color Space: ");
+	if (space < 8)
+		seq_printf(s, "%s\n", bus_color_space_str[space]);
+	else
+		seq_puts(s, "Unknown\n");
+
+	return 0;
+}
+
+static int rk628_hdmirx_status_open(struct inode *inode, struct file *file)
+{
+	struct rk628 *rk628 = inode->i_private;
+
+	return single_open(file, rk628_hdmirx_status_show, rk628);
+}
+
+static const struct file_operations rk628_hdmirx_status_fops = {
+	.owner          = THIS_MODULE,
+	.open           = rk628_hdmirx_status_open,
+	.read           = seq_read,
+	.llseek         = seq_lseek,
+	.release        = single_release,
+};
+
+static void rk628_hdmirx_status_node(struct rk628 *rk628, struct dentry *dir)
+{
+	if (IS_ERR(dir))
+		return;
+
+	debugfs_create_file("status", 0600, dir, rk628, &rk628_hdmirx_status_fops);
+}
+
+void rk628_hdmirx_debugfs_create(struct rk628 *rk628, struct rk628_hdcp *hdcp)
+{
+	struct dentry *hdmirx_dir, *dir;
+
+	if (IS_ERR(rk628->debug_dir))
+		return;
+
+	hdmirx_dir = debugfs_create_dir("hdmirx", rk628->debug_dir);
+	if (IS_ERR(hdmirx_dir))
+		return;
+
+	dir = debugfs_create_dir("hdcp", hdmirx_dir);
+	if (IS_ERR(dir))
+		return;
+
+	rk628_hdmirx_status_node(rk628, hdmirx_dir);
+	rk628_hdmirx_hdcp_enable_node(hdcp, dir);
+	rk628_hdmirx_hdcp_status_node(hdcp, dir);
+}
+EXPORT_SYMBOL(rk628_hdmirx_debugfs_create);

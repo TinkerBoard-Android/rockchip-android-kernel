@@ -24,7 +24,7 @@
 
 #include "maxim_remote.h"
 
-#define DRIVER_VERSION			KERNEL_VERSION(1, 0x00, 0x00)
+#define DRIVER_VERSION			KERNEL_VERSION(1, 0x00, 0x01)
 
 #ifndef V4L2_CID_DIGITAL_GAIN
 #define V4L2_CID_DIGITAL_GAIN		V4L2_CID_GAIN
@@ -99,7 +99,7 @@ struct ox03j10 {
 	struct maxim_remote_ser *remote_ser;
 };
 
-static const struct i2c_regval ox03j10_1920x1080_regs[] = {
+static const struct i2c_regval ox03j10_1920x1280_regs[] = {
 	{ REG_NULL, 0x00 },
 };
 
@@ -118,15 +118,15 @@ static const struct i2c_regval ox03j10_1920x1080_regs[] = {
 static const struct ox03j10_mode supported_modes[] = {
 	{
 		.width = 1920,
-		.height = 1080,
+		.height = 1280,
 		.max_fps = {
 			.numerator = 10000,
 			.denominator = 300000,
 		},
 		.link_freq_idx = 0,
-		.bus_fmt = MEDIA_BUS_FMT_UYVY8_2X8,
+		.bus_fmt = MEDIA_BUS_FMT_YUYV8_2X8,
 		.bpp = 16,
-		.reg_list = ox03j10_1920x1080_regs,
+		.reg_list = ox03j10_1920x1280_regs,
 	}
 };
 
@@ -1172,7 +1172,7 @@ MODULE_DEVICE_TABLE(of, ox03j10_of_match);
 
 static struct i2c_driver ox03j10_i2c_driver = {
 	.driver = {
-		.name = OX03J10_NAME,
+		.name = "maxim-ox03j10",
 		.pm = &ox03j10_pm_ops,
 		.of_match_table = of_match_ptr(ox03j10_of_match),
 	},

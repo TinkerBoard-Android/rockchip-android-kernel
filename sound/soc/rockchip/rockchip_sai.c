@@ -34,6 +34,8 @@
 #define WAIT_TIME_MS_MAX	10000
 #define QUIRK_ALWAYS_ON		BIT(0)
 
+#define MAX_LANES		4
+
 enum fpw_mode {
 	FPW_ONE_BCLK_WIDTH,
 	FPW_ONE_SLOT_WIDTH,
@@ -53,7 +55,10 @@ struct rk_sai_dev {
 	unsigned int wait_time[SNDRV_PCM_STREAM_LAST + 1];
 	unsigned int tx_lanes;
 	unsigned int rx_lanes;
+	unsigned int sdi[MAX_LANES];
+	unsigned int sdo[MAX_LANES];
 	unsigned int quirks;
+	unsigned int version;
 	enum fpw_mode fpw;
 	int  fw_ratio;
 	bool has_capture;
@@ -73,11 +78,53 @@ static const struct sai_of_quirks {
 	},
 };
 
+static int rockchip_sai_poll_clk_idle(struct rk_sai_dev *sai)
+{
+	unsigned int reg, idle, val;
+	int ret;
+
+	if (sai->version > SAI_VER_2307) {
+		reg = SAI_STATUS;
+		idle = SAI_STATUS_FS_IDLE;
+	} else {
+		reg = SAI_XFER;
+		idle = SAI_XFER_FS_IDLE;
+	}
+
+	dev_dbg(sai->dev, "%s: ver: 0x%x\n", __func__, sai->version);
+
+	ret = regmap_read_poll_timeout_atomic(sai->regmap, reg, val,
+					      (val & idle), 10, TIMEOUT_US);
+	if (ret < 0)
+		dev_warn(sai->dev, "Failed to idle FS\n");
+
+	return ret;
+}
+
+static int rockchip_sai_poll_stream_idle(struct rk_sai_dev *sai, int stream)
+{
+	unsigned int reg, idle, val;
+	int ret;
+
+	if (sai->version > SAI_VER_2307) {
+		reg = SAI_STATUS;
+		idle = stream ? SAI_STATUS_RX_IDLE : SAI_STATUS_TX_IDLE;
+	} else {
+		reg = SAI_XFER;
+		idle = stream ? SAI_XFER_RX_IDLE : SAI_XFER_TX_IDLE;
+	}
+
+	ret = regmap_read_poll_timeout_atomic(sai->regmap, reg, val,
+					      (val & idle), 10, TIMEOUT_US);
+	if (ret < 0)
+		dev_warn(sai->dev, "Failed to idle stream\n");
+
+	return ret;
+}
+
 static int rockchip_sai_runtime_suspend(struct device *dev)
 {
 	struct rk_sai_dev *sai = dev_get_drvdata(dev);
-	unsigned int val;
-	int ret;
 
 	if (sai->is_master_mode)
 		regmap_update_bits(sai->regmap, SAI_XFER,
@@ -86,10 +133,7 @@ static int rockchip_sai_runtime_suspend(struct device *dev)
 				   SAI_XFER_CLK_DIS |
 				   SAI_XFER_FSS_DIS);
 
-	ret = regmap_read_poll_timeout_atomic(sai->regmap, SAI_XFER, val,
-					      (val & SAI_XFER_FS_IDLE), 10, TIMEOUT_US);
-	if (ret < 0)
-		dev_warn(sai->dev, "Failed to idle FS\n");
+	rockchip_sai_poll_clk_idle(sai);
 
 	regcache_cache_only(sai->regmap, true);
 	/*
@@ -254,27 +298,20 @@ static void rockchip_sai_xfer_start(struct rk_sai_dev *sai, int stream)
 
 static void rockchip_sai_xfer_stop(struct rk_sai_dev *sai, int stream)
 {
-	unsigned int msk, val, clr, idle;
-	int ret;
+	unsigned int msk, val, clr;
 
 	if (stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		msk = SAI_XFER_TXS_MASK;
 		val = SAI_XFER_TXS_DIS;
 		clr = SAI_CLR_TXC;
-		idle = SAI_XFER_TX_IDLE;
 	} else {
 		msk = SAI_XFER_RXS_MASK;
 		val = SAI_XFER_RXS_DIS;
 		clr = SAI_CLR_RXC;
-		idle = SAI_XFER_RX_IDLE;
 	}
 
 	regmap_update_bits(sai->regmap, SAI_XFER, msk, val);
-	ret = regmap_read_poll_timeout_atomic(sai->regmap, SAI_XFER, val,
-					      (val & idle), 10, TIMEOUT_US);
-	if (ret < 0)
-		dev_warn(sai->dev, "Failed to idle stream %d\n", stream);
-
+	rockchip_sai_poll_stream_idle(sai, stream);
 	rockchip_sai_clear(sai, clr);
 }
 
@@ -557,6 +594,104 @@ static int rockchip_sai_prepare(struct snd_pcm_substream *substream,
 	return 0;
 }
 
+static int rockchip_sai_path_check(struct rk_sai_dev *sai,
+				   int num, bool is_rx)
+{
+	unsigned int *data;
+	int i;
+
+	data = is_rx ? sai->sdi : sai->sdo;
+
+	for (i = 0; i < num; i++) {
+		if (data[i] >= MAX_LANES) {
+			dev_err(sai->dev, "%s[%d]: %d, Should less than: %d\n",
+				is_rx ? "RX" : "TX", i, data[i], MAX_LANES);
+
+			return -EINVAL;
+		}
+	}
+
+	return 0;
+}
+
+static void rockchip_sai_path_config(struct rk_sai_dev *sai,
+				     int num, bool is_rx)
+{
+	int i;
+
+	if (is_rx)
+		for (i = 0; i < num; i++)
+			regmap_update_bits(sai->regmap, SAI_PATH_SEL,
+					   SAI_RX_PATH_MASK(i),
+					   SAI_RX_PATH(i, sai->sdi[i]));
+	else
+		for (i = 0; i < num; i++)
+			regmap_update_bits(sai->regmap, SAI_PATH_SEL,
+					   SAI_TX_PATH_MASK(i),
+					   SAI_TX_PATH(i, sai->sdo[i]));
+}
+
+static int rockchip_sai_path_prepare(struct rk_sai_dev *sai,
+				     struct device_node *np,
+				     bool is_rx)
+{
+	char *path_prop;
+	unsigned int *data;
+	int num, ret;
+
+	if (is_rx) {
+		path_prop = "rockchip,sai-rx-route";
+		data = sai->sdi;
+	} else {
+		path_prop = "rockchip,sai-tx-route";
+		data = sai->sdo;
+	}
+
+	num = of_count_phandle_with_args(np, path_prop, NULL);
+	if (num == -ENOENT) {
+		return 0;
+	} else if (num != MAX_LANES) {
+		dev_err(sai->dev, "The property size should be: %d, ret: %d\n",
+			MAX_LANES, num);
+		return -EINVAL;
+	}
+
+	ret = device_property_read_u32_array(sai->dev, path_prop, data, num);
+	if (ret < 0) {
+		dev_err(sai->dev, "Failed to read '%s': %d\n",
+			path_prop, ret);
+		return ret;
+	}
+
+	ret = rockchip_sai_path_check(sai, num, is_rx);
+	if (ret)
+		return ret;
+
+	rockchip_sai_path_config(sai, num, is_rx);
+
+	return 0;
+}
+
+static int rockchip_sai_parse_paths(struct rk_sai_dev *sai,
+				    struct device_node *np)
+{
+	int ret;
+
+	ret = rockchip_sai_path_prepare(sai, np, 0);
+	if (ret < 0) {
+		dev_err(sai->dev, "Failed to prepare TX path: %d\n", ret);
+		return ret;
+	}
+
+	ret = rockchip_sai_path_prepare(sai, np, 1);
+	if (ret < 0) {
+		dev_err(sai->dev, "Failed to prepare RX path: %d\n", ret);
+		return ret;
+	}
+
+	return ret;
+}
+
 static int rockchip_sai_trigger(struct snd_pcm_substream *substream,
 				int cmd, struct snd_soc_dai *dai)
 {
@@ -730,6 +865,7 @@ static bool rockchip_sai_rd_reg(struct device *dev, unsigned int reg)
 	case SAI_RX_DATA_CNT:
 	case SAI_TX_SHIFT:
 	case SAI_RX_SHIFT:
+	case SAI_STATUS:
 	case SAI_VERSION:
 		return true;
 	default:
@@ -750,6 +886,8 @@ static bool rockchip_sai_volatile_reg(struct device *dev, unsigned int reg)
 	case SAI_RXDR:
 	case SAI_TX_DATA_CNT:
 	case SAI_RX_DATA_CNT:
+	case SAI_STATUS:
+	case SAI_VERSION:
 		return true;
 	default:
 		return false;
@@ -1444,13 +1582,23 @@ static int rockchip_sai_probe(struct platform_device *pdev)
 		return PTR_ERR(sai->hclk);
 	}
 
-	ret = rockchip_sai_parse_quirks(sai);
+	ret = clk_prepare_enable(sai->hclk);
 	if (ret)
 		return ret;
 
+	regmap_read(sai->regmap, SAI_VERSION, &sai->version);
+
+	ret = rockchip_sai_parse_quirks(sai);
+	if (ret)
+		goto err_disable_hclk;
+
+	ret = rockchip_sai_parse_paths(sai, node);
+	if (ret)
+		goto err_disable_hclk;
+
 	ret = rockchip_sai_init_dai(sai, res, &dai);
 	if (ret)
-		return ret;
+		goto err_disable_hclk;
 
 	/*
 	 * MUST: after pm_runtime_enable step, any register R/W
@@ -1476,6 +1624,7 @@ static int rockchip_sai_probe(struct platform_device *pdev)
 		goto err_runtime_suspend;
 
 	if (device_property_read_bool(&pdev->dev, "rockchip,no-dmaengine")) {
+		clk_disable_unprepare(sai->hclk);
 		dev_info(&pdev->dev, "Used for Multi-DAI\n");
 		return 0;
 	}
@@ -1488,6 +1637,8 @@ static int rockchip_sai_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_runtime_suspend;
 
+	clk_disable_unprepare(sai->hclk);
+
 	return 0;
 
 err_runtime_suspend:
@@ -1495,6 +1646,8 @@ err_runtime_suspend:
 		rockchip_sai_runtime_suspend(&pdev->dev);
 err_runtime_disable:
 	pm_runtime_disable(&pdev->dev);
+err_disable_hclk:
+	clk_disable_unprepare(sai->hclk);
 
 	return ret;
 }

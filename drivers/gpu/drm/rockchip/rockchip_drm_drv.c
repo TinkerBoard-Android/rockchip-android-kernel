@@ -26,6 +26,7 @@
 #include <drm/drm_displayid.h>
 #include <drm/drm_fb_helper.h>
 #include <drm/drm_gem_dma_helper.h>
+#include <drm/drm_gem_framebuffer_helper.h>
 #include <drm/drm_of.h>
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_vblank.h>
@@ -97,6 +98,42 @@ void rockchip_drm_dbg(const struct device *dev, enum rockchip_drm_debug_category
 
 	va_end(args);
 }
+
+bool rockchip_drm_is_afbc(struct drm_plane *plane, u64 modifier)
+{
+	int i;
+
+	if (modifier == DRM_FORMAT_MOD_LINEAR)
+		return false;
+
+	if (!drm_is_afbc(modifier))
+		return false;
+
+	for (i = 0 ; i < plane->modifier_count; i++)
+		if (plane->modifiers[i] == modifier)
+			break;
+
+	return (i < plane->modifier_count) ? true : false;
+}
+EXPORT_SYMBOL(rockchip_drm_is_afbc);
+
+bool rockchip_drm_is_rfbc(struct drm_plane *plane, u64 modifier)
+{
+	int i;
+
+	if (modifier == DRM_FORMAT_MOD_LINEAR)
+		return false;
+
+	if (!IS_ROCKCHIP_RFBC_MOD(modifier))
+		return false;
+
+	for (i = 0 ; i < plane->modifier_count; i++)
+		if (plane->modifiers[i] == modifier)
+			break;
+
+	return (i < plane->modifier_count) ? true : false;
+}
+EXPORT_SYMBOL(rockchip_drm_is_rfbc);
 
 /**
  * rockchip_drm_wait_vact_end
@@ -412,40 +449,6 @@ int rockchip_drm_add_modes_noedid(struct drm_connector *connector)
 	return num_modes;
 }
 EXPORT_SYMBOL(rockchip_drm_add_modes_noedid);
-
-static const struct rockchip_drm_width_dclk {
-	int width;
-	u32 dclk_khz;
-} rockchip_drm_dclk[] = {
-	{1920, 148500},
-	{2048, 200000},
-	{2560, 280000},
-	{3840, 594000},
-	{4096, 594000},
-	{7680, 2376000},
-};
-
-u32 rockchip_drm_get_dclk_by_width(int width)
-{
-	int i = 0;
-	u32 dclk_khz;
-
-	for (i = 0; i < ARRAY_SIZE(rockchip_drm_dclk); i++) {
-		if (width == rockchip_drm_dclk[i].width) {
-			dclk_khz = rockchip_drm_dclk[i].dclk_khz;
-			break;
-		}
-	}
-
-	if (i == ARRAY_SIZE(rockchip_drm_dclk)) {
-		DRM_ERROR("Can't not find %d width solution and use 148500 khz as max dclk\n", width);
-
-		dclk_khz = 148500;
-	}
-
-	return dclk_khz;
-}
-EXPORT_SYMBOL(rockchip_drm_get_dclk_by_width);
 
 static const char * const color_encoding_name[] = {
 	[DRM_COLOR_YCBCR_BT601] = "BT.601",
@@ -1136,6 +1139,28 @@ void rockchip_drm_crtc_standby(struct drm_crtc *crtc, bool standby)
 	    priv->crtc_funcs[pipe] &&
 	    priv->crtc_funcs[pipe]->crtc_standby)
 		priv->crtc_funcs[pipe]->crtc_standby(crtc, standby);
+}
+
+void rockchip_drm_crtc_output_post_enable(struct drm_crtc *crtc, int intf)
+{
+	struct rockchip_drm_private *priv = crtc->dev->dev_private;
+	int pipe = drm_crtc_index(crtc);
+
+	if (pipe < ROCKCHIP_MAX_CRTC &&
+	    priv->crtc_funcs[pipe] &&
+	    priv->crtc_funcs[pipe]->crtc_output_post_enable)
+		priv->crtc_funcs[pipe]->crtc_output_post_enable(crtc, intf);
+}
+
+void rockchip_drm_crtc_output_pre_disable(struct drm_crtc *crtc, int intf)
+{
+	struct rockchip_drm_private *priv = crtc->dev->dev_private;
+	int pipe = drm_crtc_index(crtc);
+
+	if (pipe < ROCKCHIP_MAX_CRTC &&
+	    priv->crtc_funcs[pipe] &&
+	    priv->crtc_funcs[pipe]->crtc_output_pre_disable)
+		priv->crtc_funcs[pipe]->crtc_output_pre_disable(crtc, intf);
 }
 
 int rockchip_register_crtc_funcs(struct drm_crtc *crtc,

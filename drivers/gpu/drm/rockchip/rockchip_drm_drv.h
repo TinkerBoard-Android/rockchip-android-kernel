@@ -53,6 +53,7 @@ struct iommu_domain;
 #define VOP_OUTPUT_IF_DP1	BIT(10)
 #define VOP_OUTPUT_IF_HDMI0	BIT(11)
 #define VOP_OUTPUT_IF_HDMI1	BIT(12)
+#define VOP_OUTPUT_IF_DP2	BIT(13)
 
 #ifndef DRM_FORMAT_NV20
 #define DRM_FORMAT_NV20		fourcc_code('N', 'V', '2', '0') /* 2x1 subsampled Cr:Cb plane */
@@ -119,8 +120,9 @@ enum rockchip_drm_split_area {
 
 enum rockchip_drm_vop_aclk_mode {
 	ROCKCHIP_VOP_ACLK_NORMAL_MODE = 0,
-	ROCKCHIP_VOP_ACLK_ADVANCED_MODE = 1,
-	ROCKCHIP_VOP_ACLK_MAX_MODE = 2,
+	ROCKCHIP_VOP_ACLK_RESET_MODE,
+	ROCKCHIP_VOP_ACLK_ADVANCED_MODE,
+	ROCKCHIP_VOP_ACLK_MAX_MODE,
 };
 
 struct rockchip_drm_sub_dev {
@@ -230,6 +232,28 @@ struct post_csc {
 	u16 csc_enable;
 };
 
+#define ROCKCHIP_VOP_DCI_LUT_LENGTH 5632
+
+struct dci_data {
+	u32 plat; /* Reserved to distinguish later platform */
+	u8 dci_lut_data[ROCKCHIP_VOP_DCI_LUT_LENGTH];
+	u32 blk_size_h_ratio;
+	u32 blk_size_v_ratio;
+	u32 dci_act_w;
+	u32 dci_act_h;
+	u32 adj0;
+	u32 adj1;
+	u32 uv_adj;
+	u32 dci_en;
+};
+
+#define SHARP_REG_LENGTH 692
+
+struct post_sharp {
+	u32 plat; /* Reserved to distinguish later platform */
+	u32 regs[SHARP_REG_LENGTH / 4];
+};
+
 struct rockchip_crtc_state {
 	struct drm_crtc_state base;
 	int vp_id;
@@ -255,6 +279,11 @@ struct rockchip_crtc_state {
 	 * otherwise use hardware te
 	 */
 	bool soft_te;
+	/**
+	 * sharp and post scaler share line buffer,
+	 * So they are mutually exclusive.
+	 */
+	bool sharp_en;
 
 	struct drm_tv_connector_state *tv_state;
 	int left_margin;
@@ -303,6 +332,7 @@ struct rockchip_crtc_state {
 	struct drm_property_blob *hdr_ext_data;
 	struct drm_property_blob *acm_lut_data;
 	struct drm_property_blob *post_csc_data;
+	struct drm_property_blob *post_sharp_data;
 	struct drm_property_blob *cubic_lut_data;
 
 	int request_refresh_rate;
@@ -468,8 +498,11 @@ struct rockchip_crtc_funcs {
 	void (*te_handler)(struct drm_crtc *crtc);
 	int (*wait_vact_end)(struct drm_crtc *crtc, unsigned int mstimeout);
 	void (*crtc_standby)(struct drm_crtc *crtc, bool standby);
+	void (*crtc_output_post_enable)(struct drm_crtc *crtc, int intf);
+	void (*crtc_output_pre_disable)(struct drm_crtc *crtc, int intf);
 	int (*crtc_set_color_bar)(struct drm_crtc *crtc, enum rockchip_color_bar_mode mode);
 	int (*set_aclk)(struct drm_crtc *crtc, enum rockchip_drm_vop_aclk_mode aclk_mode);
+	int (*get_crc)(struct drm_crtc *crtc);
 };
 
 struct rockchip_dclk_pll {
@@ -558,6 +591,8 @@ int rockchip_register_crtc_funcs(struct drm_crtc *crtc,
 				 const struct rockchip_crtc_funcs *crtc_funcs);
 void rockchip_unregister_crtc_funcs(struct drm_crtc *crtc);
 void rockchip_drm_crtc_standby(struct drm_crtc *crtc, bool standby);
+void rockchip_drm_crtc_output_post_enable(struct drm_crtc *crtc, int intf);
+void rockchip_drm_crtc_output_pre_disable(struct drm_crtc *crtc, int intf);
 
 void rockchip_drm_register_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
 void rockchip_drm_unregister_sub_dev(struct rockchip_drm_sub_dev *sub_dev);
@@ -566,7 +601,6 @@ int rockchip_drm_add_modes_noedid(struct drm_connector *connector);
 void rockchip_drm_te_handle(struct drm_crtc *crtc);
 void drm_mode_convert_to_split_mode(struct drm_display_mode *mode);
 void drm_mode_convert_to_origin_mode(struct drm_display_mode *mode);
-u32 rockchip_drm_get_dclk_by_width(int width);
 const char *rockchip_drm_get_color_encoding_name(enum drm_color_encoding encoding);
 const char *rockchip_drm_get_color_range_name(enum drm_color_range range);
 #if IS_REACHABLE(CONFIG_DRM_ROCKCHIP)
@@ -600,6 +634,8 @@ int rockchip_drm_parse_colorimetry_data_block(u8 *colorimetry, const struct edid
 struct dma_buf *rockchip_drm_gem_prime_export(struct drm_gem_object *obj, int flags);
 long rockchip_drm_dclk_round_rate(u32 version, struct clk *dclk, unsigned long rate);
 int rockchip_drm_dclk_set_rate(u32 version, struct clk *dclk, unsigned long rate);
+bool rockchip_drm_is_afbc(struct drm_plane *plane, u64 modifier);
+bool rockchip_drm_is_rfbc(struct drm_plane *plane, u64 modifier);
 
 __printf(3, 4)
 void rockchip_drm_dbg(const struct device *dev, enum rockchip_drm_debug_category category,

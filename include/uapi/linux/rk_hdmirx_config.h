@@ -42,6 +42,7 @@ enum hdmirx_color_space {
 	HDMIRX_ADOBE_RGB = 4,
 	HDMIRX_BT2020_YCC_CONST_LUM = 5,
 	HDMIRX_BT2020_RGB_OR_YCC = 6,
+	HDMIRX_RGB = 7,
 };
 
 /* hdmirx scan mode */
@@ -102,6 +103,9 @@ enum hdmirx_edid_mode {
 
 #define RK_HDMIRX_CMD_GET_HDCP_ENC_STATUS  \
 	_IOR('V', BASE_VIDIOC_PRIVATE + 14, __u8)
+
+#define RK_HDMIRX_CMD_SET_OUTPUT_RANGE  \
+	_IOW('V', BASE_VIDIOC_PRIVATE + 15, int)
 
 /* Private v4l2 event */
 #define RK_HDMIRX_V4L2_EVENT_SIGNAL_LOST \

@@ -122,6 +122,7 @@
 #define HDMI_RX_HDCP_AN0		(HDMI_RX_BASE + 0x00f0)
 #define HDMI_RX_HDCP_STS		(HDMI_RX_BASE + 0x00fc)
 #define HDCP_ENC_STATE			BIT(9)
+#define HDCP_AUTH_START			BIT(8)
 #define HDMI_RX_MD_HCTRL1		(HDMI_RX_BASE + 0x0140)
 #define HACT_PIX_ITH(x)			UPDATE(x, 10, 8)
 #define HACT_PIX_SRC(x)			UPDATE(x, 5, 5)
@@ -255,7 +256,12 @@
 #define DVI_DET				BIT(28)
 #define HDMI_RX_PDEC_GCP_AVMUTE		(HDMI_RX_BASE + 0x0380)
 #define PKTDEC_GCP_CD_MASK		GENMASK(7, 4)
+#define HDMI_RX_PDEC_AVI_HB		(HDMI_RX_BASE + 0x03a0)
 #define HDMI_RX_PDEC_AVI_PB		(HDMI_RX_BASE + 0x03a4)
+#define VID_IDENT_CODE_VIC7		BIT(31)
+#define VID_IDENT_CODE_MASK		GENMASK(30, 24)
+#define EXT_COLORIMETRY_MASK		GENMASK(22, 20)
+#define COLORIMETRY_MASK		GENMASK(15, 14)
 #define VIDEO_FORMAT_MASK		GENMASK(6, 5)
 #define VIDEO_FORMAT(x)			UPDATE(x, 6, 5)
 #define RGB_COLORRANGE_MASK		GENMASK(19, 18)
@@ -449,11 +455,6 @@
 
 #define SCDC_CED_ERR_CNT		0xfff
 
-enum color_range {
-	CSC_LIMIT_RANGE,
-	CSC_FULL_RANGE,
-};
-
 enum bus_format {
 	BUS_FMT_RGB = 0,
 	BUS_FMT_YUV422 = 1,
@@ -471,6 +472,8 @@ struct hdcp_keys {
 struct rk628_hdcp {
 	char *seeds;
 	struct hdcp_keys *keys;
+	struct rk628 *rk628;
+	int enable;
 };
 
 struct rk628_hdmirx_cec {
@@ -517,10 +520,11 @@ u32 rk628_hdmirx_get_tmdsclk_cnt(struct rk628 *rk628);
 int rk628_hdmirx_get_timings(struct rk628 *rk628,
 			     struct v4l2_dv_timings *timings);
 u8 rk628_hdmirx_get_range(struct rk628 *rk628);
+u8 rk628_hdmirx_get_color_space(struct rk628 *rk628);
 int rk628_hdmirx_get_hdcp_enc_status(struct rk628 *rk628);
 void rk628_hdmirx_controller_reset(struct rk628 *rk628);
 bool rk628_hdmirx_scdc_ced_err(struct rk628 *rk628);
-bool rk628_hdmirx_is_signal_change_ists(struct rk628 *rk628);
+bool rk628_hdmirx_is_signal_change_ists(struct rk628 *rk628, u32 md_ints, u32 pdec_ints);
 
 void rk628_hdmirx_cec_irq(struct rk628 *rk628, struct rk628_hdmirx_cec *cec);
 struct rk628_hdmirx_cec *rk628_hdmirx_cec_register(struct rk628 *rk628);
@@ -529,4 +533,5 @@ void rk628_hdmirx_cec_hpd(struct rk628_hdmirx_cec *cec, bool en);
 void rk628_hdmirx_cec_state_reconfiguration(struct rk628 *rk628,
 					    struct rk628_hdmirx_cec *cec);
 void rk628_hdmirx_phy_debugfs_register_create(struct rk628 *rk628, struct dentry *dir);
+void rk628_hdmirx_debugfs_create(struct rk628 *rk628, struct rk628_hdcp *hdcp);
 #endif

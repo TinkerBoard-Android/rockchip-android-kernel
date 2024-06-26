@@ -51,6 +51,7 @@
 #define BPDS_VDEV_NAME DRIVER_NAME	"_bypasspath_4x4sampling"
 #define LUMA_VDEV_NAME DRIVER_NAME	"_lumapath"
 #define VIR_VDEV_NAME DRIVER_NAME	"_iqtool"
+#define LDC_VDEV_NAME DRIVER_NAME	"_ldcpath"
 
 #define DMATX0_VDEV_NAME DRIVER_NAME	"_rawwr0"
 #define DMATX1_VDEV_NAME DRIVER_NAME	"_rawwr1"
@@ -91,6 +92,7 @@ enum {
 	RKISP_STREAM_MPDS,
 	RKISP_STREAM_BPDS,
 	RKISP_STREAM_LUMA,
+	RKISP_STREAM_LDC,
 	RKISP_STREAM_VIR,
 	RKISP_MAX_STREAM,
 };
@@ -166,6 +168,16 @@ struct stream_config {
 	struct {
 		u32 ctrl;
 		u32 ctrl_shd;
+		u32 update;
+		u32 src_size;
+		u32 dst_size;
+		u32 scale_hy_offs_mi;
+		u32 scale_hc_offs_mi;
+		u32 scale_in_crop_offs;
+		u32 scale_hy_offs;
+		u32 scale_hc_offs;
+		u32 scale_hy_size;
+		u32 scale_hc_size;
 		u32 scale_hy;
 		u32 scale_hcr;
 		u32 scale_hcb;
@@ -230,6 +242,7 @@ struct streams_ops {
 	int (*frame_end)(struct rkisp_stream *stream, u32 state);
 	int (*frame_start)(struct rkisp_stream *stream, u32 mis);
 	int (*set_wrap)(struct rkisp_stream *stream, int line);
+	int (*isp_end)(struct rkisp_stream *stream, u32 irq);
 };
 
 struct rockit_isp_ops {
@@ -289,6 +302,7 @@ struct rkisp_stream {
 	bool is_crop_upd;
 	bool is_using_resmem;
 	bool frame_early;
+	bool need_scl_upd;
 	wait_queue_head_t done;
 	unsigned int burst;
 	atomic_t sequence;
@@ -342,6 +356,7 @@ void rkisp_mi_isr(u32 mis_val, struct rkisp_device *dev);
 void rkisp_set_stream_def_fmt(struct rkisp_device *dev, u32 id,
 			      u32 width, u32 height, u32 pixelformat);
 int rkisp_stream_frame_start(struct rkisp_device *dev, u32 isp_mis);
+int rkisp_stream_isp_end(struct rkisp_device *dev, u32 isp_mis);
 int rkisp_fcc_xysubs(u32 fcc, u32 *xsubs, u32 *ysubs);
 int rkisp_mbus_code_xysubs(u32 code, u32 *xsubs, u32 *ysubs);
 int rkisp_fh_open(struct file *filp);

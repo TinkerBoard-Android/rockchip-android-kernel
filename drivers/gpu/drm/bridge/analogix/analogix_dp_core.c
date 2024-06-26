@@ -548,9 +548,15 @@ static int analogix_dp_process_clock_recovery(struct analogix_dp_device *dp)
 					pre_emphasis)
 				dp->link_train.cr_loop[lane]++;
 
+			/*
+			 *  In DP spec 1.3, Condition of CR fail are
+			 *  outlined in section 3.5.1.2.2.1, figure 3-20:
+			 *
+			 *  1. Maximum Voltage Swing reached
+			 *  2. Same Voltage five times
+			 */
 			if (dp->link_train.cr_loop[lane] == MAX_CR_LOOP ||
-			    voltage_swing == VOLTAGE_LEVEL_3 ||
-			    pre_emphasis == PRE_EMPHASIS_LEVEL_3) {
+			    DPCD_VOLTAGE_SWING_GET(training_lane) == VOLTAGE_LEVEL_3) {
 				dev_err(dp->dev, "CR Max reached (%d,%d,%d)\n",
 					dp->link_train.cr_loop[lane],
 					voltage_swing, pre_emphasis);
@@ -2064,6 +2070,7 @@ static int analogix_dp_dt_parse_pdata(struct analogix_dp_device *dp)
 		video_info->max_lane_count = 0x04;
 		break;
 	case RK3399_EDP:
+	case RK3576_EDP:
 	case RK3588_EDP:
 		video_info->max_link_rate = 0x14;
 		video_info->max_lane_count = 0x04;

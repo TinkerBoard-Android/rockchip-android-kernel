@@ -719,15 +719,13 @@ struct rockchip_hdptx_phy {
 	struct clk *dclk;
 	unsigned long rate;
 
-	struct reset_control *phy_reset;
 	struct reset_control *apb_reset;
 	struct reset_control *cmn_reset;
 	struct reset_control *init_reset;
 	struct reset_control *lane_reset;
-	struct reset_control *ropll_reset;
-	struct reset_control *lcpll_reset;
 
 	bool earc_en;
+	bool initialized;
 	int count;
 };
 
@@ -990,11 +988,7 @@ static void hdptx_phy_disable(struct rockchip_hdptx_phy *hdptx)
 {
 	u32 val;
 
-	/* reset phy and apb, or phy locked flag may keep 1 */
-	reset_control_assert(hdptx->phy_reset);
-	udelay(20);
-	reset_control_deassert(hdptx->phy_reset);
-
+	/* reset apb, or phy locked flag may keep 1 */
 	reset_control_assert(hdptx->apb_reset);
 	udelay(20);
 	reset_control_deassert(hdptx->apb_reset);
@@ -1202,10 +1196,6 @@ static int hdptx_ropll_cmn_config(struct rockchip_hdptx_phy *hdptx, unsigned lon
 		cfg->sdc_n + 3, cfg->sdc_num, cfg->sdc_deno);
 
 	hdptx_pre_power_up(hdptx);
-
-	reset_control_assert(hdptx->ropll_reset);
-	udelay(20);
-	reset_control_deassert(hdptx->ropll_reset);
 
 	hdptx_grf_write(hdptx, GRF_HDPTX_CON0, LC_REF_CLK_SEL << 16);
 
@@ -1479,14 +1469,6 @@ static int hdptx_lcpll_ropll_cmn_config(struct rockchip_hdptx_phy *hdptx, unsign
 	hdptx->rate = rate * 100;
 
 	hdptx_pre_power_up(hdptx);
-
-	reset_control_assert(hdptx->ropll_reset);
-	udelay(20);
-	reset_control_deassert(hdptx->ropll_reset);
-
-	reset_control_assert(hdptx->lcpll_reset);
-	udelay(20);
-	reset_control_deassert(hdptx->lcpll_reset);
 
 	/* ROPLL input reference clock from LCPLL (cascade mode) */
 	val = (LC_REF_CLK_SEL << 16) | LC_REF_CLK_SEL;
@@ -2047,21 +2029,11 @@ static void rockchip_hdptx_phy_runtime_disable(void *data)
 
 #define PLL_REF_CLK 24000000ULL
 
-static unsigned long hdptx_phy_clk_recalc_rate(struct clk_hw *hw,
-					       unsigned long parent_rate)
+static unsigned long hdptx_cal_current_rate(struct rockchip_hdptx_phy *hdptx)
 {
-	struct rockchip_hdptx_phy *hdptx = to_rockchip_hdptx_phy(hw);
 	u8 mdiv, sdiv, sdm_num, sdm_deno, sdc_n, sdc_num, sdc_deno;
 	u64 fout, sdm;
-	u32 val;
 	bool sdm_en, sdm_num_sign;
-
-	if (hdptx->rate)
-		return hdptx->rate;
-
-	val = hdptx_grf_read(hdptx, GRF_HDPTX_CON0);
-	if (!(val & HDPTX_I_PLL_EN))
-		return 0;
 
 	mdiv = hdptx_read(hdptx, CMN_REG0051);
 	sdm_en = hdptx_read(hdptx, CMN_REG005E) & ROPLL_SDM_EN_MASK;
@@ -2087,6 +2059,22 @@ static unsigned long hdptx_phy_clk_recalc_rate(struct clk_hw *hw,
 	fout = div_u64(fout * 2, sdiv * 10);
 
 	return fout;
+}
+
+static unsigned long hdptx_phy_clk_recalc_rate(struct clk_hw *hw,
+					       unsigned long parent_rate)
+{
+	struct rockchip_hdptx_phy *hdptx = to_rockchip_hdptx_phy(hw);
+	u32 val;
+
+	if (hdptx->rate)
+		return hdptx->rate;
+
+	val = hdptx_grf_read(hdptx, GRF_HDPTX_CON0);
+	if (!(val & HDPTX_I_PLL_EN))
+		return 0;
+
+	return hdptx_cal_current_rate(hdptx);
 }
 
 static long hdptx_phy_clk_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -2143,14 +2131,23 @@ static int hdptx_phy_clk_enable(struct clk_hw *hw)
 	}
 
 	if (hdptx->rate) {
-		if (hdptx->rate > HDMI20_MAX_RATE) {
-			if  (hdptx->rate == FRL_8G_4LANES)
-				ret = hdptx_lcpll_ropll_cmn_config(hdptx, hdptx->rate / 100);
-			else
-				ret = hdptx_lcpll_cmn_config(hdptx, hdptx->rate / 100);
+		/* hdmi phy is initialized in uboot, don't re-init phy pll */
+		if (hdptx->initialized) {
+			hdptx->initialized = false;
 		} else {
-			ret = hdptx_ropll_cmn_config(hdptx, hdptx->rate / 100);
+			if (hdptx->rate > HDMI20_MAX_RATE) {
+				if  (hdptx->rate == FRL_8G_4LANES)
+					ret = hdptx_lcpll_ropll_cmn_config(hdptx,
+									   hdptx->rate / 100);
+				else
+					ret = hdptx_lcpll_cmn_config(hdptx, hdptx->rate / 100);
+			} else {
+				ret = hdptx_ropll_cmn_config(hdptx, hdptx->rate / 100);
+			}
 		}
+	} else {
+		/* default frequency */
+		hdptx_ropll_cmn_config(hdptx, 742500);
 	}
 
 	if (!ret)
@@ -2271,13 +2268,6 @@ static int rockchip_hdptx_phy_probe(struct platform_device *pdev)
 		goto err_regsmap;
 	}
 
-	hdptx->phy_reset = devm_reset_control_get(dev, "phy");
-	if (IS_ERR(hdptx->phy_reset)) {
-		ret = PTR_ERR(hdptx->phy_reset);
-		dev_err(dev, "failed to get phy reset: %d\n", ret);
-		goto err_regsmap;
-	}
-
 	hdptx->apb_reset = devm_reset_control_get(dev, "apb");
 	if (IS_ERR(hdptx->apb_reset)) {
 		ret = PTR_ERR(hdptx->apb_reset);
@@ -2303,20 +2293,6 @@ static int rockchip_hdptx_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(hdptx->lane_reset)) {
 		ret = PTR_ERR(hdptx->lane_reset);
 		dev_err(dev, "failed to get lane reset: %d\n", ret);
-		goto err_regsmap;
-	}
-
-	hdptx->ropll_reset = devm_reset_control_get(dev, "ropll");
-	if (IS_ERR(hdptx->ropll_reset)) {
-		ret = PTR_ERR(hdptx->ropll_reset);
-		dev_err(dev, "failed to get ropll reset: %d\n", ret);
-		goto err_regsmap;
-	}
-
-	hdptx->lcpll_reset = devm_reset_control_get(dev, "lcpll");
-	if (IS_ERR(hdptx->lcpll_reset)) {
-		ret = PTR_ERR(hdptx->lcpll_reset);
-		dev_err(dev, "failed to get lcpll reset: %d\n", ret);
 		goto err_regsmap;
 	}
 
@@ -2358,6 +2334,11 @@ static int rockchip_hdptx_phy_probe(struct platform_device *pdev)
 		goto err_regsmap;
 
 	platform_set_drvdata(pdev, hdptx);
+	if (hdptx_grf_read(hdptx, GRF_HDPTX_STATUS) & HDPTX_O_PLL_LOCK_DONE) {
+		hdptx->initialized = true;
+		hdptx->rate = hdptx_cal_current_rate(hdptx);
+	}
+
 	dev_info(dev, "hdptx phy init success\n");
 	return 0;
 
