@@ -5731,10 +5731,12 @@ void rtw_odm_proc_deinit(_adapter  *adapter)
 
 	adapter->dir_odm = NULL;
 
+#if 0
 	if (phydm_msg) {
 		rtw_mfree(phydm_msg, PHYDM_MSG_LEN);
 		phydm_msg = NULL;
 	}
+#endif
 }
 
 struct proc_dir_entry *rtw_adapter_proc_init(struct net_device *dev)
