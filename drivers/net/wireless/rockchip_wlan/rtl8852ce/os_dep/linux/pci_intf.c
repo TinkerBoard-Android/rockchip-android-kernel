@@ -773,7 +773,7 @@ exit:
 
 }
 
-static int rtw_resume_process(_adapter *padapter)
+int rtw_resume_process(_adapter *padapter)
 {
 	return rtw_resume_common(padapter);
 }
