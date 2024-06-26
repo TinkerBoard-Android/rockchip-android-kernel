@@ -593,6 +593,10 @@
 	};
 };
 
+&rk809_sound {
+	hp-det-gpio = <&gpio3 RK_PC2 GPIO_ACTIVE_LOW>;
+};
+
 &rkisp {
 	status = "okay";
 };
