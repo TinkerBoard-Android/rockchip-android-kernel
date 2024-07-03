@@ -125,9 +125,26 @@ void phl_pcie_trx_mit_watchdog(struct phl_info_t *phl_info)
 	rx_traffic_lvl = phl_stats->rx_traffic.lvl;
 
 	if (rx_traffic_lvl == RTW_TFC_HIGH)
-		phl_pcie_trx_mit(phl_info, 0, 0, 100000, 200);
+		phl_pcie_trx_mit(phl_info, 0, 0,
+				 phl_info->hci->rx_mit_timer_high,
+				 phl_info->hci->rx_mit_counter_high);
 	else
 		phl_pcie_trx_mit(phl_info, 0, 0, 0, 0);
 }
+
+void rtw_phl_pcie_trx_mit_cfg(void *phl,
+			      struct rtw_pcie_trx_mit_info_t *mit_info)
+{
+	struct phl_info_t *phl_info = (struct phl_info_t *)phl;
+
+	PHL_INFO("%s :: rx_mit_counter_high == %d, rx_mit_timer_high == %d\n",
+		 __func__, mit_info->rx_mit_counter_high,
+		 mit_info->rx_mit_timer_high);
+
+	phl_info->hci->fixed_mitigation = mit_info->fixed_mitigation;
+	phl_info->hci->rx_mit_counter_high = mit_info->rx_mit_counter_high;
+	phl_info->hci->rx_mit_timer_high = mit_info->rx_mit_timer_high;
+}
+
 #endif /*defined(CONFIG_PCI_HCI) && defined(PCIE_TRX_MIT_EN)*/
 

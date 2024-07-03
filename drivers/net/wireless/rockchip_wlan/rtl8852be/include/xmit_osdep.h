@@ -24,9 +24,14 @@ struct pkt_file {
 	u8 *cur_addr;
 	SIZE_T buf_len;
 };
-
+#ifndef NR_XMITFRAME
 #define NR_XMITFRAME		1256
+#endif /*NR_XMITFRAME*/
+
+#ifndef NR_XMITFRAME_EXT
 #define NR_XMITFRAME_EXT	32
+#endif /*NR_XMITFRAME_EXT*/
+
 #define SZ_XMITFRAME_EXT	1536	/*MGNT frame*/
 
 #ifdef CONFIG_PCI_HCI

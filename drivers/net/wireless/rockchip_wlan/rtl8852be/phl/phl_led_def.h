@@ -28,6 +28,8 @@ enum rtw_led_ctrl_mode {
 
 enum rtw_led_id { RTW_LED_ID_0, RTW_LED_ID_1, RTW_LED_ID_LENGTH };
 
+#define RTW_LED_TIMER_LENGTH (RTW_LED_ID_LENGTH + 1)
+
 /*
  * led_event here is not integrated with msg_evt_id due to the following reason:
  *
@@ -53,12 +55,16 @@ enum rtw_led_event {
 	RTW_LED_EVENT_LINKED_NOCIPHER,
 	RTW_LED_EVENT_LINKED_24G,
 	RTW_LED_EVENT_LINKED_5G,
+	RTW_LED_EVENT_WPS,
+	RTW_LED_EVENT_IDLE_SLEEP_START,
+	RTW_LED_EVENT_IDLE_SLEEP_END,
 	RTW_LED_EVENT_LENGTH
 };
 
 enum rtw_led_state {
 	RTW_LED_STATE_IGNORE = BIT0,
 	RTW_LED_STATE_SW_RF_ON = BIT1,
+	RTW_LED_STATE_NOT_IDLE_SLEEP = BIT2,
 };
 
 enum rtw_led_action {

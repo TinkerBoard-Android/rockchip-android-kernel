@@ -208,6 +208,34 @@ exit:
 	return status;
 }
 
+void
+_mcc_check_start_t(struct rtw_phl_mcc_en_info *ori_info,
+			struct rtw_phl_mcc_en_info *new_info)
+{
+	u64 new_tsf = 0, ori_tsf = 0;
+
+	new_tsf = new_info->tsf_high;
+	new_tsf = new_tsf << 32;
+	new_tsf |= new_info->tsf_low;
+	ori_tsf = ori_info->tsf_high;
+	ori_tsf = ori_tsf << 32;
+	ori_tsf |= ori_info->tsf_low;
+	if (new_tsf < ori_tsf) {
+		u64 cnt = 0;
+
+		PHL_TRACE(COMP_PHL_MCC, _PHL_WARNING_, "%s: new_tsf(0x%08x %08x) < ori_tsf(0x%08x %08x), we shall extend the new start tsf\n",
+			__FUNCTION__, new_info->tsf_high, new_info->tsf_low,
+			ori_info->tsf_high, ori_info->tsf_low);
+		cnt = _os_division64((ori_tsf - new_tsf),
+				     (new_info->mcc_intvl * TU));
+		new_tsf = new_tsf + ((cnt + 1) * (new_info->mcc_intvl * TU));
+		new_info->tsf_high = (u32)(new_tsf >> 32);
+		new_info->tsf_low = (u32)new_tsf;
+		PHL_TRACE(COMP_PHL_MCC, _PHL_WARNING_, "%s: extended new_tsf(0x%08x %08x)\n",
+			__FUNCTION__, new_info->tsf_high, new_info->tsf_low);
+	}
+}
+
 enum rtw_hal_status rtw_hal_mcc_get_2ports_tsf(void *hal, u8 group,
 			u16 macid_x, u16 macid_y, u32 *tsf_x_h, u32 *tsf_x_l,
 			u32 *tsf_y_h, u32 *tsf_y_l)
@@ -229,6 +257,26 @@ exit:
 	PHL_TRACE(COMP_PHL_MCC, _PHL_INFO_, "rtw_hal_mcc_get_2ports_tsf(): Ststus(%d)\n",
 		status);
 	return status;
+}
+
+enum rtw_hal_status rtw_hal_notify_mcc_macid(void *hal,
+                                             struct rtw_phl_mcc_role *mrole,
+                                             enum rtw_phl_tdmra_wmode wmode)
+{
+	enum rtw_hal_status sts = RTW_HAL_STATUS_FAILURE;
+
+	if (wmode == RTW_PHL_TDMRA_AP_CLIENT_WMODE ||
+	    wmode == RTW_PHL_TDMRA_2CLIENTS_WMODE) {
+		if (sts != rtw_hal_bb_upd_mcc_macid(hal, mrole)) {
+			PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_, "%s: Notify BB MCC MACID bitmap failed\n",
+			          __FUNCTION__);
+			goto exit;
+
+		}
+	}
+	sts = RTW_HAL_STATUS_SUCCESS;
+exit:
+	return sts;
 }
 
 enum rtw_hal_status rtw_hal_mcc_update_macid_bitmap(void *hal, u8 group,
@@ -293,6 +341,8 @@ enum rtw_hal_status rtw_hal_mcc_change_pattern(void *hal,
 				struct rtw_phl_mcc_bt_info *new_bt_info)
 {
 	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
+
+	_mcc_check_start_t(ori_info, new_info);
 	/* mcc_set_duration only can change 2 wifi slot,
 	otherwise we shall create new pattern and replace previous pattern*/
 	if (new_info->m_pattern.slot_num == 2 &&
@@ -309,10 +359,38 @@ enum rtw_hal_status rtw_hal_mcc_change_pattern(void *hal,
 	return status;
 }
 
-enum rtw_hal_status rtw_hal_mcc_disable(void *hal, u8 group, u16 macid)
+enum rtw_hal_status rtw_hal_mcc_reset(void *hal, u8 group,
+					enum rtw_phl_tdmra_wmode wmode)
 {
 	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
 
+	status = rtw_hal_mac_reset_mcc_group(hal, group);
+	if (status != RTW_HAL_STATUS_SUCCESS) {
+		PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_,
+			"%s(): reset group(%d) failed\n",
+			__func__, group);
+		goto exit;
+	}
+	if (wmode == RTW_PHL_TDMRA_AP_CLIENT_WMODE ||
+		wmode == RTW_PHL_TDMRA_2CLIENTS_WMODE) {
+		rtw_hal_bb_mcc_stop(hal);
+	}
+
+	status = RTW_HAL_STATUS_SUCCESS;
+exit:
+	PHL_TRACE(COMP_PHL_MCC, _PHL_INFO_, "%s(): status(%d)\n",
+		__func__, status);
+	return status;
+}
+
+enum rtw_hal_status rtw_hal_mcc_disable(void *hal, u8 group, u16 macid,
+					enum rtw_phl_tdmra_wmode wmode)
+{
+	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
+	struct hal_info_t *hal_i = (struct hal_info_t *)hal;
+	struct rtw_phl_stainfo_t *sta = NULL;
+
+	sta = rtw_phl_get_stainfo_by_macid(hal_i->phl_com->phl_priv, macid);
 	status = rtw_hal_mac_stop_mcc(hal, group, (u8)macid);
 	if (status != RTW_HAL_STATUS_SUCCESS) {
 		PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_, "rtw_hal_mcc_disable(): Stop mcc failed\n");
@@ -323,9 +401,15 @@ enum rtw_hal_status rtw_hal_mcc_disable(void *hal, u8 group, u16 macid)
 		PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_, "rtw_hal_mcc_disable(): Delete group failed\n");
 		goto exit;
 	}
+	if (wmode == RTW_PHL_TDMRA_AP_CLIENT_WMODE ||
+		wmode == RTW_PHL_TDMRA_2CLIENTS_WMODE) {
+		rtw_hal_bb_mcc_stop(hal);
+	}
+
 #ifdef RTW_WKARD_HALRF_MCC
 	rtw_hal_rf_dpk_switch(hal, true);
 #endif /* RTW_WKARD_HALRF_MCC */
+	rtw_hal_notification(hal, MSG_EVT_MCC_STOP, sta->rlink->hw_band);
 	status = RTW_HAL_STATUS_SUCCESS;
 exit:
 	PHL_TRACE(COMP_PHL_MCC, _PHL_INFO_, "rtw_hal_mcc_disable(): Ststus(%d)\n",
@@ -334,7 +418,8 @@ exit:
 }
 
 enum rtw_hal_status rtw_hal_mcc_enable(void *hal, struct rtw_phl_mcc_en_info *info,
-					struct rtw_phl_mcc_bt_info *bt_info)
+					struct rtw_phl_mcc_bt_info *bt_info,
+					enum rtw_phl_tdmra_wmode wmode)
 {
 	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
 	struct rtw_phl_mcc_role *ref_role = &info->mcc_role[info->ref_role_idx];
@@ -372,6 +457,16 @@ enum rtw_hal_status rtw_hal_mcc_enable(void *hal, struct rtw_phl_mcc_en_info *in
 		PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_, "rtw_hal_mcc_enable(): Start MCC failed\n");
 		goto exit;
 	}
+
+	if (wmode == RTW_PHL_TDMRA_AP_CLIENT_WMODE ||
+		wmode == RTW_PHL_TDMRA_2CLIENTS_WMODE) {
+		status = rtw_hal_bb_mcc_start(hal, &info->mcc_role[0],
+		                              &info->mcc_role[1]);
+		if (status != RTW_HAL_STATUS_SUCCESS) {
+			PHL_TRACE(COMP_PHL_MCC, _PHL_ERR_, "rtw_hal_mcc_enable(): Notify MCC start failed\n");
+		}
+	}
+	rtw_hal_notification(hal, MSG_EVT_MCC_START, ref_role->rlink->hw_band);
 	status = RTW_HAL_STATUS_SUCCESS;
 exit:
 	PHL_TRACE(COMP_PHL_MCC, _PHL_INFO_, "rtw_hal_mcc_enable(): Ststus(%d)\n",

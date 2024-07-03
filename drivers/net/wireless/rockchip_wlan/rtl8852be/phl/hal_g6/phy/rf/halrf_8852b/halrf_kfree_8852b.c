@@ -16,6 +16,41 @@
 
 #ifdef RF_8852B_SUPPORT
 
+void _halrf_get_total_efuse_8852b(struct rf_info *rf,
+					enum phl_phy_idx phy)
+{
+	struct halrf_kfree_info *kfree = &rf->kfree_info;
+	u32 i, array_size = sizeof(kfree->efuse_content);
+
+	if (array_size < HIDE_EFUSE_SIZE_8852B) {
+		RF_DBG(rf, DBG_RF_TSSI_TRIM, "======> %s   sizeof(kfree->efuse_content)(0x%x) < HIDE_EFUSE_SIZE_8852B(0x%x)\n",
+			__func__, array_size, HIDE_EFUSE_SIZE_8852B);
+		return;
+	}
+
+	halrf_phy_efuse_get_info(rf, HIDE_EFUSE_START_ADDR_8852B,
+		HIDE_EFUSE_SIZE_8852B, kfree->efuse_content);
+
+	for (i = 0; i < HIDE_EFUSE_SIZE_8852B; i++)
+		RF_DBG(rf, DBG_RF_TSSI_TRIM, "======> %s   efuse_con[0x%x] = 0x%x\n",
+			__func__, i + HIDE_EFUSE_START_ADDR_8852B, kfree->efuse_content[i]);
+}
+
+u8 _halrf_get_1byte_efuse_8852b(struct rf_info *rf, u32 addr, u8 *value)
+{
+	struct halrf_kfree_info *kfree = &rf->kfree_info;
+
+	if (addr < HIDE_EFUSE_START_ADDR_8852B || addr > HIDE_EFUSE_END_ADDR_8852B) {
+		RF_DBG(rf, DBG_RF_TSSI_TRIM, "===> %s addr(0x%x) < 0x%x(Min), > 0x%x(Max) Over Range Return !!!\n",
+			__func__, addr, HIDE_EFUSE_START_ADDR_8852B, HIDE_EFUSE_END_ADDR_8852B);
+		return 0xff;
+	}
+
+	*value = kfree->efuse_content[addr - HIDE_EFUSE_START_ADDR_8852B];
+
+	return *value;
+}
+
 s8 _halrf_efuse_exchange_8852b(struct rf_info *rf, u8 value, u8 mask)
 {
 	s8 tmp = 0;
@@ -38,19 +73,19 @@ s8 _halrf_efuse_exchange_8852b(struct rf_info *rf, u8 value, u8 mask)
 void _halrf_set_thermal_trim_8852b(struct rf_info *rf,
 					enum phl_phy_idx phy)
 {
-	u8 thermal_a, thermal_b;
+	u8 thermal_a = 0xff, thermal_b = 0xff, tmp = 0;
 
 	RF_DBG(rf, DBG_RF_THER_TRIM, "======> %s   phy=%d\n", __func__, phy);
 
 	if (!(rf->support_ability & HAL_RF_THER_TRIM)) {
-		RF_DBG(rf, DBG_RF_THER_TRIM, "<== %s phy=%d support_ability=%d Ther Trim Off!!!\n",
+		RF_DBG(rf, DBG_RF_THER_TRIM, "<== %s phy=%d support_ability=0x%x Ther Trim Off!!!\n",
 			__func__, phy, rf->support_ability);
 		return;
 	}
 
-	halrf_phy_efuse_get_info(rf, THERMAL_TRIM_HIDE_EFUSE_A_8852B, 1, &thermal_a);
+	tmp = _halrf_get_1byte_efuse_8852b(rf, THERMAL_TRIM_HIDE_EFUSE_A_8852B, &thermal_a);
 
-	halrf_phy_efuse_get_info(rf, THERMAL_TRIM_HIDE_EFUSE_B_8852B, 1, &thermal_b);
+	tmp = _halrf_get_1byte_efuse_8852b(rf, THERMAL_TRIM_HIDE_EFUSE_B_8852B, &thermal_b);
 
 	RF_DBG(rf, DBG_RF_THER_TRIM, "efuse Ther_A=0x%x Ther_B=0x%x\n",
 		thermal_a, thermal_b);
@@ -60,36 +95,36 @@ void _halrf_set_thermal_trim_8852b(struct rf_info *rf,
 		return; 
 	}
 
-	thermal_a = thermal_a & 0x1f;
+	thermal_a = thermal_a & 0xf;
 	thermal_a = ((thermal_a & 0x1) << 3) | (thermal_a >> 1);
 
-	thermal_b = thermal_b & 0x1f;
+	thermal_b = thermal_b & 0xf;
 	thermal_b = ((thermal_b & 0x1) << 3) | (thermal_b >> 1);
 
 	RF_DBG(rf, DBG_RF_THER_TRIM, "After Exchange Ther_A=0x%x Ther_B=0x%x\n",
 		thermal_a, thermal_b);
 
-	halrf_wrf(rf, RF_PATH_A, 0x43, 0x000f0000, thermal_a);
-	halrf_wrf(rf, RF_PATH_B, 0x43, 0x000f0000, thermal_b);
+	halrf_wrf(rf, RF_PATH_A, 0x43, 0x000f0000, thermal_a & 0xf);
+	halrf_wrf(rf, RF_PATH_B, 0x43, 0x000f0000, thermal_b & 0xf);
 }
 
 void _halrf_set_pa_bias_trim_8852b(struct rf_info *rf,
 					enum phl_phy_idx phy)
 {
-	u8 pa_bias_a, pa_bias_b;
+	u8 pa_bias_a = 0xff, pa_bias_b = 0xff, tmp = 0;
 	u8 pa_bias_a_2g, pa_bias_b_2g, pa_bias_a_5g, pa_bias_b_5g;
 
 	RF_DBG(rf, DBG_RF_PABIAS_TRIM, "======> %s   phy=%d\n", __func__, phy);
 
 	if (!(rf->support_ability & HAL_RF_PABIAS_TRIM)) {
-		RF_DBG(rf, DBG_RF_PABIAS_TRIM, "<== %s phy=%d support_ability=%d PA Bias K Off!!!\n",
+		RF_DBG(rf, DBG_RF_PABIAS_TRIM, "<== %s phy=%d support_ability=0x%x PA Bias K Off!!!\n",
 			__func__, phy, rf->support_ability);
 		return;
 	}
 
-	halrf_phy_efuse_get_info(rf, PABIAS_TRIM_HIDE_EFUSE_A_8852B, 1, &pa_bias_a);
+	tmp = _halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_A_8852B, &pa_bias_a);
 
-	halrf_phy_efuse_get_info(rf, PABIAS_TRIM_HIDE_EFUSE_B_8852B, 1, &pa_bias_b);
+	tmp = _halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_B_8852B, &pa_bias_b);
 
 	RF_DBG(rf, DBG_RF_PABIAS_TRIM, "efuse PA_Bias_A=0x%x PA_Bias_B=0x%x\n",
 		pa_bias_a, pa_bias_b);
@@ -127,45 +162,45 @@ void _halrf_get_tssi_trim_8852b(struct rf_info *rf,
 	RF_DBG(rf, DBG_RF_TSSI_TRIM, "======> %s   phy=%d\n", __func__, phy);
 
 	if (!(rf->support_ability & HAL_RF_TSSI_TRIM)) {
-		RF_DBG(rf, DBG_RF_TSSI_TRIM, "<== %s phy=%d support_ability=%d TSSI Trim Off!!!\n",
+		RF_DBG(rf, DBG_RF_TSSI_TRIM, "<== %s phy=%d support_ability=0x%x TSSI Trim Off!!!\n",
 			__func__, phy, rf->support_ability);
 		return;
 	}
 
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_2GL_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_2GL_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][0]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_2GH_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_2GH_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][1]);
 
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GL1_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GL1_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][2]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GL2_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GL2_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][3]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GM1_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GM1_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][4]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GM2_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GM2_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][5]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GH1_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GH1_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][6]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GH2_A_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GH2_A_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_A][7]);
 
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_2GL_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_2GL_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][0]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_2GH_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_2GH_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][1]);
 
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GL1_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GL1_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][2]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GL2_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GL2_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][3]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GM1_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GM1_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][4]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GM2_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GM2_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][5]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GH1_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GH1_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][6]);
-	halrf_phy_efuse_get_info(rf, TSSI_TRIM_HIDE_EFUSE_5GH2_B_8852B, 1,
+	_halrf_get_1byte_efuse_8852b(rf, TSSI_TRIM_HIDE_EFUSE_5GH2_B_8852B,
 		(u8 *)&tssi->tssi_trim[RF_PATH_B][7]);
 
 	for (i = 0; i < 2; i++) {
@@ -192,9 +227,91 @@ void _halrf_get_tssi_trim_8852b(struct rf_info *rf,
 void halrf_get_efuse_trim_8852b(struct rf_info *rf,
 					enum phl_phy_idx phy)
 {
+	_halrf_get_total_efuse_8852b(rf, phy);
 	_halrf_set_thermal_trim_8852b(rf, phy);
 	_halrf_set_pa_bias_trim_8852b(rf, phy);
 	_halrf_get_tssi_trim_8852b(rf, phy);
+}
+
+void halrf_kfree_get_info_8852b(struct rf_info *rf, char input[][16], u32 *_used,
+			 char *output, u32 *_out_len)
+{
+	u8 tmp;
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		 "\n=====================[ KFREE info ]=====================\n");
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"Thermal 2G A Efuse",
+		THERMAL_TRIM_HIDE_EFUSE_A_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, THERMAL_TRIM_HIDE_EFUSE_A_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"Thermal 2G A RFC",
+		"0x43[19:16]",
+		halrf_rrf(rf, RF_PATH_A, 0x43, 0x000f0000));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"Thermal 2G B Efuse",
+		THERMAL_TRIM_HIDE_EFUSE_B_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, THERMAL_TRIM_HIDE_EFUSE_B_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"Thermal 2G B RFC",
+		"0x43[19:16]",
+		halrf_rrf(rf, RF_PATH_B, 0x43, 0x000f0000));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"PABias 2G A Efuse",
+		PABIAS_TRIM_HIDE_EFUSE_A_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_A_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"PABias 2G A RFC",
+		"0x60[15:12]",
+		halrf_rrf(rf, RF_PATH_A, 0x60, 0x0000f000));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"PABias 2G B Efuse",
+		PABIAS_TRIM_HIDE_EFUSE_B_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_B_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"PABias 2G B RFC",
+		"0x60[15:12]",
+		halrf_rrf(rf, RF_PATH_B, 0x60, 0x0000f000));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"PABias 5G A Efuse",
+		PABIAS_TRIM_HIDE_EFUSE_A_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_A_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"PABias 5G A RFC",
+		"0x60[19:16]",
+		halrf_rrf(rf, RF_PATH_A, 0x60, 0x000f0000));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : 0x%X = 0x%X\n",
+		"PABias 5G B Efuse",
+		PABIAS_TRIM_HIDE_EFUSE_B_8852B,
+		_halrf_get_1byte_efuse_8852b(rf, PABIAS_TRIM_HIDE_EFUSE_B_8852B, &tmp));
+
+	RF_DBG_CNSL(*_out_len, *_used, output + *_used, *_out_len - *_used,
+		" %-30s : %s = 0x%X\n",
+		"PABias 5G B RFC",
+		"0x60[19:16]",
+		halrf_rrf(rf, RF_PATH_B, 0x60, 0x000f0000));
 }
 
 #endif	/*RF_8852B_SUPPORT*/

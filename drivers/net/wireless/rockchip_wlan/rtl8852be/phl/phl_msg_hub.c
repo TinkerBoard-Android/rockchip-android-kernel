@@ -133,7 +133,7 @@ void msg_forward(struct phl_info_t* phl, struct phl_msg_ex* ex)
 				_os_mem_set(d, recver, 0, sizeof(struct phl_msg_receiver_ex));
 			continue;
 		}
-		if(_chk_bitmap_bit(recver->bitmap, module_id)) {
+		if(_chk_bitmap_bit(recver->bitmap, MODL_MASK_LEN, module_id)) {
 			PHL_TRACE(COMP_PHL_DBG, _PHL_DEBUG_, "%s notify %d layer\n",
 				  __FUNCTION__, i);
 			recver->ctx.incoming_evt_notify(recver->ctx.priv,
@@ -145,7 +145,7 @@ void msg_forward(struct phl_info_t* phl, struct phl_msg_ex* ex)
 
 }
 
-int msg_thread_hdl(void* param)
+static int msg_hub_thread_hdl(void* param)
 {
 	struct phl_info_t* phl = (struct phl_info_t *)param;
 	void *d = phl_to_drvpriv(phl);
@@ -233,8 +233,11 @@ enum rtw_phl_status phl_msg_hub_start(struct phl_info_t* phl)
 	for(i = 0; i < MAX_MSG_NUM; i++) {
 		pq_push(d, &hub->idle_msg_q, &hub->msg_pool[i].list, _tail, _bh);
 	}
-	_os_thread_init(d, &(hub->msg_notify_thread), msg_thread_hdl, phl,
-						"msg_notify_thread");
+	if (RTW_PHL_STATUS_SUCCESS != _os_thread_init(d, &(hub->msg_notify_thread), msg_hub_thread_hdl, phl,
+						"msg_notify_thread")) {
+		PHL_ERR("thread init msg_notify_thread fail.\n");
+		return RTW_PHL_STATUS_FAILURE;
+	}
 	_os_thread_schedule(d, &(hub->msg_notify_thread));
 	SET_STATUS_FLAG(hub->status, MSG_HUB_STARTED);
 	PHL_INFO("%s\n",__FUNCTION__);
@@ -315,7 +318,7 @@ enum rtw_phl_status phl_msg_hub_register_recver(void* phl,
 }
 
 enum rtw_phl_status phl_msg_hub_update_recver_mask(void* phl,
-		enum phl_msg_recver_layer layer, u8* mdl_id, u32 len, u8 clr)
+		enum phl_msg_recver_layer layer, u8* mdl_id, u8 len, u8 clr)
 {
 	struct phl_info_t* phl_info = (struct phl_info_t*)phl;
 	struct phl_msg_hub* hub = (struct phl_msg_hub*)phl_info->msg_hub;
@@ -331,9 +334,9 @@ enum rtw_phl_status phl_msg_hub_update_recver_mask(void* phl,
 	}
 
 	if(clr == true)
-		_clr_bitmap_bit(recver->bitmap, mdl_id, len);
+		_clr_bitmap_bit(recver->bitmap, MODL_MASK_LEN, mdl_id, len);
 	else
-		_add_bitmap_bit(recver->bitmap, mdl_id, len);
+		_add_bitmap_bit(recver->bitmap, MODL_MASK_LEN, mdl_id, len);
 	PHL_INFO(" %s\n",__FUNCTION__);
 	return RTW_PHL_STATUS_SUCCESS;
 }
@@ -392,6 +395,11 @@ void phl_msg_hub_rx_evt_hdlr(struct phl_info_t* phl, u16 evt_id,
 	case MSG_EVT_DBG_RX_DUMP:
 		phl_rx_dbg_dump(phl, HW_PHY_0);
 		break;
+#ifdef CONFIG_PHL_TWT
+	case MSG_EVT_TWT_WAIT_ANNOUNCE:
+		rtw_phl_twt_handle_c2h_wait_annc(phl, buf);
+		break;
+#endif
 	default:
 		break;
 	}

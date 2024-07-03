@@ -151,6 +151,16 @@ enum rtw_hal_status rtw_hal_efuse_get_offset_mask(struct hal_info_t *hal_info,
 	return status;
 }
 
+enum rtw_hal_status rtw_hal_efuse_get_mask_buf(struct hal_info_t *hal_info, 
+							u8 *destbuf, u32 *buflen)
+{
+	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
+
+	status = rtw_efuse_get_mask_buf(hal_info->efuse, destbuf, buflen);
+
+	return status;
+}
+
 enum rtw_hal_status
 rtw_hal_efuse_get_info(struct rtw_hal_com_t *hal_com,
 		       enum rtw_efuse_info info_type,
@@ -180,9 +190,25 @@ rtw_hal_get_efuse_info(void *hal,
 	return status;
 }
 
-void rtw_hal_efuse_process(struct hal_info_t *hal_info, char *ic_name)
+void rtw_hal_efuse_process(struct rtw_phl_com_t *phl_com,
+                           struct hal_info_t *hal_info,
+                           char *ic_name
+)
 {
+	if(rtw_efuse_is_processed(hal_info->efuse) == true) {
+		PHL_INFO("%s EFUSE module is already initialized.\n", __FUNCTION__);
+		return;
+	}
+
+#ifdef CONFIG_PHL_FW_DUMP_EFUSE
+	rtw_phl_fw_dump_efuse_precfg(phl_com);
+#endif
+
 	rtw_efuse_process(hal_info->efuse, ic_name);
+
+#ifdef CONFIG_PHL_FW_DUMP_EFUSE
+	rtw_phl_fw_dump_efuse_postcfg(phl_com);
+#endif
 }
 
 enum rtw_hal_status rtw_hal_efuse_init(struct rtw_phl_com_t *phl_com,
@@ -330,6 +356,15 @@ enum rtw_hal_status rtw_hal_efuse_bt_get_offset_mask(struct hal_info_t *hal_info
 	return status;
 }
 
+enum rtw_hal_status rtw_hal_efuse_bt_get_mask_buf(struct hal_info_t *hal_info,
+							u8 *destbuf, u32 *buflen)
+{
+	enum rtw_hal_status status = RTW_HAL_STATUS_FAILURE;
+
+	status = rtw_efuse_bt_get_mask_buf(hal_info->efuse, destbuf, buflen);
+
+	return status;
+}
 enum rtw_hal_status rtw_hal_efuse_bt_read_hidden(
 	struct hal_info_t *hal_info, u32 addr, u32 size, u8 *val)
 {

@@ -23,9 +23,11 @@
 #define RSVD_EFUSE_SIZE		16
 #define RSVD_CS_EFUSE_SIZE	24
 #define EFUSE_WAIT_CNT		10000
+#define EFUSE_WAIT_CNT_PLUS	30000
 #define EFUSE_C2HREG_WAIT_CNT	10000
 #define EFUSE_C2HREG_RETRY_WAIT_US 1
-#define EFUSE_FW_DUMP_WAIT_CNT	100000
+#define EFUSE_FW_DUMP_WAIT_CNT	100
+#define EFUSE_FW_DUMP_WAIT_CNT_V1 400
 #define OTP_PHY_SIZE		0x800
 #define CHK_OTP_ADDR		0x4
 #define CHK_OTP_WAIT_CNT	50000
@@ -42,7 +44,7 @@
 #define XTAL_SI_LOW_ADDR_SH	0
 #define XTAL_SI_LOW_ADDR_MSK	0xFF
 
-#define XTAL_SI_CTRL			0x63
+#define XTAL_SI_CTRL		0x63
 #define XTAL_SI_MODE_SEL_SH	6
 #define XTAL_SI_MODE_SEL_MSK	0x3
 #define XTAL_SI_RDY		BIT(5)
@@ -54,16 +56,18 @@
 #define XTAL_SI_WRITE_DATA_SH	0
 #define XTAL_SI_WRITE_DATA_MSK	0xFF
 
-/**
- * @struct mac_efuse_tbl
- * @brief mac_efuse_tbl
- *
- * @var mac_efuse_tbl::lock
- * Please Place Description here.
- */
-struct mac_efuse_tbl {
-	mac_ax_mutex lock;
-};
+#define DUMP_OFLD_TYPE_HIDDEN	1
+#define DUMP_OFLD_TYPE_DAV	2
+
+#define BT_DIS_WAIT_CNT	100
+#define BT_DIS_WAIT_US	50
+
+#define EF_FV_OFSET_AX 0x5EA
+#define EF_FV_OFSET_BE 0x77CA
+#define EF_FV_OFSET_BE_V1 0x1FCA
+
+#define EF_CV_OFSET 0x4
+#define EF_CV_MSK 0xF
 
 /**
  * @struct mac_efuse_hidden_h2creg
@@ -107,6 +111,7 @@ enum efuse_map_sel {
 	EFUSE_MAP_SEL_PHY_OTP,
 	EFUSE_MAP_SEL_PHY_DAV,
 	EFUSE_MAP_SEL_LOG_DAV,
+	EFUSE_MAP_SEL_HIDDEN_RF,
 
 	/* keep last */
 	EFUSE_MAP_SEL_LAST,
@@ -115,120 +120,46 @@ enum efuse_map_sel {
 };
 
 /**
- * @enum mac_info_offset
+ * @struct efuse_info_item
+ * @brief efuse_info_item
  *
- * @brief mac_info_offset
- *
- * @var mac_info_offset::OFS_ADDR_AU
- * Please Place Description here.
- * @var mac_info_offset::OFS_PID_AU
- * Please Place Description here.
- * @var mac_info_offset::OFS_VID_AU
- * Please Place Description here.
- * @var mac_info_offset::OFS_ADDR_AE
- * Please Place Description here.
- * @var mac_info_offset::OFS_DID_AE
- * Please Place Description here.
- * @var mac_info_offset::OFS_VID_AE
- * Please Place Description here.
- * @var mac_info_offset::OFS_SVID_AE
- * Please Place Description here.
- * @var mac_info_offset::OFS_SMID_AE
- * Please Place Description here.
- * @var mac_info_offset::OFS_ADDR_AS
- * Please Place Description here.
+ * @var efuse_info_item::mac_addr
+ * MAC Address
+ * @var efuse_info_item::pid
+ * Product ID
+ * @var efuse_info_item::did
+ * Device ID
+ * @var efuse_info_item::vid
+ * Vendor ID
+ * @var efuse_info_item::svid
+ * Sybsystem Vendor ID
+ * @var efuse_info_offset::smid
+ * Sybsystem Device ID
  */
-enum mac_info_offset {
-	/*USB*/
-	OFS_ADDR_AU = 0x438,
-	OFS_PID_AU = 0x432,
-	OFS_VID_AU = 0x430,
-	/*PCIE*/
-	OFS_ADDR_AE = 0x400,
-	OFS_DID_AE = 0x408,
-	OFS_VID_AE = 0x406,
-	OFS_SVID_AE = 0x40A,
-	OFS_SMID_AE = 0x40C,
-	/*SDIO*/
-	OFS_ADDR_AS = 0x41A,
+struct efuse_info_item {
+	u32 mac_addr;
+	u32 pid;
+	u32 did;
+	u32 vid;
+	u32 svid;
+	u32 smid;
 };
 
 /**
- * @enum mac_info_length
+ * @struct efuse_info
+ * @brief efuse_info
  *
- * @brief mac_info_length
- *
- * @var mac_info_length::LEN_ADDR_AU
- * Please Place Description here.
- * @var mac_info_length::LEN_PID_AU
- * Please Place Description here.
- * @var mac_info_length::LEN_VID_AU
- * Please Place Description here.
- * @var mac_info_length::LEN_ADDR_AE
- * Please Place Description here.
- * @var mac_info_length::LEN_DID_AE
- * Please Place Description here.
- * @var mac_info_length::LEN_VID_AE
- * Please Place Description here.
- * @var mac_info_length::LEN_SVID_AE
- * Please Place Description here.
- * @var mac_info_length::LEN_SMID_AE
- * Please Place Description here.
- * @var mac_info_length::LEN_ADDR_AS
- * Please Place Description here.
+ * @var efuse_info::offset
+ * Efuse information offset
+ * @var efuse_info::def_val
+ * Efuse information default value
+ * @var efuse_info::len
+ * Efuse information length
  */
-enum mac_info_length {
-	/*USB*/
-	LEN_ADDR_AU = 6,
-	LEN_PID_AU = 2,
-	LEN_VID_AU = 2,
-	/*PCIE*/
-	LEN_ADDR_AE = 6,
-	LEN_DID_AE = 2,
-	LEN_VID_AE = 2,
-	LEN_SVID_AE = 2,
-	LEN_SMID_AE = 2,
-	/*SDIO*/
-	LEN_ADDR_AS = 6,
-};
-
-/**
- * @enum mac_info_default_value
- *
- * @brief mac_info_default_value
- *
- * @var mac_info_default_value::VAL_ADDR_AU
- * Please Place Description here.
- * @var mac_info_default_value::VAL_PID_AU
- * Please Place Description here.
- * @var mac_info_default_value::VAL_VID_AU
- * Please Place Description here.
- * @var mac_info_default_value::VAL_ADDR_AE
- * Please Place Description here.
- * @var mac_info_default_value::VAL_DID_AE
- * Please Place Description here.
- * @var mac_info_default_value::VAL_VID_AE
- * Please Place Description here.
- * @var mac_info_default_value::VAL_SVID_AE
- * Please Place Description here.
- * @var mac_info_default_value::VAL_SMID_AE
- * Please Place Description here.
- * @var mac_info_default_value::VAL_ADDR_AS
- * Please Place Description here.
- */
-enum mac_info_default_value {
-	/*USB*/
-	VAL_ADDR_AU = 0x0,
-	VAL_PID_AU = 0x5A,
-	VAL_VID_AU = 0xDA,
-	/*PCIE*/
-	VAL_ADDR_AE = 0x0,
-	VAL_DID_AE = 0x52,
-	VAL_VID_AE = 0xEC,
-	VAL_SVID_AE = 0xEC,
-	VAL_SMID_AE = 0x52,
-	/*SDIO*/
-	VAL_ADDR_AS = 0x0,
+struct efuse_info {
+	struct efuse_info_item *offset;
+	struct efuse_info_item *def_val;
+	struct efuse_info_item *len;
 };
 
 /**
@@ -244,38 +175,6 @@ enum mac_info_default_value {
 enum mac_checksum_offset {
 	chksum_offset_1 = 0x1AC,
 	chksum_offset_2 = 0x1AD,
-};
-
-/**
- * @struct mac_bank_efuse_info
- * @brief mac_bank_efuse_info
- *
- * @var mac_bank_efuse_info::phy_map
- * Please Place Description here.
- * @var mac_bank_efuse_info::log_map
- * Please Place Description here.
- * @var mac_bank_efuse_info::phy_map_valid
- * Please Place Description here.
- * @var mac_bank_efuse_info::log_map_valid
- * Please Place Description here.
- * @var mac_bank_efuse_info::efuse_end
- * Please Place Description here.
- * @var mac_bank_efuse_info::phy_map_size
- * Please Place Description here.
- * @var mac_bank_efuse_info::log_map_size
- * Please Place Description here.
- */
-struct mac_bank_efuse_info {
-	/* efuse_param */
-	u8 **phy_map;
-	u8 **log_map;
-	u8 *phy_map_valid;
-	u8 *log_map_valid;
-	u32 *efuse_end;
-	/* hw_info */
-	u32 *phy_map_size;
-	u32 *log_map_size;
-	u32 *efuse_start;
 };
 
 /**
@@ -351,6 +250,13 @@ enum mac_cntlr_mode_sel {
 	MODE_AUTOLOAD_EN,
 	MODE_WRITE,
 	MODE_CMP,
+};
+
+enum efuse_fv_type {
+	FV_TYPE1 = 0xF,
+	FV_TYPE2 = 0xE,
+	FV_TYPE3 = 0xC,
+	FV_TYPE4 = 0x8,
 };
 
 /**
@@ -495,6 +401,28 @@ u32 mac_read_efuse_plus(struct mac_ax_adapter *adapter, u32 addr, u32 size,
  */
 u32 mac_read_efuse(struct mac_ax_adapter *adapter, u32 addr, u32 size, u8 *val,
 		   enum mac_ax_efuse_bank bank);
+/**
+ * @}
+ */
+
+/**
+ * @addtogroup Efuse
+ * @{
+ */
+
+/**
+ * @brief mac_read_hidden_efuse
+ *
+ * @param *adapter
+ * @param addr
+ * @param size
+ * @param *val
+ * @param hidden_cfg
+ * @return Please Place Description here.
+ * @retval u32
+ */
+u32 mac_read_hidden_efuse(struct mac_ax_adapter *adapter, u32 addr, u32 size,
+			  u8 *val, enum mac_ax_efuse_hidden_cfg hidden_cfg);
 /**
  * @}
  */
@@ -1019,26 +947,32 @@ u32 mac_checksum_rpt(struct mac_ax_adapter *adapter, u16 *chksum);
  */
 
 /**
- * @brief mac_check_OTP
+ * @brief mac_disable_rf_ofld_by_info
  *
  * @param *adapter
- * @param *is_start
+ * @param info
  * @return Please Place Description here.
  * @retval u32
  */
-u32 mac_check_OTP(struct mac_ax_adapter *adapter, u8 is_start);
+u32 mac_disable_rf_ofld_by_info(struct mac_ax_adapter *adapter,
+				struct mac_disable_rf_ofld_info info);
+/**
+ * @}
+ */
 
 /**
- * @brief mac_disable_rf
+ * @addtogroup Efuse
+ * @{
+ */
+
+/**
+ * @brief _patch_otp_power_issue
  *
  * @param *adapter
- * @param *func
- * @param *type
  * @return Please Place Description here.
  * @retval u32
  */
-u32 mac_disable_rf(struct mac_ax_adapter *adapter,
-		   enum mac_ax_disable_rf_func func, enum mac_ax_net_type type);
+u32 _patch_otp_power_issue(struct mac_ax_adapter *adapter);
 /**
  * @}
  */
@@ -1054,12 +988,14 @@ u32 mac_disable_rf(struct mac_ax_adapter *adapter,
  * @param *adapter
  * @param is_secure
  * @return Please Place Description here.
- * @retval void
+ * @retval u32
  */
-void mac_set_efuse_ctrl(struct mac_ax_adapter *adapter, u8 is_secure);
+u32 mac_set_efuse_ctrl(struct mac_ax_adapter *adapter, bool is_secure);
 /**
  * @}
  */
+
+u32 get_fv_info(struct mac_ax_adapter *adapter);
 
 /**
  * @addtogroup Efuse
@@ -1103,13 +1039,13 @@ void cfg_efuse_auto_ck(struct mac_ax_adapter *adapter, u8 enable);
  */
 
 /**
- * @brief efuse_tbl_init
+ * @brief efuse_info_init
  *
  * @param *adapter
  * @return Please Place Description here.
  * @retval u32
  */
-u32 efuse_tbl_init(struct mac_ax_adapter *adapter);
+u32 efuse_info_init(struct mac_ax_adapter *adapter);
 /**
  * @}
  */
@@ -1120,14 +1056,53 @@ u32 efuse_tbl_init(struct mac_ax_adapter *adapter);
  */
 
 /**
- * @brief efuse_tbl_exit
+ * @brief efuse_info_exit
  *
  * @param *adapter
  * @return Please Place Description here.
  * @retval u32
  */
-u32 efuse_tbl_exit(struct mac_ax_adapter *adapter);
+u32 efuse_info_exit(struct mac_ax_adapter *adapter);
 /**
  * @}
  */
+
+/**
+ * @addtogroup Efuse
+ * @{
+ */
+
+/**
+ * @brief enable_efuse_pwr_cut_dav
+ *
+ * @param *adapter
+ * @param is_write
+ * @return Please Place Description here.
+ * @retval u32
+ */
+u32 enable_efuse_pwr_cut_dav(struct mac_ax_adapter *adapter,
+			     bool is_write);
+/**
+ * @}
+ */
+
+/**
+ * @addtogroup Efuse
+ * @{
+ */
+
+/**
+ * @brief enable_efuse_pwr_cut_dav
+ *
+ * @param *adapter
+ * @param is_write
+ * @return Please Place Description here.
+ * @retval u32
+ */
+u32 disable_efuse_pwr_cut_dav(struct mac_ax_adapter *adapter,
+			      bool is_write);
+/**
+ * @}
+ */
+
 #endif

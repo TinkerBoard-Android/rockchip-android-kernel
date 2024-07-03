@@ -34,6 +34,7 @@
 
 #define MAX_WKFM_SIZE	16 /* (16 bytes for WKFM bit mask, 16*8 = 128 bits) */
 #define MAX_WKFM_PATTERN_SIZE	128
+#define MAX_IN_PATTERN_SIZE	512
 
 /*
  * MAX_WKFM_PATTERN_STR_LEN : the max. length of wow pattern string
@@ -47,6 +48,18 @@
 
 #define WKFMCAM_ADDR_NUM 6
 #define WKFMCAM_SIZE 24 /* each entry need 6*4 bytes */
+
+#define IS_DISCONNECT_WOW_REASON(rsn) \
+	(rsn == RTW_MAC_WOW_RX_DISASSOC || \
+	 rsn == RTW_MAC_WOW_RX_DEAUTH || \
+	 rsn == RTW_MAC_WOW_FW_DECISION_DISCONNECT || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_RX_PAIRWISEKEY || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_RX_GTK || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_RX_DISASSOC || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_RX_DEAUTH || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_RX_EAPREQ_IDENTIFY || \
+	 rsn == RTW_MAC_WOW_NO_WAKE_FW_DECISION_DISCONNECT || \
+	 0)
 
 struct aoac_report {
 	u8 iv[8];
@@ -96,9 +109,13 @@ typedef struct rtl_priv_pattern {
 } rtl_priv_pattern_t;
 
 struct wow_priv {
-	struct rtw_wow_wake_info wow_wake_event;
+	enum rtw_mac_wow_wake_reason wow_wake_reason;
+
 	struct rtw_wow_gpio_info wow_gpio;
 	struct rtw_disc_det_info wow_disc;
+#ifdef CONFIG_PNO_SUPPORT
+	struct rtw_nlo_info wow_nlo;
+#endif
 	enum pattern_type wow_ptrn_valid[MAX_WKFM_CAM_NUM];
 };
 
@@ -115,72 +132,38 @@ void rtw_set_default_pattern(_adapter *adapter);
 void rtw_wow_pattern_sw_dump(_adapter *adapter);
 void rtw_construct_remote_control_info(_adapter *adapter,
 				       struct rtw_remote_wake_ctrl_info *ctrl_info);
-void rtw_wow_lps_level_decide(_adapter *adapter, u8 wow_en);
-int rtw_pm_set_wow_lps(_adapter *padapter, u8 mode);
-int rtw_pm_set_wow_lps_level(_adapter *padapter, u8 level);
-#ifdef CONFIG_LPS_1T1R
-int rtw_pm_set_wow_lps_1t1r(_adapter *padapter, u8 en);
-#endif
+void rtw_core_wow_handle_wake_up_rsn(void *drv_priv, u8 rsn);
 #ifdef CONFIG_GTK_OL
 void rtw_update_gtk_ofld_info(void *drv_priv, struct rtw_aoac_report *aoac_info,
 			      u8 aoac_report_get_ok, u8 phase);
 #endif
-bool _rtw_wow_chk_cap(_adapter *adapter, u8 cap);
 void rtw_wowlan_set_pattern_cast_type(_adapter *adapter, struct rtw_wowcam_upd_info *wowcam_info);
+#ifdef CONFIG_WRC_WOW_MAGIC
+/**
+ * rtw_cfg_wrc_wol_magic - Enable/disable WRC magic packet wake up feature
+ *
+ * This function uses a non-wowlan adapter to set the address cam required by
+ * the WRC (wireless remote control), and receives packets with A1 and A3 as the
+ * MAC address of the wowlan adapter.
+ *
+ * When this feature is disabled, the driver will reallocate the wifi role of
+ * the non-wowlan adapter.
+ */
+u8 rtw_cfg_wrc_wol_magic(_adapter *padapter, u8 enable);
+#endif
 #endif /* CONFIG_WOWLAN */
 
 #ifdef CONFIG_PNO_SUPPORT
-#define MAX_PNO_LIST_COUNT 16
-#define MAX_SCAN_LIST_COUNT 14	/* 2.4G only */
-#define MAX_HIDDEN_AP 8		/* 8 hidden AP */
-
-typedef struct pno_nlo_info {
-	u32 fast_scan_period;				/* Fast scan period */
-	u8	ssid_num;				/* number of entry */
-	u8	hidden_ssid_num;
-	u32	slow_scan_period;			/* slow scan period */
-	u32	fast_scan_iterations;			/* Fast scan iterations */
-	u8	ssid_length[MAX_PNO_LIST_COUNT];	/* SSID Length Array */
-	u8	ssid_cipher_info[MAX_PNO_LIST_COUNT];	/* Cipher information for security */
-	u8	ssid_channel_info[MAX_PNO_LIST_COUNT];	/* channel information */
-	u8	loc_probe_req[MAX_HIDDEN_AP];		/* loc_probeReq */
-} pno_nlo_info_t;
-
-typedef struct pno_ssid {
-	u32		SSID_len;
-	u8		SSID[32];
-} pno_ssid_t;
-
-typedef struct pno_ssid_list {
-	pno_ssid_t	node[MAX_PNO_LIST_COUNT];
-} pno_ssid_list_t;
-
-typedef struct pno_scan_channel_info {
-	u8	channel;
-	u8	tx_power;
-	u8	timeout;
-	u8	active;				/* set 1 means active scan, or pasivite scan. */
-} pno_scan_channel_info_t;
-
-typedef struct pno_scan_info {
-	u8	enableRFE;			/* Enable RFE */
-	u8	period_scan_time;		/* exclusive with fast_scan_period and slow_scan_period */
-	u8	periodScan;			/* exclusive with fast_scan_period and slow_scan_period */
-	u8	orig_80_offset;			/* original channel 80 offset */
-	u8	orig_40_offset;			/* original channel 40 offset */
-	u8	orig_bw;			/* original bandwidth */
-	u8	orig_ch;			/* original channel */
-	u8	channel_num;			/* number of channel */
-	u64	rfe_type;			/* rfe_type && 0x00000000000000ff */
-	pno_scan_channel_info_t ssid_channel_info[MAX_SCAN_LIST_COUNT];
-} pno_scan_info_t;
-
-int rtw_parse_ssid_list_tlv(char **list_str, pno_ssid_t *ssid, int max, int *bytes_left);
-int rtw_dev_pno_set(struct net_device *net, pno_ssid_t *ssid, int num,
-		    int pno_time, int pno_repeat, int pno_freq_expo_max);
-#ifdef CONFIG_PNO_SET_DEBUG
-	void rtw_dev_pno_debug(struct net_device *net);
-#endif /* CONFIG_PNO_SET_DEBUG */
+#define MAX_NLO_SCAN_PLANS 2
+#define MAX_NLO_SCAN_PERIOD 600
+#define MAX_NLO_NORMAL_SCAN_CYCLE 255
+#define NLO_DEFAULT_SCAN_DELAY 3
+int rtw_nlo_enable(struct net_device *net, struct cfg80211_ssid *ssids,
+		   int n_ssids, struct ieee80211_channel **channels,
+		   u32 n_channels, u32 delay, u32 interval, u32 iterations,
+		   u32 slow_interval);
+int rtw_nlo_disable(struct net_device *net);
+void rtw_nlo_debug(struct net_device * net);
 #endif /* CONFIG_PNO_SUPPORT */
 
 #endif /* __RTW_WOW_H_ */

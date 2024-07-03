@@ -31,17 +31,26 @@
 #define		CFO_TRK_TH_4		30 /* @kHz disable CFO_Track threshold*/
 #define		CFO_TRK_TH_3		20 /* @kHz disable CFO_Track threshold*/
 #define		CFO_TRK_TH_2		10 /* @kHz disable CFO_Track threshold*/
-#define		CFO_TRK_TH_1		0 /* @kHz disable CFO_Track threshold*/
-#define		CFO_TRK_ENABLE_TH	2 /* @kHz enable CFO_Track threshold*/
-#define		CFO_TRK_STOP_TH		2 /* @kHz disable CFO_Track threshold*/
+#define		CFO_TRK_TH_1		3 /* @kHz disable CFO_Track threshold*/
+#define		CFO_STEP_1		1 /* @kHz disable CFO_Track threshold*/
+#define		CFO_STEP_2		1 /* @kHz disable CFO_Track threshold*/
+#define		CFO_STEP_3		3 /* @kHz disable CFO_Track threshold*/
+#define		CFO_STEP_4		3 /* @kHz disable CFO_Track threshold*/
+#define		CFO_TRK_ENABLE_TH	3 /* @kHz enable CFO_Track threshold*/
+#define		CFO_TRK_STOP_TH		3 /* @kHz disable CFO_Track threshold*/
+#define		NO_PKT_RETURN_TH	10
+#define		CFO_VALID_BOUNDARY	64
 
-#define		CFO_SW_COMP_FINE_TUNE	2 /* @kHz expected CFO Comp. per Xcap ofst*/
+#define		CFO_SW_COMP_FINE_TUNE	5 /* @kHz expected CFO Comp. per Xcap ofst*/ /*0.8ppm~1ppm per Xcap ofst*/
 #define		DIGI_CFO_COMP_LIMIT 5 /* @kHz enable digital CFO comp threshold*/
 
 #define		DIGI_CFO_COMP_LIMIT	5 /* @kHz enable digital CFO comp threshold*/
 
-#define		SC_XO			1 /* xcap setting output value */ 
-#define		SC_XI			0 /* xcap setting input value */ 
+#define		CFO_RECORD_NUM		6
+#define		CFO_LIMIT_PERIOD	60 /*60 sec*/
+
+#define		SC_XO			1 /* xcap setting output value */
+#define		SC_XI			0 /* xcap setting input value */
 
 #define		STA_CFO_TOLERANCE_2G	30 /* kHz */
 #define		STA_CFO_TOLERANCE_5G	80 /* kHz */
@@ -51,6 +60,7 @@
 #define		CFO_TP_UPPER	100 /*MHz*/
 #define		CFO_TP_LOWER	50 /*MHz*/
 #define		CFO_COMP_PERIOD	250 /*ms*/
+#define		CFO_TF_CNT_TH 300
 /*@--------------------------[Enum]------------------------------------------*/
 
 enum bb_cfo_trk_src_t {
@@ -60,9 +70,14 @@ enum bb_cfo_trk_src_t {
 
 enum bb_cfo_trk_st_t {
 	CFO_STATE_0 = 0,
-	CFO_STATE_1 = 1
+	CFO_STATE_1 = 1,
+	CFO_STATE_2 =2
 };
 
+enum bb_cfo_trk_acc_mode_t {
+	CFO_ACC_MODE_0 = 0,   /*disable ul_ofdma cfo acc after 30s acc*/
+	CFO_ACC_MODE_1 = 1,   /*enable ul_ofdma cfo acc after 30s acc*/
+};
 enum multi_sta_cfo_mode_t {
 	PKT_BASED_AVG_MODE	= 0,
 	ENTRY_BASED_AVG_MODE	= 1,
@@ -98,34 +113,69 @@ struct bb_dyn_cfo_trk_lop_info {
 struct bb_cfo_trk_cr_info {
 	u32 r_cfo_comp_seg0_312p5khz;
 	u32 r_cfo_comp_seg0_312p5khz_m;
+	u32 r_cfo_comp_seg0_312p5khz_1;
+	u32 r_cfo_comp_seg0_312p5khz_1_m;
+	u32 r_cfo_comp_seg0_312p5khz_2;
+	u32 r_cfo_comp_seg0_312p5khz_2_m;
+	u32 r_cfo_comp_seg0_312p5khz_3;
+	u32 r_cfo_comp_seg0_312p5khz_3_m;
 	u32 r_cfo_comp_seg0_vld;
 	u32 r_cfo_comp_seg0_vld_m;
 	u32 r_cfo_wgting;
 	u32 r_cfo_wgting_m;
 };
 
+struct bb_cfo_rc_info {
+	u8		step_history[CFO_RECORD_NUM];
+	u8		step_bitmap;
+	bool		damping_lock_en;
+	bool		force_damping_step;
+	u32		limit_time;
+};
+
+struct bb_cfo_diver_info {
+	bool		divergence_lock_en;
+	u32		limit_time;
+};
+
 struct bb_cfo_trk_info {
 	struct	bb_cfo_trk_cr_info	bb_cfo_trk_cr_i;
+#ifdef HALBB_CFO_DAMPING_CHK
+	struct	bb_cfo_rc_info		bb_cfo_rc_i;
+#endif
+	struct	bb_cfo_diver_info	bb_cfo_div_i;
 	bool		cfo_trig_by_timer_en;
 	bool		is_adjust;	/*@already modify crystal cap*/
 	u8		cfo_th[CFO_TRK_TH_SIZE]; /*u(8,2)*/
+	u8		step[CFO_TRK_TH_SIZE];
 	u8		cfo_th_en;
 	u8		cfo_th_stop; /*u(8,2)*/
 	s8		x_cap_ofst;
 	u8		crystal_cap;
 	u8		def_x_cap;
+	u8		x_cap_ub;
+	u8		x_cap_lb;
 	s32		cfo_avg_pre; /*S(12,2), -512~+511.75 kHz*/
 	u32		cfo_pkt_cnt;
+	u8		no_pkt_cnt;
 	u32		rvrt_val; /*all rvrt_val for pause API must set to u32*/
 	u8		tb_tx_comp_cfo_th; /*u(8,2)*/
 	u8		sw_comp_fine_tune; /*u(8,2)*/
 	u8		bb_cfo_trk_cnt;
 	u8		sta_cfo_tolerance;
+	u8		shift4dcfo;
+	s32		cfo_avg_4dcfo;
+	s32		cfo_avg_4dcfo_pre;
 	bool		man_cfo_tol;
 	bool		cfo_dyn_acc_en;
 	bool		cfo_trk_by_data_en;
+	u8		cfo_period_cnt;
+	u32		cfo_tf_cnt_th;
+	u32		cfo_tf_cnt_pre;
+	s32		dcfo_comp_offset; /* For manually fine tune digital cfo*/
 	enum bb_cfo_trk_src_t		cfo_src;
 	enum bb_cfo_trk_st_t		bb_cfo_trk_state;
+	enum bb_cfo_trk_acc_mode_t bb_cfo_trk_acc_mode;
 	enum multi_sta_cfo_mode_t	multi_sta_cfo_mode;
 	#ifdef BB_DYN_CFO_TRK_LOP
 	struct bb_dyn_cfo_trk_lop_info bb_dyn_cfo_trk_lop_i;
@@ -142,7 +192,6 @@ void halbb_cfo_trk_loop_cr_cfg(struct bb_info *bb, enum bb_dctl_state_t state);
 void halbb_dyn_cfo_trk_loop(struct bb_info *bb);
 void halbb_dyn_cfo_trk_loop_init(struct bb_info *bb);
 #endif
-void halbb_cfo_deinit(struct bb_info *bb);
 void halbb_cfo_trk_init(struct bb_info *bb);
 void halbb_set_crystal_cap(struct bb_info *bb, u8 crystal_cap);
 void halbb_set_cfo_pause_val(struct bb_info *bb, u32 *val_buf, u8 val_len);
@@ -155,4 +204,7 @@ void halbb_parsing_cfo(struct bb_info *bb, u32 physts_bitmap,
 void halbb_cfo_trk_dbg(struct bb_info *bb, char input[][16], u32 *_used,
 		       char *output, u32 *_out_len);
 void halbb_cr_cfg_cfo_trk_init(struct bb_info *bb);
+void halbb_cfo_ul_ofdma_acc_enable(struct bb_info *bb);
+void halbb_cfo_ul_ofdma_acc_disable(struct bb_info *bb);
+void halbb_cfo_diver_init(struct bb_info *bb);
 #endif

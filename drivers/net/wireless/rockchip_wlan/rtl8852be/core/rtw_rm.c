@@ -35,6 +35,20 @@ u8 rm_post_event_hdl(_adapter *padapter, u8 *pbuf)
 	return H2C_SUCCESS;
 }
 
+void rm_update_cap(u8 *frame_head, _adapter *pa, u32 pktlen, int offset)
+{
+#ifdef CONFIG_RTW_80211K
+	u8 *res;
+	sint len;
+
+	res = rtw_get_ie(frame_head + offset, _EID_RRM_EN_CAP_IE_, &len,
+			 pktlen - offset);
+	if (res != NULL)
+		_rtw_memcpy((void *)pa->rmpriv.rm_en_cap_def, (res + 2),
+			    MIN(len, sizeof(pa->rmpriv.rm_en_cap_def)));
+#endif
+}
+
 #ifdef CONFIG_RTW_80211K
 struct cmd_meas_type_ {
 	u8 id;
@@ -237,12 +251,13 @@ static u8 *build_wlan_hdr(_adapter *padapter, struct xmit_frame *pmgntframe,
 	struct pkt_attrib *pattr;
 	struct rtw_ieee80211_hdr *pwlanhdr;
 	struct mlme_ext_priv *pmlmeext = &padapter->mlmeextpriv;
-	struct mlme_ext_info *pmlmeinfo = &pmlmeext->mlmext_info;
+	struct _ADAPTER_LINK *padapter_link = psta->padapter_link;
+	struct link_mlme_ext_info *pmlmeinfo = &padapter_link->mlmeextpriv.mlmext_info;
 
 
 	/* update attribute */
 	pattr = &pmgntframe->attrib;
-	update_mgntframe_attrib(padapter, pattr);
+	update_mgntframe_attrib(padapter, padapter_link, pattr);
 
 	_rtw_memset(pmgntframe->buf_addr, 0, WLANHDR_OFFSET + TXDESC_OFFSET);
 
@@ -253,9 +268,8 @@ static u8 *build_wlan_hdr(_adapter *padapter, struct xmit_frame *pmgntframe,
 	*(fctrl) = 0;
 
 	_rtw_memcpy(pwlanhdr->addr1, psta->phl_sta->mac_addr, ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr2, adapter_mac_addr(padapter), ETH_ALEN);
-	_rtw_memcpy(pwlanhdr->addr3,
-		get_my_bssid(&(pmlmeinfo->network)),ETH_ALEN);
+	_rtw_memcpy(pwlanhdr->addr2, padapter_link->mac_addr, ETH_ALEN);
+	_rtw_memcpy(pwlanhdr->addr3, get_my_bssid(&(pmlmeinfo->network)), ETH_ALEN);
 
 	RTW_INFO("RM: dst = " MAC_FMT "\n", MAC_ARG(pwlanhdr->addr1));
 
@@ -293,17 +307,17 @@ int issue_null_reply(struct rm_obj *prm)
 	struct xmit_priv *pxmitpriv = &(padapter->xmitpriv);
 
 
-	m_mode = prm->p.m_mode;
-	if (m_mode || prm->p.rpt == 0) {
+	m_mode = prm->q.m_mode;
+	if (m_mode || prm->q.rpt == 0) {
 		RTW_INFO("RM: rmid=%x reply (%s repeat=%d)\n",
 			prm->rmid,
 			m_mode&MEAS_REP_MOD_INCAP?"INCAP":
 			m_mode&MEAS_REP_MOD_REFUSE?"REFUSE":
 			m_mode&MEAS_REP_MOD_LATE?"LATE":"no content",
-			prm->p.rpt);
+			prm->q.rpt);
 	}
 
-	switch (prm->p.action_code) {
+	switch (prm->q.action_code) {
 	case RM_ACT_RADIO_MEAS_REQ:
 		len = 8;
 		break;
@@ -373,23 +387,26 @@ int rm_get_chset(struct rm_obj *prm)
 	op_class = prm->q.op_class;
 	if (prm->q.ch_num == 0) {
 		/* ch_num=0   : scan all ch in operating class */
-		meas_ch_amount = rm_get_ch_set(pch_set,
-			op_class, prm->q.ch_num);
+		meas_ch_amount = rm_get_ch_set(op_class, pch_set, RTW_CHANNEL_SCAN_AMOUNT);
 
 	} else if (prm->q.ch_num == 255) {
 		/* 802.11 p.1066 */
 		/* ch_num=255 : If the Channel Number is 255 and includes
 		 * AP Channel Report subelements
 		 */
-		meas_ch_amount = rm_get_ch_set_from_bcn_req_opt(pch_set, &prm->q.opt.bcn);
-	} else
-		meas_ch_amount = rm_get_ch_set(pch_set, op_class, prm->q.ch_num);
+		meas_ch_amount = rm_get_ch_set_from_bcn_req_opt(&prm->q.opt.bcn, pch_set, RTW_CHANNEL_SCAN_AMOUNT);
+	} else {
+		pch_set[0].hw_value = prm->q.ch_num;
+		pch_set[0].band = rtw_get_band_by_op_class(op_class);
+		meas_ch_amount = 1;
+		RTW_INFO("RM: meas_ch->hw_value = %u\n", pch_set->hw_value);
+	}
 
 	/* get means channel */
 	prm->q.ch_set_ch_amount = meas_ch_amount;
 
 #if (RM_MORE_DBG_MSG)
-	RTW_INFO("survey (%d) chaannels\n", meas_ch_amount);
+	RTW_INFO("survey (%d) channels\n", meas_ch_amount);
 #endif
 	return 0;
 }
@@ -397,31 +414,35 @@ int rm_get_chset(struct rm_obj *prm)
 int rm_sitesurvey(struct rm_obj *prm)
 {
 	int meas_ch_amount=0;
-	u8 op_class=0, val8;
 	struct rtw_ieee80211_channel *pch_set;
-	struct sitesurvey_parm parm;
+	struct sitesurvey_parm *parm;
 
 
 	RTW_INFO("RM: rmid=%x %s\n",prm->rmid, __func__);
+
+	parm = rtw_malloc(sizeof(*parm));
+	if (parm == NULL)
+		return _FAIL;
 
 	rm_get_chset(prm);
 	pch_set = &prm->q.ch_set[0];
 
 	meas_ch_amount = MIN(prm->q.ch_set_ch_amount, RTW_CHANNEL_SCAN_AMOUNT);
-	_rtw_memset(&parm, 0, sizeof(struct sitesurvey_parm));
-	_rtw_memcpy(parm.ch, pch_set, sizeof(struct rtw_ieee80211_channel) * meas_ch_amount);
+	_rtw_memset(parm, 0, sizeof(struct sitesurvey_parm));
+	_rtw_memcpy(parm->ch, pch_set, sizeof(struct rtw_ieee80211_channel) * meas_ch_amount);
 
-	_rtw_memcpy(&parm.ssid[0], &prm->q.opt.bcn.ssid, IW_ESSID_MAX_SIZE);
+	_rtw_memcpy(&parm->ssid[0], &prm->q.opt.bcn.ssid, IW_ESSID_MAX_SIZE);
 
-	parm.ssid_num = 1;
-	parm.scan_mode = prm->q.m_mode;
-	parm.ch_num = meas_ch_amount;
-	parm.rrm_token = prm->rmid;
-	parm.duration = prm->q.meas_dur;
-	parm.scan_type = RTW_SCAN_RRM;
+	parm->ssid_num = 1;
+	parm->scan_mode = prm->q.m_mode;
+	parm->ch_num = meas_ch_amount;
+	parm->rrm_token = prm->rmid;
+	parm->duration = prm->q.meas_dur;
+	parm->scan_type = RTW_SCAN_RRM;
 	/* parm.bw = BW_20M; */
 
-	rtw_sitesurvey_cmd(prm->psta->padapter, &parm);
+	rtw_sitesurvey_cmd(prm->psta->padapter, parm);
+	rtw_mfree(parm, sizeof(*parm));
 
 	return _SUCCESS;
 }
@@ -535,13 +556,13 @@ static int rm_parse_bcn_req_s_elem(struct rm_obj *prm, u8 *pbody, int req_len)
 			RTW_INFO("DBG set ssid to %s\n",DBG_BCN_REQ_SSID_NAME);
 			i = strlen(DBG_BCN_REQ_SSID_NAME);
 			prm->q.opt.bcn.ssid.SsidLength = i;
-			_rtw_memcpy(&(prm->q.opt.bcn.ssid.Ssid),
-				DBG_BCN_REQ_SSID_NAME, i);
+			_rtw_memcpy(&(prm->q.opt.bcn.ssid.Ssid), DBG_BCN_REQ_SSID_NAME,
+				MIN(i, sizeof(prm->q.opt.bcn.ssid.Ssid)-1));
 
 #else /* original */
 			prm->q.opt.bcn.ssid.SsidLength = pbody[p+1];
-			_rtw_memcpy(&(prm->q.opt.bcn.ssid.Ssid),
-				&pbody[p+2], pbody[p+1]);
+			_rtw_memcpy(&(prm->q.opt.bcn.ssid.Ssid), &pbody[p+2],
+				MIN(pbody[p+1], sizeof(prm->q.opt.bcn.ssid.Ssid)-1));
 #endif
 #endif
 
@@ -1081,11 +1102,11 @@ static u8 *rm_gen_bcn_detail_elem(_adapter *padapter, u8 *pframe,
 	unsigned int *fr_len)
 {
 	WLAN_BSSID_EX *pbss = &pnetwork->network;
-	unsigned int my_len;
-	int j, k, len;
-	u8 *plen;
-	u8 *ptr;
-	u8 val8, eid;
+	unsigned int my_len = 0;
+	int j = 0 , k = 0, len = 0;
+	u8 *plen = NULL;
+	u8 *ptr = NULL;
+	u8 val8 = 0, eid = 0;
 
 
 	my_len = 0;
@@ -1509,7 +1530,8 @@ int issue_nb_req(struct rm_obj *prm)
 {
 	_adapter *padapter = prm->psta->padapter;
 	struct sta_info *psta = prm->psta;
-	struct mlme_priv *pmlmepriv = &padapter->mlmepriv;
+	struct _ADAPTER_LINK *padapter_link = psta->padapter_link;
+	struct link_mlme_priv *pmlmepriv = &padapter_link->mlmepriv;
 	struct xmit_priv *pxmitpriv = &padapter->xmitpriv;
 	struct xmit_frame *pmgntframe = NULL;
 	struct pkt_attrib *pattr = NULL;
@@ -1630,6 +1652,7 @@ int issue_link_meas_rep(struct rm_obj *prm)
 	u8 *pframe;
 	unsigned int my_len;
 	_adapter *padapter = prm->psta->padapter;
+	struct _ADAPTER_LINK *padapter_link = GET_PRIMARY_LINK(padapter);
 	struct xmit_frame *pmgntframe;
 	struct pkt_attrib *pattr;
 	struct xmit_priv *pxmitpriv = &padapter->xmitpriv;
@@ -1656,7 +1679,7 @@ int issue_link_meas_rep(struct rm_obj *prm)
 	my_len = 0;
 
 	/* TPC report */
-	rm_get_tx_power(padapter, RF_PATH_A, MGN_6M, &pwr_used);
+	rm_get_tx_power(padapter, padapter_link->mlmeextpriv.chandef.band, MGN_6M, &pwr_used);
 	tpc[0] = EID_TPC;
 	tpc[1] = 2; /* length */
 
@@ -2023,18 +2046,18 @@ int retrieve_radio_meas_result(struct rm_obj *prm)
 
 int issue_radio_meas_rep(struct rm_obj *prm)
 {
-	u8 val8;
-	u8 *pframe;
-	u8 *plen;
-	u16 val16;
-	u64 val64;
-	unsigned int my_len;
+	u8 val8 = 0;
+	u8 *pframe = NULL;
+	u8 *plen = NULL;
+	u16 val16 = 0;
+	u64 val64 = 0;
+	unsigned int my_len = 0;
 	_adapter *padapter = prm->psta->padapter;
-	struct xmit_frame *pmgntframe;
-	struct pkt_attrib *pattr;
+	struct xmit_frame *pmgntframe = NULL;
+	struct pkt_attrib *pattr = NULL;
 	struct xmit_priv *pxmitpriv = &(padapter->xmitpriv);
 	struct sta_info *psta = prm->psta;
-	int i;
+	int i = 0;
 
 
 	RTW_INFO("RM: %s\n", __func__);
@@ -2105,8 +2128,9 @@ void rtw_ap_parse_sta_rm_en_cap(_adapter *padapter,
 	if (elem->rm_en_cap) {
 		RTW_INFO("assoc.rm_en_cap="RM_CAP_FMT"\n",
 			RM_CAP_ARG(elem->rm_en_cap));
-		_rtw_memcpy(psta->rm_en_cap,
-			(elem->rm_en_cap), elem->rm_en_cap_len);
+
+		_rtw_memcpy(psta->rm_en_cap, (elem->rm_en_cap),
+			MIN(elem->rm_en_cap_len, sizeof(psta->rm_en_cap)));
 	}
 }
 
@@ -2114,19 +2138,9 @@ void RM_IE_handler(_adapter *padapter, PNDIS_802_11_VARIABLE_IEs pIE)
 {
 	int i;
 
-	_rtw_memcpy(&padapter->rmpriv.rm_en_cap_assoc, pIE->data, pIE->Length);
+	_rtw_memcpy(&padapter->rmpriv.rm_en_cap_assoc, pIE->data,
+		    MIN(pIE->Length, sizeof(padapter->rmpriv.rm_en_cap_assoc)));
 	RTW_INFO("assoc.rm_en_cap="RM_CAP_FMT"\n", RM_CAP_ARG(pIE->data));
-}
-
-void update_rm_cap(u8 *frame_head, _adapter *pa, u32 pktlen, int offset)
-{
-	u8 *res;
-	sint len;
-
-	res = rtw_get_ie(frame_head + offset, _EID_RRM_EN_CAP_IE_, &len,
-			 pktlen - offset);
-	if (res != NULL)
-		_rtw_memcpy((void *)pa->rmpriv.rm_en_cap_def, (res + 2), len);
 }
 
 /* Debug command */
@@ -2353,6 +2367,8 @@ static void rm_dbg_activate_meas(_adapter *padapter, char *s)
 {
 	struct rm_priv *prmpriv = &(padapter->rmpriv);
 	struct rm_obj *prm;
+	/* ToDo CONFIG_RTW_MLD: [currently primary link only] */
+	struct _ADAPTER_LINK *padapter_link = GET_PRIMARY_LINK(padapter);
 
 
 	if (prmpriv->prm_sel == NULL) {
@@ -2368,8 +2384,9 @@ static void rm_dbg_activate_meas(_adapter *padapter, char *s)
 	}
 
 	/* measure current channel */
-	prm->q.ch_num = padapter->mlmeextpriv.chandef.chan;
-	prm->q.op_class = rm_get_oper_class_via_ch(prm->q.ch_num);
+	prm->q.ch_num = padapter_link->mlmeextpriv.chandef.chan;
+	prm->q.op_class = rtw_get_op_class_by_bchbw(padapter_link->mlmeextpriv.chandef.band,
+		prm->q.ch_num, CHANNEL_WIDTH_20, CHAN_OFFSET_NO_EXT);
 
 	/* enquee rmobj */
 	rm_enqueue_rmobj(padapter, prm, _FALSE);

@@ -22,9 +22,10 @@
 #endif
 
 #define WP_TID_INDIC_RESERVED_BIT BIT(14)
+#define WP_BAND_INDIC_RESERVED_BIT BIT(14)
+
 #define WP_RESERVED_SEQ 0xFFF
 #define WP_MAX_SEQ_NUMBER WP_RESERVED_SEQ
-
 
 struct tx_base_desc {
 	u8 *vir_addr;
@@ -73,6 +74,6 @@ struct rx_base_desc {
 	void *os_rsvd[1];
 	u8 cache;
 	u16 host_idx;
-	u16 avail_num;
+	u16 hw_idx;
 };
 #endif	/* _PHL_TRX_DEF_PCIE_H_ */
