@@ -1953,7 +1953,7 @@
 	handle_cpu_id = <1>;
 	remote_support_psci = <0>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pwm7_pins>;
+	pinctrl-0 = <&pwm15m0_pins &pwm15m1_pins>;
 
 	ir_key1 {
 		rockchip,usercode = <0x4040>;
@@ -2248,6 +2248,7 @@
 	status = "disabled";
 };
 &uart1 {
+	pinctrl-0 = <&uart1m0_xfer>;
 	status = "disabled";
 };
 
@@ -2309,9 +2310,6 @@
 &pwm5 {
 	status = "disabled";
 };
-&pwm7 {
-	status = "disabled";
-};
 &pwm8 {
 	status = "disabled";
 };
@@ -2325,10 +2323,6 @@
 };
 &pwm14 {
 	pinctrl-0 = <&pwm14m1_pins>;
-	status = "disabled";
-};
-&pwm15 {
-	pinctrl-0 = <&pwm15m0_pins &pwm15m1_pins>;
 	status = "disabled";
 };
 &xin32k {
