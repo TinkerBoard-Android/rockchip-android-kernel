@@ -92,8 +92,18 @@ static int allocate_minors(struct usb_serial *serial, int num_ports)
 	mutex_lock(&table_lock);
 	for (i = 0; i < num_ports; ++i) {
 		port = serial->port[i];
+#ifdef CONFIG_USB_SERIAL_FTDI_SIO_SANDEN
+                if (!strcmp(dev_driver_string(&serial->interface->dev), "ftdi_sio")) {
+                        pr_info("change the minor for sanden ftdi_sio usb device\n");
+                        minor = idr_alloc(&serial_minors, port, 20,
+                                        USB_SERIAL_TTY_MINORS, GFP_KERNEL);
+               } else
+                        minor = idr_alloc(&serial_minors, port, 0,
+                                        USB_SERIAL_TTY_MINORS, GFP_KERNEL);
+#else
 		minor = idr_alloc(&serial_minors, port, 0,
 					USB_SERIAL_TTY_MINORS, GFP_KERNEL);
+#endif
 		if (minor < 0)
 			goto error;
 		port->minor = minor;
