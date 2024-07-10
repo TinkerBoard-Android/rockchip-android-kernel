@@ -194,13 +194,16 @@
 
 	rk809_sound: rk809-sound {
 		status = "okay";
-		compatible = "rockchip,multicodecs-card";
-		rockchip,card-name = "rockchip-rk809";
-		rockchip,format = "i2s";
-		rockchip,mclk-fs = <256>;
-		rockchip,cpu = <&i2s1_8ch>;
-		rockchip,codec = <&rk809_codec>;
-		pinctrl-names = "default";
+		compatible = "simple-audio-card";
+		simple-audio-card,name = "rockchip-rk809";
+		simple-audio-card,format = "i2s";
+		simple-audio-card,mclk-fs = <256>;
+		simple-audio-card,cpu {
+			sound-dai = <&i2s1_8ch>;
+		};
+		simple-audio-card,codec {
+			sound-dai = <&rk809_codec>;
+		};
 	};
 
 	spdif-sound {
@@ -1068,7 +1071,7 @@
 		};
 
 		rk809_codec: codec {
-			#sound-dai-cells = <1>;
+			#sound-dai-cells = <0>;
 			compatible = "rockchip,rk809-codec", "rockchip,rk817-codec";
 			clocks = <&cru I2S1_MCLKOUT>;
 			clock-names = "mclk";
