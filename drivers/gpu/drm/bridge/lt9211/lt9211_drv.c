@@ -190,7 +190,12 @@ void lt9211_mipirx_logic_rst(struct lt9211_data *lt9211)
 void lt9211_mipirxphy(struct lt9211_data *lt9211)
 {   
 	lt9211_write(lt9211->client, 0xff, 0x85);
-	lt9211_write(lt9211->client, 0x88, 0x50);
+	if((lt9211->register_33 == 0) && (lt9211->register_35 == 0)) {
+		lt9211_write(lt9211->client, 0x88, 0x50);
+	}
+	else {
+		lt9211_write(lt9211->client, 0x88, 0x40);	// when enable ssc
+	}
 	lt9211_write(lt9211->client, 0xff, 0xd0);
 	/* Set Mipi Lanes */
 	if(lt9211->lvds_output & OUTPUT_MIPI_1_LANE) {
@@ -643,9 +648,19 @@ void lt9211_txdigital(struct lt9211_data *lt9211)
 		lt9211_write(lt9211->client, 0x5a, 0xaa);
 		lt9211_write(lt9211->client, 0x5b, 0xaa);
 		if( lt9211->lvds_output & OUTPUT_LVDS_2_PORT ) {
-			lt9211_write(lt9211->client, 0x5c, 0x03);	//lvdstx port sel 01:dual;00:single
+			if((lt9211->register_33 == 0) && (lt9211->register_35 == 0)) {
+				lt9211_write(lt9211->client, 0x5c, 0x03);	//lvdstx port sel 01:dual;00:single
+			}
+			else {
+				lt9211_write(lt9211->client, 0x5c, 0x07);	//when enable ssc
+			}
 		} else {
-			lt9211_write(lt9211->client, 0x5c, 0x00);
+			if((lt9211->register_33 == 0) && (lt9211->register_35 == 0)) {
+				lt9211_write(lt9211->client, 0x5c, 0x00);
+			}
+			else {
+				lt9211_write(lt9211->client, 0x5c, 0x04);	//when enable ssc
+			}
 		}
 
 		lt9211_write(lt9211->client, 0xa1, 0x77);
