@@ -631,8 +631,9 @@ static void rk_serdes_debugfs_init(struct rk_serdes *serdes)
 				rkx110_debugfs_init(&serdes->chip[DEVICE_REMOTE1],
 						    serdes->debugfs_remote1);
 		}
-
+#if IS_ENABLED(CONFIG_DEBUG_FS)
 		rk_serdes_function_debugfs_init(serdes);
+#endif
 	}
 }
 
