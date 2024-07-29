@@ -137,6 +137,7 @@ dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-box-demo-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-evb-mipitest-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-evb1-ddr4-v10.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-tinker_board_3.dtb
+dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-tinker_board_3_rv.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-evb1-ddr4-v10-linux.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-evb1-ddr4-v10-lvds.dtb
 dtb-$(CONFIG_ARCH_ROCKCHIP) += rk3566-evb2-lp4x-v10.dtb
