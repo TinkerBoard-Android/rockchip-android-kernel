@@ -1075,7 +1075,7 @@ static int dwc3_connector_vbus_show(struct seq_file *s, void *unused)
 {
 	struct dwc3		*dwc = s->private;
 
-	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_connector_vbus)? "on":"off");
+	seq_printf(s, "%s\n", gpiod_get_value(dwc->gpio_connector_vbus)? "on":"off(locked)");
 	return 0;
 }
 
