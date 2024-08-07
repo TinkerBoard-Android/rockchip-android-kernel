@@ -11,7 +11,8 @@
 #include "tb3-setting.h"
 
 static int projectid = -1, boardid = -1, ddrid = -1, emmcid = -1;
-static char *boardinfo, *boardver, *ddr, *emmc;
+static char *boardver, *ddr, *emmc;
+static char boardinfo[32];
 static int emmc0_gpio = 0, emmc1_gpio = 0, emmc2_gpio = 0, ddr0_gpio = 0, ddr1_gpio = 0, ddr2_gpio = 0, init_done = 0;
 
 static int all_show(struct seq_file *m, void *v)
@@ -236,7 +237,7 @@ void tb3_gpios_free(void)
 	gpio_free(ddr2_gpio);
 }
 
-int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid)
+int tb3_adcs(struct device *dev, const char *compatible, const char *board, int *hwid, int *pid)
 {
 	int ret, vresult;
 	struct iio_channel *channels;
@@ -310,20 +311,20 @@ int tb3_adcs(struct device *dev, const char *compatible, int *hwid, int *pid)
 
 		switch(projectid) {
 			case 18:
-				boardinfo = "Tinker Board 3 - SKU1";
+				snprintf(boardinfo, strlen(board) + strlen(" - SKU1") + 1, "%s - SKU1", board);
 				break;
 			case 15:
-				boardinfo = "Tinker Board 3 - SKU2";
+				snprintf(boardinfo, strlen(board) + strlen(" - SKU2") + 1, "%s - SKU2", board);
 				break;
 			case 12:
-				boardinfo = "Tinker Board 3 - SKU3";
+				snprintf(boardinfo, strlen(board) + strlen(" - SKU3") + 1, "%s - SKU3", board);
 				break;
 			case 9:
 			case 6:
 			case 3:
 			case 0:
 			default:
-				boardinfo = "unknown";
+				snprintf(boardinfo, strlen(board) + 1, "%s", board);
 		}
 
 		file = proc_create_single("boardinfo", 0444, NULL, info_show);
