@@ -87,7 +87,7 @@
 
 #define DRIVER_MAJOR_VERISON		1
 #define DRIVER_MINOR_VERSION		3
-#define DRIVER_REVISION_VERSION		3
+#define DRIVER_REVISION_VERSION		4
 #define DRIVER_PATCH_VERSION
 
 #define DRIVER_VERSION (STR(DRIVER_MAJOR_VERISON) "." STR(DRIVER_MINOR_VERSION) \
@@ -165,13 +165,14 @@ struct rga_dma_buffer {
 	struct dma_buf *dma_buf;
 	struct dma_buf_attachment *attach;
 	struct sg_table *sgt;
-	void *vmap_ptr;
+	void *vaddr;
 
 	struct iommu_domain *domain;
 
 	enum dma_data_direction dir;
 
 	dma_addr_t iova;
+	dma_addr_t dma_addr;
 	unsigned long size;
 	/*
 	 * The offset of the first page of the sgt.
@@ -268,7 +269,7 @@ struct rga_job {
 	struct rga_session *session;
 
 	struct rga_req rga_command_base;
-	uint32_t cmd_reg[32 * 8];
+	struct rga_dma_buffer *cmd_buf;
 	struct rga_full_csc full_csc;
 	struct rga_csc_clip full_csc_clip;
 	struct rga_pre_intr_info pre_intr_info;
@@ -301,6 +302,8 @@ struct rga_job {
 	uint32_t intr_status;
 	uint32_t hw_status;
 	uint32_t cmd_status;
+
+	uint32_t work_cycle;
 };
 
 struct rga_backend_ops {
@@ -309,6 +312,7 @@ struct rga_backend_ops {
 	int (*init_reg)(struct rga_job *job);
 	void (*soft_reset)(struct rga_scheduler_t *scheduler);
 	int (*read_back_reg)(struct rga_job *job, struct rga_scheduler_t *scheduler);
+	int (*read_status)(struct rga_job *job, struct rga_scheduler_t *scheduler);
 	int (*irq)(struct rga_scheduler_t *scheduler);
 	int (*isr_thread)(struct rga_job *job, struct rga_scheduler_t *scheduler);
 };
@@ -333,8 +337,11 @@ struct rga_scheduler_t {
 	struct list_head todo_list;
 	spinlock_t irq_lock;
 	wait_queue_head_t job_done_wq;
+
 	const struct rga_backend_ops *ops;
 	const struct rga_hw_data *data;
+	unsigned long hw_issues_mask;
+
 	int job_count;
 	int irq;
 	struct rga_version_t version;

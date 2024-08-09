@@ -79,6 +79,7 @@ struct rkvdec_link_info rkvdec_link_v2_hw_info = {
 	},
 	.irq_base = 0x00,
 	.next_addr_base = 0x1c,
+	.err_mask = 0xf0,
 };
 
 /* vdpu34x link hw info for rk356x */
@@ -140,6 +141,7 @@ struct rkvdec_link_info rkvdec_link_rk356x_hw_info = {
 	},
 	.irq_base = 0x00,
 	.next_addr_base = 0x1c,
+	.err_mask = 0xf0,
 };
 
 /* vdpu382 link hw info */
@@ -201,6 +203,7 @@ struct rkvdec_link_info rkvdec_link_vdpu382_hw_info = {
 	},
 	.irq_base = 0x00,
 	.next_addr_base = 0x1c,
+	.err_mask = 0xf0,
 };
 
 /* vdpu383 link hw info */
@@ -905,7 +908,8 @@ static void rkvdec2_link_power_off(struct mpp_dev *mpp)
 			mpp->hw_ops->clk_off(mpp);
 
 		pm_relax(mpp->dev);
-		pm_runtime_put_sync_suspend(mpp->dev);
+		pm_runtime_mark_last_busy(mpp->dev);
+		pm_runtime_put_autosuspend(mpp->dev);
 
 		mpp_clk_set_rate(&dec->aclk_info, CLK_MODE_NORMAL);
 		mpp_clk_set_rate(&dec->cabac_clk_info, CLK_MODE_NORMAL);
@@ -962,6 +966,15 @@ static int rkvdec2_link_iommu_fault_handle(struct iommu_domain *iommu,
 	struct rkvdec2_dev *dec = to_rkvdec2_dev(mpp);
 	struct mpp_task *mpp_task = NULL, *n;
 	struct mpp_taskqueue *queue;
+	unsigned long flags;
+	u32 dump_mem_region = 0;
+
+	/*
+	 * Mask iommu irq, in order for iommu not repeatedly trigger pagefault.
+	 * Until the pagefault task finish by hw timeout.
+	 */
+	if (mpp)
+		rockchip_iommu_mask_irq(mpp->dev);
 
 	dev_err(iommu_dev, "fault addr 0x%08lx status %x arg %p\n",
 		iova, status, arg);
@@ -971,6 +984,7 @@ static int rkvdec2_link_iommu_fault_handle(struct iommu_domain *iommu,
 		return 0;
 	}
 	queue = mpp->queue;
+	spin_lock_irqsave(&queue->running_lock, flags);
 	list_for_each_entry_safe(mpp_task, n, &queue->running_list, queue_link) {
 		struct rkvdec_link_info *info = dec->link_dec->info;
 		struct rkvdec2_task *task = to_rkvdec2_task(mpp_task);
@@ -978,17 +992,16 @@ static int rkvdec2_link_iommu_fault_handle(struct iommu_domain *iommu,
 		u32 irq_status = tb_reg[info->tb_reg_int];
 
 		if (!irq_status) {
-			mpp_task_dump_mem_region(mpp, mpp_task);
+			dump_mem_region = 1;
 			break;
 		}
 	}
+	spin_unlock_irqrestore(&queue->running_lock, flags);
 
+	if (dump_mem_region)
+		mpp_task_dump_mem_region(mpp, mpp_task);
 	mpp_task_dump_hw_reg(mpp);
-	/*
-	 * Mask iommu irq, in order for iommu not repeatedly trigger pagefault.
-	 * Until the pagefault task finish by hw timeout.
-	 */
-	rockchip_iommu_mask_irq(mpp->dev);
+
 	dec->mmu_fault = 1;
 
 	return 0;
@@ -1024,6 +1037,7 @@ static void rkvdec2_link_try_dequeue(struct mpp_dev *mpp)
 		      readl(link_dec->reg_base + RKVDEC_LINK_EN_BASE) : 0;
 	u32 force_dequeue = iommu_fault || !link_en;
 	u32 dequeue_cnt = 0;
+	unsigned long flags;
 
 	list_for_each_entry_safe(mpp_task, n, &queue->running_list, queue_link) {
 		/*
@@ -1087,8 +1101,10 @@ static void rkvdec2_link_try_dequeue(struct mpp_dev *mpp)
 		mpp_time_diff_with_hw_time(mpp_task, dec->cycle_clk->real_rate_hz);
 		rkvdec2_link_finish(mpp, mpp_task);
 
+		spin_lock_irqsave(&queue->running_lock, flags);
 		list_move_tail(&task->table->link, &link_dec->unused_list);
 		list_del_init(&mpp_task->queue_link);
+		spin_unlock_irqrestore(&queue->running_lock, flags);
 		link_dec->task_running--;
 
 		set_bit(TASK_STATE_HANDLE, &mpp_task->state);
@@ -1102,7 +1118,7 @@ static void rkvdec2_link_try_dequeue(struct mpp_dev *mpp)
 			     mpp_task->session->index, mpp_task->task_index,
 			     irq_status, timeout_flag, abort_flag);
 
-		if (irq_status & RKVDEC_INT_ERROR_MASK) {
+		if (irq_status & info->err_mask) {
 			dev_err(mpp->dev,
 				"session %d task %d irq_status %#08x timeout %u abort %u\n",
 				mpp_task->session->index, mpp_task->task_index,
@@ -1627,9 +1643,6 @@ static int rkvdec2_soft_ccu_dequeue(struct mpp_taskqueue *queue)
 
 				mpp_task->on_cancel_timeout = mpp_task->on_irq;
 				set_bit(TASK_TIMING_TO_CANCEL, &mpp_task->state);
-
-				mpp_task->on_isr = mpp_task->on_irq;
-				set_bit(TASK_TIMING_ISR, &mpp_task->state);
 			}
 
 			set_bit(TASK_STATE_HANDLE, &mpp_task->state);
@@ -1790,15 +1803,15 @@ int rkvdec2_soft_ccu_iommu_fault_handle(struct iommu_domain *iommu,
 		dev_err(iommu_dev, "iommu fault, but no dev match\n");
 		return 0;
 	}
-	mpp_task = mpp->cur_task;
-	if (mpp_task)
-		mpp_task_dump_mem_region(mpp, mpp_task);
-
 	/*
 	 * Mask iommu irq, in order for iommu not repeatedly trigger pagefault.
 	 * Until the pagefault task finish by hw timeout.
 	 */
 	rockchip_iommu_mask_irq(mpp->dev);
+	mpp_task = mpp->cur_task;
+	if (mpp_task)
+		mpp_task_dump_mem_region(mpp, mpp_task);
+
 	atomic_inc(&mpp->queue->reset_request);
 	kthread_queue_work(&mpp->queue->worker, &mpp->work);
 
@@ -1851,10 +1864,11 @@ irqreturn_t rkvdec2_soft_ccu_irq(int irq, void *param)
 {
 	struct mpp_dev *mpp = param;
 	u32 irq_status = mpp_read_relaxed(mpp, RKVDEC_REG_INT_EN);
+	struct rkvdec_link_info *link_info = mpp->var->hw_info->link_info;
 
 	if (irq_status & RKVDEC_IRQ_RAW) {
 		mpp_debug(DEBUG_IRQ_STATUS, "irq_status=%08x\n", irq_status);
-		if (irq_status & RKVDEC_INT_ERROR_MASK) {
+		if (irq_status & link_info->err_mask) {
 			atomic_inc(&mpp->reset_request);
 			atomic_inc(&mpp->queue->reset_request);
 		}
@@ -2214,7 +2228,7 @@ static int rkvdec2_hard_ccu_dequeue(struct mpp_taskqueue *queue,
 		mpp_debug(DEBUG_IRQ_CHECK,
 			  "session %d task %d w:h[%d %d] err %d irq_status %#x timeout=%u abort=%u iova %08x next %08x ccu[%d %d]\n",
 			  mpp_task->session->index, mpp_task->task_index, task->width,
-			  task->height, !!(irq_status & RKVDEC_INT_ERROR_MASK), irq_status,
+			  task->height, !!(irq_status & hw->err_mask), irq_status,
 			  timeout_flag, abort_flag, (u32)task->table->iova,
 			  ((u32 *)task->table->vaddr)[hw->tb_reg_next],
 			  ccu_decoded_num, ccu_total_dec_num);
@@ -2251,7 +2265,7 @@ static int rkvdec2_hard_ccu_dequeue(struct mpp_taskqueue *queue,
 			list_del_init(&mpp_task->queue_link);
 			/* Wake up the GET thread */
 			wake_up(&mpp_task->wait);
-			if ((irq_status & RKVDEC_INT_ERROR_MASK) || timeout_flag) {
+			if ((irq_status & hw->err_mask) || timeout_flag) {
 				pr_err("session %d task %d irq_status %#x timeout=%u abort=%u\n",
 					mpp_task->session->index, mpp_task->task_index,
 					irq_status, timeout_flag, abort_flag);

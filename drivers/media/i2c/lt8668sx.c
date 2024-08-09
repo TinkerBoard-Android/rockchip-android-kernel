@@ -492,7 +492,7 @@ static u8 i2c_rd8(struct v4l2_subdev *sd, u16 reg)
 	return val;
 }
 
-static void i2c_wr8(struct v4l2_subdev *sd, u16 reg, u8 val)
+static __maybe_unused void i2c_wr8(struct v4l2_subdev *sd, u16 reg, u8 val)
 {
 	i2c_wr(sd, reg, &val, 1);
 }
@@ -890,12 +890,6 @@ static int lt8668sx_s_dv_timings(struct v4l2_subdev *sd,
 	if (lt8668sx_match_timings(lt8668sx, &lt8668sx->timings, timings)) {
 		v4l2_dbg(1, debug, sd, "%s: no change\n", __func__);
 		return 0;
-	}
-
-	if (!v4l2_valid_dv_timings(timings,
-				&lt8668sx_timings_cap, NULL, NULL)) {
-		v4l2_dbg(1, debug, sd, "%s: timings out of range\n", __func__);
-		return -ERANGE;
 	}
 
 	lt8668sx->timings = *timings;

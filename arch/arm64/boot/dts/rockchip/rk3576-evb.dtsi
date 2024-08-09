@@ -116,6 +116,15 @@
 		rockchip,jack-det;
 	};
 
+	edp_sound: edp-sound {
+		status = "disabled";
+		compatible = "rockchip,hdmi";
+		rockchip,mclk-fs = <128>;
+		rockchip,card-name = "rockchip-edp";
+		rockchip,cpu = <&sai6>;
+		rockchip,codec = <&edp 0>;
+	};
+
 	hdmi_sound: hdmi-sound {
 		compatible = "rockchip,hdmi";
 		rockchip,mclk-fs = <128>;
@@ -233,6 +242,10 @@
 
 &cpu_b0 {
 	cpu-supply = <&vdd_cpu_big_s0>;
+};
+
+&crypto {
+	status = "okay";
 };
 
 &display_subsystem {
@@ -751,6 +764,8 @@
 		| RKPM_VCCIO3_RET_EN
 		)
 	>;
+
+	rockchip,regulator-on-before-mem = <&vdd_npu_s0>;
 };
 
 &route_dsi {

@@ -219,6 +219,9 @@ struct rockchip_usb2phy_port_cfg {
  * @ls_filter_con: set linestate filter time.
  * @port_cfgs: usb-phy port configurations.
  * @ls_filter_con: set linestate filter time.
+ * @refclk_fsel: reference clock frequency select,
+ *	true	- select 24 MHz
+ *	false	- select 26 MHz
  * @chg_det: charger detection registers.
  */
 struct rockchip_usb2phy_cfg {
@@ -231,6 +234,7 @@ struct rockchip_usb2phy_cfg {
 	struct usb2phy_reg	clkout_ctl;
 	struct usb2phy_reg	clkout_ctl_phy;
 	struct usb2phy_reg	ls_filter_con;
+	struct usb2phy_reg	refclk_fsel;
 	const struct rockchip_usb2phy_port_cfg	port_cfgs[USB2PHY_NUM_PORTS];
 	const struct rockchip_chg_det_reg	chg_det;
 };
@@ -580,6 +584,31 @@ err_clk_provider:
 	clk_unregister(rphy->clk480m);
 err_ret:
 	return ret;
+}
+
+static int rockchip_usb2phy_refclk_set(struct rockchip_usb2phy *rphy)
+{
+	struct regmap *base = get_reg_base(rphy);
+	struct clk *refclk = of_clk_get_by_name(rphy->dev->of_node, "phyclk");
+	unsigned long rate;
+
+	/* get phy reference clock */
+	rate = clk_get_rate(refclk);
+	dev_info(rphy->dev, "refclk freq %ld\n", rate);
+
+	switch (rate) {
+	case 24000000:
+		property_enable(base, &rphy->phy_cfg->refclk_fsel, true);
+		break;
+	case 26000000:
+		property_enable(base, &rphy->phy_cfg->refclk_fsel, false);
+		break;
+	default:
+		dev_err(rphy->dev, "unsupported refclk freq %ld\n", rate);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static int rockchip_usb2phy_extcon_register(struct rockchip_usb2phy *rphy)
@@ -1255,6 +1284,10 @@ static void rockchip_usb2phy_otg_sm_work(struct work_struct *work)
 			rphy->chg_type = POWER_SUPPLY_TYPE_UNKNOWN;
 			mutex_unlock(&rport->mutex);
 			rockchip_usb2phy_power_on(rport->phy);
+			if (extcon_get_state(rphy->edev, cable)) {
+				extcon_set_state_sync(rphy->edev, cable, false);
+				cable = EXTCON_NONE;
+			}
 			return;
 		} else if (rport->vbus_attached) {
 			dev_dbg(&rport->phy->dev, "vbus_attach\n");
@@ -2379,6 +2412,13 @@ static int rockchip_usb2phy_probe(struct platform_device *pdev)
 		rphy->num_clks = 0;
 	else
 		rphy->num_clks = ret;
+
+	/* Set phy Reference clock frequency */
+	if (rphy->phy_cfg->refclk_fsel.enable) {
+		ret = rockchip_usb2phy_refclk_set(rphy);
+		if (ret)
+			return ret;
+	}
 
 	ret = clk_bulk_prepare_enable(rphy->num_clks, rphy->clks);
 	if (ret)
@@ -4028,10 +4068,11 @@ static const struct rockchip_usb2phy_cfg rk3576_phy_cfgs[] = {
 		.phy_tuning	= rk3576_usb2phy_tuning,
 		.clkout_ctl	= { 0x0008, 0, 0, 1, 0 },
 		.ls_filter_con	= { 0x0020, 19, 0, 0x30100, 0x00020 },
+		.refclk_fsel	= { 0x0004, 2, 0, 0x6, 0x2 },
 		.port_cfgs	= {
 			[USB2PHY_PORT_OTG] = {
 				.phy_sus	= { 0x0000, 8, 0, 0, 0x1d1 },
-				.pipe_phystatus	= { 0x0030, 3, 2, 0, 2 },
+				.pipe_phystatus	= { 0x0030, 15, 0, 0x1100, 0x0189 },
 				.bvalid_det_en	= { 0x00c0, 1, 1, 0, 1 },
 				.bvalid_det_st	= { 0x00c4, 1, 1, 0, 1 },
 				.bvalid_det_clr = { 0x00c8, 1, 1, 0, 1 },
@@ -4082,10 +4123,11 @@ static const struct rockchip_usb2phy_cfg rk3576_phy_cfgs[] = {
 		.phy_tuning	= rk3576_usb2phy_tuning,
 		.clkout_ctl	= { 0x2008, 0, 0, 1, 0 },
 		.ls_filter_con	= { 0x2020, 19, 0, 0x30100, 0x00020 },
+		.refclk_fsel	= { 0x2004, 2, 0, 0x6, 0x2 },
 		.port_cfgs	= {
 			[USB2PHY_PORT_OTG] = {
 				.phy_sus	= { 0x2000, 8, 0, 0, 0x1d1 },
-				.pipe_phystatus	= { 0x0038, 3, 2, 0, 2 },
+				.pipe_phystatus	= { 0x0038, 15, 0, 0x1100, 0x0189 },
 				.bvalid_det_en	= { 0x20c0, 1, 1, 0, 1 },
 				.bvalid_det_st	= { 0x20c4, 1, 1, 0, 1 },
 				.bvalid_det_clr = { 0x20c8, 1, 1, 0, 1 },
@@ -4143,7 +4185,7 @@ static const struct rockchip_usb2phy_cfg rk3588_phy_cfgs[] = {
 		.port_cfgs	= {
 			[USB2PHY_PORT_OTG] = {
 				.phy_sus	= { 0x000c, 11, 11, 0, 1 },
-				.pipe_phystatus	= { 0x001c, 3, 2, 0, 2 },
+				.pipe_phystatus	= { 0x001c, 15, 0, 0x1100, 0x0189 },
 				.bvalid_det_en	= { 0x0080, 1, 1, 0, 1 },
 				.bvalid_det_st	= { 0x0084, 1, 1, 0, 1 },
 				.bvalid_det_clr = { 0x0088, 1, 1, 0, 1 },
@@ -4197,7 +4239,7 @@ static const struct rockchip_usb2phy_cfg rk3588_phy_cfgs[] = {
 		.port_cfgs	= {
 			[USB2PHY_PORT_OTG] = {
 				.phy_sus	= { 0x000c, 11, 11, 0, 1 },
-				.pipe_phystatus	= { 0x0034, 3, 2, 0, 2 },
+				.pipe_phystatus	= { 0x0034, 15, 0, 0x1100, 0x0189 },
 				.bvalid_det_en	= { 0x0080, 1, 1, 0, 1 },
 				.bvalid_det_st	= { 0x0084, 1, 1, 0, 1 },
 				.bvalid_det_clr = { 0x0088, 1, 1, 0, 1 },

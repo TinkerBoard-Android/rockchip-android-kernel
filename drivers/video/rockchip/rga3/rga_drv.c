@@ -127,10 +127,6 @@ int rga_mpi_commit(struct rga_mpi_job_t *mpi_job)
 		return -EINVAL;
 	}
 
-	/*
-	 * The mpi commit will use the request repeatedly, so an additional
-	 * get() is added here.
-	 */
 	rga_request_get(request);
 	mutex_unlock(&request_manager->lock);
 
@@ -217,13 +213,6 @@ int rga_mpi_commit(struct rga_mpi_job_t *mpi_job)
 		goto err_put_request;
 	}
 
-	if ((mpi_job->dma_buf_src0 != NULL) && (mpi_cmd.src.yrgb_addr > 0))
-		rga_mm_release_buffer(mpi_cmd.src.yrgb_addr);
-	if ((mpi_job->dma_buf_src1 != NULL) && (mpi_cmd.pat.yrgb_addr > 0))
-		rga_mm_release_buffer(mpi_cmd.pat.yrgb_addr);
-	if ((mpi_job->dma_buf_dst != NULL) && (mpi_cmd.dst.yrgb_addr > 0))
-		rga_mm_release_buffer(mpi_cmd.dst.yrgb_addr);
-
 	/* copy dst info to mpi job for next node */
 	if (mpi_job->output != NULL) {
 		mpi_job->output->x_offset = mpi_cmd.dst.x_offset;
@@ -236,9 +225,14 @@ int rga_mpi_commit(struct rga_mpi_job_t *mpi_job)
 		mpi_job->output->format = mpi_cmd.dst.format;
 	}
 
-	return 0;
-
 err_put_request:
+	if ((mpi_job->dma_buf_src0 != NULL) && (mpi_cmd.src.yrgb_addr > 0))
+		rga_mm_release_buffer(mpi_cmd.src.yrgb_addr);
+	if ((mpi_job->dma_buf_src1 != NULL) && (mpi_cmd.pat.yrgb_addr > 0))
+		rga_mm_release_buffer(mpi_cmd.pat.yrgb_addr);
+	if ((mpi_job->dma_buf_dst != NULL) && (mpi_cmd.dst.yrgb_addr > 0))
+		rga_mm_release_buffer(mpi_cmd.dst.yrgb_addr);
+
 	mutex_lock(&request_manager->lock);
 	rga_request_put(request);
 	mutex_unlock(&request_manager->lock);
@@ -1372,15 +1366,17 @@ static int rga_drv_probe(struct platform_device *pdev)
 		scheduler->data = &rga3_data;
 	} else if (scheduler->core == RGA2_SCHEDULER_CORE0 ||
 		   scheduler->core == RGA2_SCHEDULER_CORE1) {
-		if (!strcmp(scheduler->version.str, "3.3.87975"))
+		if (!strcmp(scheduler->version.str, "3.3.87975")) {
 			scheduler->data = &rga2e_1106_data;
-		else if (!strcmp(scheduler->version.str, "3.6.92812") ||
-			 !strcmp(scheduler->version.str, "3.7.93215"))
+		} else if (!strcmp(scheduler->version.str, "3.6.92812") ||
+			 !strcmp(scheduler->version.str, "3.7.93215")) {
 			scheduler->data = &rga2e_iommu_data;
-		else if (!strcmp(scheduler->version.str, "3.e.19357"))
+		} else if (!strcmp(scheduler->version.str, "3.e.19357")) {
 			scheduler->data = &rga2p_iommu_data;
-		else
+			rga_hw_set_issue_mask(scheduler, RGA_HW_ISSUE_DIS_AUTO_RST);
+		} else {
 			scheduler->data = &rga2e_data;
+		}
 	}
 
 	data->scheduler[data->num_of_scheduler] = scheduler;
@@ -1399,6 +1395,12 @@ static int rga_drv_probe(struct platform_device *pdev)
 			dev_err(dev, "failed to attach iommu\n");
 			scheduler->iommu_info = NULL;
 		}
+
+		dma_set_mask(dev, DMA_BIT_MASK(40));
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(32));
+	} else {
+		dma_set_mask(dev, DMA_BIT_MASK(32));
+		dma_set_coherent_mask(dev, DMA_BIT_MASK(32));
 	}
 
 	platform_set_drvdata(pdev, scheduler);

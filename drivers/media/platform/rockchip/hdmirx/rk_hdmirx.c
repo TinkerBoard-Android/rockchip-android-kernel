@@ -81,7 +81,10 @@ MODULE_PARM_DESC(low_latency, "low_latency en(0-1)");
 #define NO_LOCK_CFG_RETRY_TIME		300
 #define WAIT_LOCK_STABLE_TIME		20
 #define WAIT_AVI_PKT_TIME		300
-#define BIG_CPU_PHY_ID			5
+#define LOGIC_CPU_ID_1			1
+#define LOGIC_CPU_ID_2			2
+#define LOGIC_CPU_ID_5			5
+#define PHY_CPU_ID_4			4
 
 #define is_validfs(x) (x == 32000 || \
 			x == 44100 || \
@@ -793,8 +796,8 @@ static void hdmirx_get_color_space(struct rk_hdmirx_dev *hdmirx_dev)
 	 */
 	hdmirx_readl(hdmirx_dev, PKTDEC_AVIIF_PH2_1);
 	val = hdmirx_readl(hdmirx_dev, PKTDEC_AVIIF_PB3_0);
-	EC2_0 = (val & EXTEND_COLORIMETRY) >> 20;
-	C1_C0 = (val & COLORIMETRY_MASK) >> 14;
+	EC2_0 = (val & EXTEND_COLORIMETRY) >> 28;
+	C1_C0 = (val & COLORIMETRY_MASK) >> 22;
 	if (hdmirx_dev->pix_fmt == HDMIRX_RGB888) {
 		if (EC2_0 == HDMIRX_ADOBE_RGB ||
 		    EC2_0 == HDMIRX_BT2020_RGB_OR_YCC)
@@ -824,14 +827,14 @@ static void hdmirx_get_color_space(struct rk_hdmirx_dev *hdmirx_dev)
 
 static bool IsColorRangeLimitFormat(uint32_t width, uint32_t height, bool interlace)
 {
-	if (((width == 720) && (height == 240) && (interlace == false)) \
-	 || ((width == 720) && (height == 1201) && (interlace == false)) \
-	 || ((width == 720) && (height == 480) && (interlace == true)) \
-	 || ((width == 720) && (height == 576) && (interlace == true)) \
-	 || ((width == 1440) && (height == 480) && (interlace == true)) \
-	 || ((width == 1440) && (height == 576) && (interlace == true)) \
-	 || ((width == 1920) && (height == 1080) && (interlace == true)) \
-	 || ((width == 2880) && (height == 480) && (interlace == true)) \
+	if (((width == 720) && (height == 240) && (interlace == false))
+	 || ((width == 720) && (height == 1201) && (interlace == false))
+	 || ((width == 720) && (height == 480) && (interlace == true))
+	 || ((width == 720) && (height == 576) && (interlace == true))
+	 || ((width == 1440) && (height == 480) && (interlace == true))
+	 || ((width == 1440) && (height == 576) && (interlace == true))
+	 || ((width == 1920) && (height == 1080) && (interlace == true))
+	 || ((width == 2880) && (height == 480) && (interlace == true))
 	 || ((width == 3840) && (height == 2160) && (interlace == false))) {
 		return true;
 	} else {
@@ -2192,6 +2195,7 @@ static void hdmirx_free_fence(struct rk_hdmirx_dev *hdmirx_dev)
 	unsigned long lock_flags = 0;
 	struct hdmirx_fence *vb_fence, *done_fence;
 	struct v4l2_device *v4l2_dev = &hdmirx_dev->v4l2_dev;
+	struct files_struct *files = current->files;
 	LIST_HEAD(local_list);
 
 	spin_lock_irqsave(&hdmirx_dev->fence_lock, lock_flags);
@@ -2213,7 +2217,8 @@ static void hdmirx_free_fence(struct rk_hdmirx_dev *hdmirx_dev)
 		v4l2_dbg(2, debug, v4l2_dev, "%s: free qbuf_fence fd:%d\n",
 			 __func__, vb_fence->fence_fd);
 		dma_fence_put(vb_fence->fence);
-		put_unused_fd(vb_fence->fence_fd);
+		if (files)
+			put_unused_fd(vb_fence->fence_fd);
 		kfree(vb_fence);
 	}
 
@@ -2226,7 +2231,8 @@ static void hdmirx_free_fence(struct rk_hdmirx_dev *hdmirx_dev)
 		v4l2_dbg(2, debug, v4l2_dev, "%s: free done_fence fd:%d\n",
 			 __func__, done_fence->fence_fd);
 		dma_fence_put(done_fence->fence);
-		put_unused_fd(done_fence->fence_fd);
+		if (files)
+			put_unused_fd(done_fence->fence_fd);
 		kfree(done_fence);
 	}
 }
@@ -2423,8 +2429,10 @@ static int hdmirx_get_hdcp_auth_status(struct rk_hdmirx_dev *hdmirx_dev)
 {
 	u32 val;
 
+	val = hdmirx_readl(hdmirx_dev, HDCP2_ESM_P0_GPIO_OUT) & BIT(2);
+	if (val)
+		return 1;
 	hdmirx_clear_interrupt(hdmirx_dev, HDCP_INT_CLEAR, 0xffffffff);
-	msleep(200);
 	val = hdmirx_readl(hdmirx_dev, HDCP_INT_STATUS) & 0x40;
 
 	return val ? 1 : 0;
@@ -3767,6 +3775,38 @@ static void hdmirx_work_wdt_config(struct work_struct *work)
 	v4l2_dbg(3, debug, v4l2_dev, "hb\n");
 }
 
+static void hdmirx_get_phy_cpuid_func(void *_hdmirx_dev)
+{
+	struct rk_hdmirx_dev *hdmirx_dev = _hdmirx_dev;
+	u64 mpidr = read_cpuid_mpidr() & MPIDR_HWID_BITMASK;
+
+	hdmirx_dev->phy_cpuid = (mpidr >> 8) & 0xF;
+	dev_info(hdmirx_dev->dev, "%s: mpidr: 0x%010lx, phy_cpuid:%#x",
+		 __func__, (unsigned long)mpidr, hdmirx_dev->phy_cpuid);
+}
+
+static void hdmirx_get_phy_cpuid(struct rk_hdmirx_dev *hdmirx_dev, int cpu)
+{
+	smp_call_function_single(cpu, hdmirx_get_phy_cpuid_func, hdmirx_dev, true);
+}
+
+static void hdmirx_get_correct_phy_cpuid(struct rk_hdmirx_dev *hdmirx_dev)
+{
+	int cpu;
+
+	cpu = LOGIC_CPU_ID_5;
+	hdmirx_get_phy_cpuid(hdmirx_dev, cpu);
+	if (hdmirx_dev->phy_cpuid < PHY_CPU_ID_4) {
+		for (cpu = LOGIC_CPU_ID_1; cpu < LOGIC_CPU_ID_5; cpu++) {
+			hdmirx_get_phy_cpuid(hdmirx_dev, cpu);
+			if (hdmirx_dev->phy_cpuid >= PHY_CPU_ID_4)
+				break;
+		}
+	}
+
+	hdmirx_dev->bound_cpu = cpu;
+}
+
 static irqreturn_t hdmirx_5v_det_irq_handler(int irq, void *dev_id)
 {
 	struct rk_hdmirx_dev *hdmirx_dev = dev_id;
@@ -4666,7 +4706,7 @@ static int hdmirx_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct hdmirx_cec_data cec_data;
 	struct cpumask cpumask;
-	int ret, irq, cpu_aff, phy_cpuid, i;
+	int ret, irq, cpu_aff;
 
 	hdmirx_dev = devm_kzalloc(dev, sizeof(*hdmirx_dev), GFP_KERNEL);
 	if (!hdmirx_dev)
@@ -4693,27 +4733,14 @@ static int hdmirx_probe(struct platform_device *pdev)
 	 * in order to quickly respond to FIQ and prevent them from affecting
 	 * each other.
 	 */
-	for (i = 0; i < 8; i++) {
-		cpu_aff = sip_cpu_logical_map_mpidr(i);
-		phy_cpuid = (cpu_aff >> 8) & 0xf;
-		if (phy_cpuid == BIG_CPU_PHY_ID) {
-			hdmirx_dev->bound_cpu = i;
-			hdmirx_dev->phy_cpuid = phy_cpuid;
-			break;
-		}
-	}
+	hdmirx_get_correct_phy_cpuid(hdmirx_dev);
 
-	if (!hdmirx_dev->phy_cpuid) {
-		dev_info(dev, "%s: Failed to get phy_cpuid, use default BIG_CPU_PHY_ID!\n",
-				__func__);
-		cpu_aff = BIG_CPU_PHY_ID << 8;
-		hdmirx_dev->bound_cpu = BIG_CPU_PHY_ID;
-		hdmirx_dev->phy_cpuid = BIG_CPU_PHY_ID;
-	}
+	if (hdmirx_dev->phy_cpuid < PHY_CPU_ID_4)
+		dev_warn(dev, "%s: Failed to bind to big cpu!\n", __func__);
 
+	cpu_aff = hdmirx_dev->phy_cpuid << 8;
 	sip_fiq_control(RK_SIP_FIQ_CTRL_SET_AFF, RK_IRQ_HDMIRX_HDMI, cpu_aff);
-	hdmirx_dev->phy_cpuid = (cpu_aff >> 8) & 0xf;
-	hdmirx_dev->wdt_cfg_bound_cpu = hdmirx_dev->bound_cpu + 1;
+	hdmirx_dev->wdt_cfg_bound_cpu = LOGIC_CPU_ID_2;
 	dev_info(dev, "%s: cpu_aff:%#x, Bound_cpu:%d, wdt_cfg_bound_cpu:%d, phy_cpuid:%d\n",
 			__func__, cpu_aff,
 			hdmirx_dev->bound_cpu,

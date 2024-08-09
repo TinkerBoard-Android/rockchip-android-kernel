@@ -2080,6 +2080,8 @@ static void rkcif_assign_new_buffer_init_toisp(struct rkcif_stream *stream,
 			}
 		} else {
 			stream->next_buf_toisp = stream->curr_buf_toisp;
+			if (stream->lack_buf_cnt < 2)
+				stream->lack_buf_cnt++;
 		}
 	}
 
@@ -2606,8 +2608,6 @@ static void rkcif_assign_new_buffer_init(struct rkcif_stream *stream,
 					 __func__, __LINE__, stream->id, stream->next_buf->vb.vb2_buf.index);
 				list_del(&stream->next_buf->queue);
 				atomic_inc(&buf_stream->sub_stream_buf_cnt);
-			} else if (stream->curr_buf) {
-				stream->next_buf = stream->curr_buf;
 			}
 		}
 
@@ -5080,6 +5080,7 @@ static void rkcif_free_fence(struct rkcif_stream *stream)
 	unsigned long lock_flags = 0;
 	struct rkcif_fence *vb_fence, *done_fence;
 	struct v4l2_device *v4l2_dev = &stream->cifdev->v4l2_dev;
+	struct files_struct *files = current->files;
 	LIST_HEAD(local_list);
 
 	spin_lock_irqsave(&stream->fence_lock, lock_flags);
@@ -5100,8 +5101,10 @@ static void rkcif_free_fence(struct rkcif_stream *stream)
 		v4l2_dbg(2, rkcif_debug, v4l2_dev, "%s: free qbuf_fence fd:%d\n",
 			 __func__, vb_fence->fence_fd);
 		dma_fence_put(vb_fence->fence);
-		put_unused_fd(vb_fence->fence_fd);
-		close_fd(vb_fence->fence_fd);
+		if (files) {
+			put_unused_fd(vb_fence->fence_fd);
+			close_fd(vb_fence->fence_fd);
+		}
 		kfree(vb_fence);
 	}
 
@@ -5115,8 +5118,10 @@ static void rkcif_free_fence(struct rkcif_stream *stream)
 		v4l2_dbg(2, rkcif_debug, v4l2_dev, "%s: free done_fence fd:%d\n",
 			 __func__, done_fence->fence_fd);
 		dma_fence_put(done_fence->fence);
-		put_unused_fd(done_fence->fence_fd);
-		close_fd(done_fence->fence_fd);
+		if (files) {
+			put_unused_fd(done_fence->fence_fd);
+			close_fd(done_fence->fence_fd);
+		}
 		kfree(done_fence);
 	}
 }

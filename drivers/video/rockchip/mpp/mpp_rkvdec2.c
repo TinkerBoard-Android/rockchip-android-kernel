@@ -588,6 +588,7 @@ static int rkvdec2_isr(struct mpp_dev *mpp)
 	struct rkvdec2_task *task = NULL;
 	struct mpp_task *mpp_task = mpp->cur_task;
 	struct rkvdec2_dev *dec = to_rkvdec2_dev(mpp);
+	struct rkvdec_link_info *link_info = mpp->var->hw_info->link_info;
 
 	/* FIXME use a spin lock here */
 	if (!mpp_task) {
@@ -601,8 +602,7 @@ static int rkvdec2_isr(struct mpp_dev *mpp)
 	task->irq_status = mpp->irq_status;
 
 	mpp_debug(DEBUG_IRQ_STATUS, "irq_status: %08x\n", task->irq_status);
-	err_mask = RKVDEC_COLMV_REF_ERR_STA | RKVDEC_BUF_EMPTY_STA |
-		   RKVDEC_TIMEOUT_STA | RKVDEC_ERROR_STA;
+	err_mask = link_info->err_mask;
 	if (err_mask & task->irq_status) {
 		atomic_inc(&mpp->reset_request);
 		if (mpp_debug_unlikely(DEBUG_DUMP_ERR_REG)) {
@@ -1416,14 +1416,30 @@ static int rkvdec_vdpu383_reset(struct mpp_dev *mpp)
 {
 	struct rkvdec2_dev *dec = to_rkvdec2_dev(mpp);
 	struct rkvdec_link_dev *link = dec->link_dec;
+	int ret = 0;
+	u32 irq_status = 0;
 
 	mpp_debug_enter();
 
+	/* disable irq */
+	writel(link->info->ip_en_val & BIT(15), link->reg_base + link->info->ip_en_base);
 	/* use ip reset to reset core and mmu */
 	writel(link->info->ip_reset_en, link->reg_base + link->info->ip_reset_base);
-	udelay(5);
+	ret = readl_relaxed_poll_timeout(link->reg_base + link->info->status_base,
+					 irq_status,
+					 irq_status & 0x800,
+					 0, 200);
+	if (ret)
+		dev_err(mpp->dev, "reset timeout\n");
 	/* clear reset ready status bit */
 	writel(link->info->ip_reset_mask, link->reg_base + link->info->status_base);
+
+	/* clear irq and status */
+	writel_relaxed(0xffff0000, link->reg_base + link->info->irq_base);
+	writel_relaxed(0xffff0000, link->reg_base + link->info->status_base);
+
+	/* enable irq */
+	writel(link->info->ip_en_val, link->reg_base + link->info->ip_en_base);
 
 	mpp_debug_leave();
 
@@ -1863,6 +1879,7 @@ static int rkvdec2_probe_default(struct platform_device *pdev)
 	struct rkvdec2_dev *dec = NULL;
 	struct mpp_dev *mpp = NULL;
 	const struct of_device_id *match = NULL;
+	irq_handler_t irq_proc = NULL;
 	int ret = 0;
 
 	dec = devm_kzalloc(dev, sizeof(*dec), GFP_KERNEL);
@@ -1887,20 +1904,18 @@ static int rkvdec2_probe_default(struct platform_device *pdev)
 	rkvdec2_alloc_rcbbuf(pdev, dec);
 	rkvdec2_link_init(pdev, dec);
 
+	irq_proc = mpp_dev_irq;
 	if (dec->link_dec && (mpp->task_capacity > 1)) {
-		ret = devm_request_threaded_irq(dev, mpp->irq,
-						rkvdec2_link_irq_proc, NULL,
-						IRQF_SHARED, dev_name(dev), mpp);
+		irq_proc = rkvdec2_link_irq_proc;
 		mpp->dev_ops->process_task = rkvdec2_link_process_task;
 		mpp->dev_ops->wait_result = rkvdec2_link_wait_result;
 		mpp->dev_ops->task_worker = rkvdec2_link_worker;
 		mpp->dev_ops->deinit = rkvdec2_link_session_deinit;
 		kthread_init_work(&mpp->work, rkvdec2_link_worker);
-	} else {
-		ret = devm_request_threaded_irq(dev, mpp->irq,
-						mpp_dev_irq, mpp_dev_isr_sched,
-						IRQF_SHARED, dev_name(dev), mpp);
 	}
+
+	ret = devm_request_threaded_irq(dev, mpp->irq, irq_proc, NULL,
+					IRQF_SHARED, dev_name(dev), mpp);
 	if (ret) {
 		dev_err(dev, "register interrupter runtime failed\n");
 		return -EINVAL;
@@ -2010,6 +2025,14 @@ static int __maybe_unused rkvdec2_runtime_suspend(struct device *dev)
 				/* disable mmu irq */
 				disable_irq(mpp->iommu_info->irq);
 		}
+
+		/*
+		 * to ensure hardware is fully idle,
+		 * reset and wait for reset ready before suspend.
+		 */
+		if (mpp->hw_ops->reset)
+			mpp->hw_ops->reset(mpp);
+		mpp_iommu_refresh(mpp->iommu_info, mpp->dev);
 
 		if (mpp->hw_ops->clk_off)
 			mpp->hw_ops->clk_off(mpp);

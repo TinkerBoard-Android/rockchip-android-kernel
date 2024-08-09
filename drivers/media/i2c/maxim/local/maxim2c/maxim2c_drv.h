@@ -9,12 +9,14 @@
 
 #include <linux/i2c.h>
 #include <linux/i2c-mux.h>
+#include <linux/videodev2.h>
 #include <linux/workqueue.h>
 #include <linux/regulator/consumer.h>
 #include <linux/rk-camera-module.h>
 #include <media/media-entity.h>
 #include <media/v4l2-async.h>
 #include <media/v4l2-ctrls.h>
+#include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-fwnode.h>
 
@@ -32,6 +34,10 @@
 /* power supply numbers */
 #define MAXIM2C_NUM_SUPPLIES		2
 
+/* Private v4l2 event */
+#define V4L2_EVENT_HOT_PLUG	\
+		(V4L2_EVENT_PRIVATE_START + 0x10)
+
 enum {
 	MAXIM2C_HOT_PLUG_OUT = 0,
 	MAXIM2C_HOT_PLUG_IN,
@@ -41,6 +47,21 @@ struct maxim2c_hot_plug_work {
 	struct workqueue_struct *state_check_wq;
 	struct delayed_work state_d_work;
 	u32 hot_plug_state;
+};
+
+struct maxim2c_vc_info {
+	u32 enable; // 0: disable, !0: enable
+
+	u32 width;
+	u32 height;
+	u32 bus_fmt;
+
+	/*
+	 * the following are optional parameters, user-defined data types
+	 *   default 0: invalid parameter
+	 */
+	u32 data_type;
+	u32 data_bit;
 };
 
 struct maxim2c_mode {
@@ -55,6 +76,7 @@ struct maxim2c_mode {
 	u32 bpp;
 	const struct regval *reg_list;
 	u32 vc[PAD_MAX];
+	struct maxim2c_vc_info vc_info[PAD_MAX];
 	struct v4l2_rect crop_rect;
 };
 
@@ -81,6 +103,8 @@ typedef struct maxim2c {
 	struct v4l2_fwnode_endpoint bus_cfg;
 
 	u32 chipid;
+
+	bool remote_routing_to_isp;
 
 	bool streaming;
 	bool power_on;

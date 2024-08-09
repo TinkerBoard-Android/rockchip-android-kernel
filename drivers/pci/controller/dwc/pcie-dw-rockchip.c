@@ -21,6 +21,7 @@
 #include <linux/regmap.h>
 #include <linux/reset.h>
 #include <linux/rfkill-wlan.h>
+#include <linux/aspm_ext.h>
 
 #include "pcie-designware.h"
 #include "../rockchip-pcie-dma.h"
@@ -782,7 +783,7 @@ static int rk_pcie_request_sys_irq(struct rk_pcie *rk_pcie,
 }
 
 static const struct rk_pcie_of_data rk3528_pcie_rc_of_data = {
-	.msi_vector_num = 8,
+	.msi_vector_num = 32,
 };
 
 static const struct of_device_id rk_pcie_of_match[] = {
@@ -1201,6 +1202,12 @@ retry_regulator:
 
 	reset_control_deassert(rk_pcie->rsts);
 
+	ret = rk_pcie_clk_init(rk_pcie);
+	if (ret) {
+		dev_err(dev, "clock init failed\n");
+		goto disable_phy;
+	}
+
 	/*
 	 * Misc interrupts was masked by default. However, they will be
 	 * unmasked by FW before jumpping into kernel. Mask all misc interrupts,
@@ -1212,16 +1219,10 @@ retry_regulator:
 	ret = rk_pcie_request_sys_irq(rk_pcie, pdev);
 	if (ret) {
 		dev_err(dev, "pcie irq init failed\n");
-		goto disable_phy;
+		goto disable_clk;
 	}
 
 	platform_set_drvdata(pdev, rk_pcie);
-
-	ret = rk_pcie_clk_init(rk_pcie);
-	if (ret) {
-		dev_err(dev, "clock init failed\n");
-		goto disable_phy;
-	}
 
 	dw_pcie_dbi_ro_wr_en(pci);
 
@@ -1336,10 +1337,11 @@ remove_rst_wq:
 remove_irq_domain:
 	if (rk_pcie->irq_domain)
 		irq_domain_remove(rk_pcie->irq_domain);
+disable_clk:
+	clk_bulk_disable_unprepare(rk_pcie->clk_cnt, rk_pcie->clks);
 disable_phy:
 	phy_power_off(rk_pcie->phy);
 	phy_exit(rk_pcie->phy);
-	clk_bulk_disable_unprepare(rk_pcie->clk_cnt, rk_pcie->clks);
 disable_vpcie3v3:
 	rk_pcie_disable_power(rk_pcie);
 release_driver:
@@ -1593,6 +1595,38 @@ err:
 
 	return ret;
 }
+
+int rockchip_dw_pcie_pm_ctrl_for_user(struct pci_dev *dev, enum rockchip_pcie_pm_ctrl_flag flag)
+{
+	struct dw_pcie_rp *pp;
+	struct dw_pcie *pci;
+	struct rk_pcie *rk_pcie;
+
+	if (!dev || !dev->bus || !dev->bus->sysdata) {
+		pr_err("%s input invalid\n", __func__);
+		return -EINVAL;
+	}
+
+	pp = dev->bus->sysdata;
+	pci = to_dw_pcie_from_pp(pp);
+	rk_pcie = to_rk_pcie(pci);
+
+	switch (flag) {
+	case ROCKCHIP_PCIE_PM_CTRL_RESET:
+		rockchip_dw_pcie_suspend(rk_pcie->pci->dev);
+		rockchip_dw_pcie_resume(rk_pcie->pci->dev);
+		break;
+	default:
+		dev_err(rk_pcie->pci->dev, "%s flag=%d invalid\n", __func__, flag);
+		return -EINVAL;
+	}
+
+	dev_info(rk_pcie->pci->dev, "%s ltssm=%x\n", __func__,
+		 rk_pcie_readl_apb(rk_pcie, PCIE_CLIENT_LTSSM_STATUS));
+
+	return 0;
+}
+EXPORT_SYMBOL(rockchip_dw_pcie_pm_ctrl_for_user);
 
 #ifdef CONFIG_PCIEASPM
 static int rockchip_dw_pcie_prepare(struct device *dev)

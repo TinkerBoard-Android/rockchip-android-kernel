@@ -200,15 +200,16 @@ static int rockchip_drm_aclk_adjust(struct drm_device *dev,
 		funcs = priv->crtc_funcs[drm_crtc_index(crtc)];
 		if (funcs && funcs->set_aclk) {
 			if (vop_bw_info->plane_num_4k || crtc_num > 1 ||
-			    crtc->state->adjusted_mode.crtc_hdisplay > 4096) {
-				funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_ADVANCED_MODE);
+			    crtc->state->adjusted_mode.crtc_hdisplay > 2560 ||
+			    crtc->state->adjusted_mode.crtc_vdisplay > 2560) {
+				funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_ADVANCED_MODE, vop_bw_info);
 				priv->aclk_adjust_frame_num = 2;
 			} else {
 				if (priv->aclk_adjust_frame_num >= 1) {
-					funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_ADVANCED_MODE);
+					funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_ADVANCED_MODE, vop_bw_info);
 					priv->aclk_adjust_frame_num--;
 				} else {
-					funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_NORMAL_MODE);
+					funcs->set_aclk(crtc, ROCKCHIP_VOP_ACLK_NORMAL_MODE, vop_bw_info);
 				}
 			}
 		}
@@ -387,6 +388,20 @@ static const struct drm_mode_config_funcs rockchip_drm_mode_config_funcs = {
 	.atomic_check = rockchip_atomic_check,
 	.atomic_commit = drm_atomic_helper_commit,
 };
+
+struct drm_framebuffer *
+rockchip_drm_framebuffer_init(struct drm_device *dev,
+			      const struct drm_mode_fb_cmd2 *mode_cmd,
+			      struct drm_gem_object *obj)
+{
+	struct drm_framebuffer *fb;
+
+	fb = rockchip_fb_alloc(dev, mode_cmd, &obj, 1);
+	if (IS_ERR(fb))
+		return ERR_CAST(fb);
+
+	return fb;
+}
 
 void rockchip_drm_mode_config_init(struct drm_device *dev)
 {

@@ -65,6 +65,7 @@ struct system_monitor_attr {
 
 struct system_monitor {
 	struct device *dev;
+	struct cpumask early_suspend_offline_cpus;
 	struct cpumask video_4k_offline_cpus;
 	struct cpumask status_offline_cpus;
 	struct cpumask temp_offline_cpus;
@@ -823,7 +824,9 @@ static int monitor_device_parse_status_config(struct device_node *np,
 {
 	int ret;
 
-	ret = of_property_read_u32(np, "rockchip,video-4k-freq",
+	ret = of_property_read_u32(np, "rockchip,early-suspend-freq",
+				   &info->early_suspend_freq);
+	ret &= of_property_read_u32(np, "rockchip,video-4k-freq",
 				   &info->video_4k_freq);
 	ret &= of_property_read_u32(np, "rockchip,reboot-freq",
 				    &info->reboot_freq);
@@ -840,8 +843,22 @@ static int monitor_device_parse_status_config(struct device_node *np,
 static int monitor_device_parse_early_min_volt(struct device_node *np,
 					       struct monitor_dev_info *info)
 {
-	return of_property_read_u32(np, "rockchip,early-min-microvolt",
-				    &info->early_min_volt);
+	const char *prop_name = "rockchip,early-min-microvolt";
+	int count = 0, ret = 0;
+
+	count = of_property_count_u32_elems(np, prop_name);
+	if (count <= 0)
+		return -EINVAL;
+
+	if (count > 1) {
+		ret = of_property_read_u32_index(np, prop_name, 1,
+						 &info->early_min_volt[1]);
+		if (ret)
+			return ret;
+	}
+
+	return of_property_read_u32_index(np, prop_name, 0,
+					  &info->early_min_volt[0]);
 }
 
 static int monitor_device_parse_dt(struct device *dev,
@@ -886,17 +903,21 @@ EXPORT_SYMBOL(rockchip_monitor_cpu_low_temp_adjust);
 int rockchip_monitor_cpu_high_temp_adjust(struct monitor_dev_info *info,
 					  bool is_high)
 {
-	if (!info->high_limit)
-		return 0;
-
 	if (!freq_qos_request_active(&info->max_temp_freq_req))
 		return 0;
 
 	if (info->high_limit_table) {
-		freq_qos_update_request(&info->max_temp_freq_req,
-					info->high_limit / 1000);
+		if (info->high_limit)
+			freq_qos_update_request(&info->max_temp_freq_req,
+						info->high_limit / 1000);
+		else
+			freq_qos_update_request(&info->max_temp_freq_req,
+						FREQ_QOS_MAX_DEFAULT_VALUE);
 		return 0;
 	}
+
+	if (!info->high_limit)
+		return 0;
 
 	if (is_high)
 		freq_qos_update_request(&info->max_temp_freq_req,
@@ -935,14 +956,18 @@ int rockchip_monitor_dev_high_temp_adjust(struct monitor_dev_info *info,
 	if (!dev_pm_qos_request_active(&info->dev_max_freq_req))
 		return 0;
 
-	if (!info->high_limit)
-		return 0;
-
 	if (info->high_limit_table) {
-		dev_pm_qos_update_request(&info->dev_max_freq_req,
-					  info->high_limit / 1000);
+		if (info->high_limit)
+			dev_pm_qos_update_request(&info->dev_max_freq_req,
+						  info->high_limit / 1000);
+		else
+			dev_pm_qos_update_request(&info->dev_max_freq_req,
+						  PM_QOS_MAX_FREQUENCY_DEFAULT_VALUE);
 		return 0;
 	}
+
+	if (!info->high_limit)
+		return 0;
 
 	if (is_high)
 		dev_pm_qos_update_request(&info->dev_max_freq_req,
@@ -1186,18 +1211,48 @@ rockchip_system_monitor_early_regulator_init(struct monitor_dev_info *info)
 	struct rockchip_opp_info *opp_info = devp->opp_info;
 	struct regulator *reg;
 	struct regulator_dev *rdev;
+	int i;
 
 	if (!opp_info || !opp_info->regulators)
 		return;
-	if (!info->early_min_volt)
+
+	for (i = 0; i < opp_info->regulator_count; i++) {
+		if (!info->early_min_volt[i] || i >= 2)
+			continue;
+		rdev = opp_info->regulators[i]->rdev;
+		reg = regulator_get(NULL, get_rdev_name(rdev));
+		if (!IS_ERR_OR_NULL(reg)) {
+			info->early_reg[i] = reg;
+			reg->voltage[PM_SUSPEND_ON].min_uV = info->early_min_volt[i];
+			reg->voltage[PM_SUSPEND_ON].max_uV = rdev->constraints->max_uV;
+		}
+	}
+}
+
+static void
+rockchip_system_monitor_early_regulator_uninit(struct monitor_dev_info *info)
+{
+	struct monitor_dev_profile *devp = info->devp;
+	struct rockchip_opp_info *opp_info = devp->opp_info;
+	struct regulator_dev *rdev;
+	int min_uV, max_uV;
+	int ret, i;
+
+	if (!opp_info || !opp_info->regulators)
 		return;
 
-	rdev = opp_info->regulators[0]->rdev;
-	reg = regulator_get(NULL, get_rdev_name(rdev));
-	if (!IS_ERR_OR_NULL(reg)) {
-		info->early_reg = reg;
-		reg->voltage[PM_SUSPEND_ON].min_uV = info->early_min_volt;
-		reg->voltage[PM_SUSPEND_ON].max_uV = rdev->constraints->max_uV;
+	for (i = 0; i < opp_info->regulator_count; i++) {
+		if (!info->early_reg[i] || i >= 2)
+			continue;
+		rdev = info->early_reg[i]->rdev;
+		min_uV = rdev->constraints->min_uV;
+		max_uV = rdev->constraints->max_uV;
+		ret = regulator_set_voltage(info->early_reg[i], min_uV, max_uV);
+		if (ret)
+			dev_err(&rdev->dev,
+				"%s: failed to set volt\n", __func__);
+		regulator_put(info->early_reg[i]);
+		info->early_reg[i] = NULL;
 	}
 }
 
@@ -1338,6 +1393,7 @@ void rockchip_system_monitor_unregister(struct monitor_dev_info *info)
 		return;
 
 	down_write(&mdev_list_sem);
+	rockchip_system_monitor_early_regulator_uninit(info);
 	list_del(&info->node);
 	up_write(&mdev_list_sem);
 
@@ -1398,6 +1454,11 @@ static int rockchip_system_monitor_parse_dt(struct system_monitor *monitor)
 {
 	struct device_node *np = monitor->dev->of_node;
 	const char *tz_name, *buf = NULL;
+
+	if (of_property_read_string(np, "rockchip,early-suspend-offline-cpus", &buf))
+		cpumask_clear(&monitor->early_suspend_offline_cpus);
+	else
+		cpulist_parse(buf, &monitor->early_suspend_offline_cpus);
 
 	if (of_property_read_string(np, "rockchip,video-4k-offline-cpus", &buf))
 		cpumask_clear(&monitor->video_4k_offline_cpus);
@@ -1552,6 +1613,9 @@ static void rockchip_system_status_cpu_limit_freq(struct monitor_dev_info *info,
 		return;
 	}
 
+	if (info->early_suspend_freq && (status & SYS_STATUS_SUSPEND))
+		target_freq = info->early_suspend_freq;
+
 	if (info->video_4k_freq && (status & SYS_STATUS_VIDEO_4K))
 		target_freq = info->video_4k_freq;
 
@@ -1582,11 +1646,15 @@ static void rockchip_system_status_cpu_on_off(unsigned long status)
 {
 	struct cpumask offline_cpus;
 
-	if (cpumask_empty(&system_monitor->video_4k_offline_cpus))
+	if (cpumask_empty(&system_monitor->video_4k_offline_cpus) &&
+	    cpumask_empty(&system_monitor->early_suspend_offline_cpus))
 		return;
 
 	cpumask_clear(&offline_cpus);
-	if (status & SYS_STATUS_VIDEO_4K)
+	if (status & SYS_STATUS_SUSPEND)
+		cpumask_copy(&offline_cpus,
+			     &system_monitor->early_suspend_offline_cpus);
+	else if (status & SYS_STATUS_VIDEO_4K)
 		cpumask_copy(&offline_cpus,
 			     &system_monitor->video_4k_offline_cpus);
 	if (cpumask_equal(&offline_cpus, &system_monitor->status_offline_cpus))
@@ -1718,10 +1786,10 @@ static int rockchip_eink_devfs_notifier(struct notifier_block *nb,
 {
 	switch (action) {
 	case EBC_ON:
-		rockchip_clear_system_status(SYS_STATUS_LOW_POWER);
+		rockchip_set_system_status(SYS_STATUS_EBC);
 		break;
 	case EBC_OFF:
-		rockchip_set_system_status(SYS_STATUS_LOW_POWER);
+		rockchip_clear_system_status(SYS_STATUS_EBC);
 		break;
 	default:
 		break;
@@ -1737,23 +1805,10 @@ static struct notifier_block rockchip_monitor_ebc_nb = {
 static void system_monitor_early_min_volt_function(struct work_struct *work)
 {
 	struct monitor_dev_info *info;
-	struct regulator_dev *rdev;
-	int min_uV, max_uV;
-	int ret;
 
 	down_read(&mdev_list_sem);
-	list_for_each_entry(info, &monitor_dev_list, node) {
-		if (!info->early_min_volt || !info->early_reg)
-			continue;
-		rdev = info->early_reg->rdev;
-		min_uV = rdev->constraints->min_uV;
-		max_uV = rdev->constraints->max_uV;
-		ret = regulator_set_voltage(info->early_reg, min_uV, max_uV);
-		if (ret)
-			dev_err(&rdev->dev,
-				"%s: failed to set volt\n", __func__);
-		regulator_put(info->early_reg);
-	}
+	list_for_each_entry(info, &monitor_dev_list, node)
+		rockchip_system_monitor_early_regulator_uninit(info);
 	up_read(&mdev_list_sem);
 }
 

@@ -55,7 +55,7 @@ static int rockchip_gem_iommu_map(struct rockchip_gem_object *rk_obj)
 
 	ret = iommu_map_sgtable(private->domain, rk_obj->dma_addr, rk_obj->sgt,
 				prot);
-	if (ret < rk_obj->base.size) {
+	if (ret < (ssize_t)rk_obj->base.size) {
 		DRM_ERROR("failed to map buffer: size=%zd request_size=%zd\n",
 			  ret, rk_obj->base.size);
 		ret = -ENOMEM;
@@ -592,6 +592,18 @@ const struct drm_gem_object_funcs rockchip_gem_object_funcs = {
 	.mmap = rockchip_drm_gem_object_mmap,
 	.vm_ops = &drm_gem_dma_vm_ops,
 };
+
+int rockchip_gem_mmap_buf(struct drm_gem_object *obj,
+			  struct vm_area_struct *vma)
+{
+	int ret;
+
+	ret = drm_gem_mmap_obj(obj, obj->size, vma);
+	if (ret)
+		return ret;
+
+	return rockchip_drm_gem_object_mmap(obj, vma);
+}
 
 static struct rockchip_gem_object *
 rockchip_gem_alloc_object(struct drm_device *drm, unsigned int size,

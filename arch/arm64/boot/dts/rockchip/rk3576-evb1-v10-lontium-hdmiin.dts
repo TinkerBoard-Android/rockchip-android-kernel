@@ -6,6 +6,7 @@
 
 /dts-v1/;
 
+#include "rk3576.dtsi"
 #include "rk3576-evb1.dtsi"
 #include "rk3576-android.dtsi"
 
@@ -18,6 +19,11 @@
 		clock-frequency = <24000000>;
 		clock-output-names = "CLK_CAMERA_24MHZ";
 		#clock-cells = <0>;
+	};
+
+	rkvtunnel: rkvtunnel {
+		compatible = "rockchip,video-tunnel";
+		status = "okay";
 	};
 };
 

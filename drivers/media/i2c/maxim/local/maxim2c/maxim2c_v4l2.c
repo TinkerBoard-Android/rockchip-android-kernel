@@ -103,6 +103,7 @@ static int maxim2c_support_mode_init(maxim2c_t *maxim2c)
 	struct device_node *node = NULL;
 	struct maxim2c_mode *mode = NULL;
 	u32 value = 0, vc_array[PAD_MAX], crop_array[4];
+	struct maxim2c_vc_info vc_info[PAD_MAX];
 	int ret = 0, i = 0, array_size = 0;
 
 	dev_info(dev, "=== maxim2c support mode init ===\n");
@@ -213,9 +214,66 @@ static int maxim2c_support_mode_init(maxim2c_t *maxim2c)
 			dev_info(dev, "vc-array[%d] property: 0x%x\n", i, vc_array[i]);
 			mode->vc[i] = vc_array[i];
 		}
+	} else {
+		/* default vc config */
+#if KERNEL_VERSION(6, 1, 0) <= LINUX_VERSION_CODE
+		for (i = 0; i < PAD_MAX; i++)
+			mode->vc[i] = i;
+#else
+		switch (PAD_MAX) {
+		case 4:
+			mode->vc[3] = V4L2_MBUS_CSI2_CHANNEL_3;
+			fallthrough;
+		case 3:
+			mode->vc[2] = V4L2_MBUS_CSI2_CHANNEL_2;
+			fallthrough;
+		case 2:
+			mode->vc[1] = V4L2_MBUS_CSI2_CHANNEL_1;
+			fallthrough;
+		case 1:
+		default:
+			mode->vc[0] = V4L2_MBUS_CSI2_CHANNEL_0;
+			break;
+		}
+#endif
 	}
 	for (i = 0; i < PAD_MAX; i++)
 		dev_info(dev, "support mode: vc[%d] = 0x%x\n", i, mode->vc[i]);
+
+	/* vc info */
+	array_size = of_property_count_u32_elems(node, "vc-info");
+	if ((array_size > 0) &&
+			(array_size % sizeof(struct maxim2c_vc_info) == 0) &&
+			(array_size <= sizeof(struct maxim2c_vc_info) * PAD_MAX)) {
+
+		memset((char *)vc_info, 0, sizeof(vc_info));
+
+		ret = of_property_read_u32_array(node, "vc-info", (u32 *)vc_info, array_size);
+		if (ret == 0) {
+			/* <enable width height bus_fmt data_type data_bit> */
+			for (i = 0; i < PAD_MAX; i++) {
+				dev_info(dev, "vc-info[%d] property:\n", i);
+				dev_info(dev, "    vc-info[%d].enable = %d:\n", i, vc_info[i].enable);
+
+				dev_info(dev, "    vc-info[%d].width = %d:\n", i, vc_info[i].width);
+				dev_info(dev, "    vc-info[%d].height = %d:\n", i, vc_info[i].height);
+				dev_info(dev, "    vc-info[%d].bus_fmt = %d:\n", i, vc_info[i].bus_fmt);
+
+				dev_info(dev, "    vc-info[%d].data_type = %d:\n", i, vc_info[i].data_type);
+				dev_info(dev, "    vc-info[%d].data_bit = %d:\n", i, vc_info[i].data_bit);
+
+				mode->vc_info[i].enable = vc_info[i].enable;
+
+				mode->vc_info[i].width = vc_info[i].width;
+				mode->vc_info[i].height = vc_info[i].height;
+				mode->vc_info[i].bus_fmt = vc_info[i].bus_fmt;
+
+				mode->vc_info[i].data_type = vc_info[i].data_type;
+				mode->vc_info[i].data_bit = vc_info[i].data_bit;
+
+			}
+		}
+	}
 
 	/* crop rect */
 	array_size = of_property_read_variable_u32_array(node,
@@ -332,10 +390,52 @@ static void maxim2c_set_vicap_rst_inf(maxim2c_t *maxim2c,
 	maxim2c->is_reset = rst_info.is_reset;
 }
 
+static int maxim2c_get_channel_info(maxim2c_t *maxim2c, struct rkmodule_channel_info *ch_info)
+{
+	const struct maxim2c_mode *mode = maxim2c->cur_mode;
+	struct device *dev = &maxim2c->client->dev;
+
+	if (ch_info->index < PAD0 || ch_info->index >= PAD_MAX)
+		return -EINVAL;
+
+	if (mode->vc_info[ch_info->index].enable) {
+		ch_info->vc = mode->vc[ch_info->index];
+
+		ch_info->width = mode->vc_info[ch_info->index].width;
+		ch_info->height = mode->vc_info[ch_info->index].height;
+		ch_info->bus_fmt = mode->vc_info[ch_info->index].bus_fmt;
+
+		/* optional parameters, default 0: invalid parameter */
+		ch_info->data_type = mode->vc_info[ch_info->index].data_type;
+		ch_info->data_bit = mode->vc_info[ch_info->index].data_bit;
+	} else {
+		ch_info->vc = mode->vc[ch_info->index];
+
+		ch_info->width = mode->width;
+		ch_info->height = mode->height;
+		ch_info->bus_fmt = mode->bus_fmt;
+	}
+
+	dev_info(dev, "get channel info, ch_info->index = %d\n", ch_info->index);
+
+	dev_info(dev, "    ch_info->vc = 0x%x\n", ch_info->vc);
+
+	dev_info(dev, "    ch_info->width = %d\n", ch_info->width);
+	dev_info(dev, "    ch_info->height = %d\n", ch_info->height);
+	dev_info(dev, "    ch_info->bus_fmt = 0x%x\n", ch_info->bus_fmt);
+
+	dev_info(dev, "    ch_info->data_type = 0x%x:\n", ch_info->data_type);
+	dev_info(dev, "    ch_info->data_bit = %d\n", ch_info->data_bit);
+
+	return 0;
+}
+
 static long maxim2c_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 {
 	maxim2c_t *maxim2c = v4l2_get_subdevdata(sd);
 	struct rkmodule_csi_dphy_param *dphy_param;
+	struct rkmodule_capture_info *capture_info;
+	struct rkmodule_channel_info *ch_info;
 	long ret = 0;
 
 	dev_dbg(&maxim2c->client->dev, "ioctl cmd = 0x%08x\n", cmd);
@@ -362,6 +462,17 @@ static long maxim2c_ioctl(struct v4l2_subdev *sd, unsigned int cmd, void *arg)
 		*dphy_param = rk3588_dcphy_param;
 		dev_dbg(&maxim2c->client->dev, "get dcphy param\n");
 		break;
+	case RKMODULE_GET_CAPTURE_MODE:
+		capture_info = (struct rkmodule_capture_info *)arg;
+		if (maxim2c->remote_routing_to_isp != 0)
+			capture_info->mode = RKMODULE_MULTI_CH_TO_MULTI_ISP;
+		else
+			capture_info->mode = RKMODULE_CAPTURE_MODE_NONE;
+		break;
+	case RKMODULE_GET_CHANNEL_INFO:
+		ch_info = (struct rkmodule_channel_info *)arg;
+		ret = maxim2c_get_channel_info(maxim2c, ch_info);
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -378,6 +489,8 @@ static long maxim2c_compat_ioctl32(struct v4l2_subdev *sd, unsigned int cmd,
 	struct rkmodule_inf *inf;
 	struct rkmodule_vicap_reset_info *vicap_rst_inf;
 	struct rkmodule_csi_dphy_param *dphy_param;
+	struct rkmodule_capture_info  *capture_info;
+	struct rkmodule_channel_info *ch_info;
 	long ret = 0;
 
 	switch (cmd) {
@@ -454,6 +567,37 @@ static long maxim2c_compat_ioctl32(struct v4l2_subdev *sd, unsigned int cmd,
 		}
 		kfree(dphy_param);
 		break;
+	case RKMODULE_GET_CAPTURE_MODE:
+		capture_info = kzalloc(sizeof(*capture_info), GFP_KERNEL);
+		if (!capture_info) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = maxim2c_ioctl(sd, cmd, capture_info);
+		if (!ret) {
+			ret = copy_to_user(up, capture_info,
+					   sizeof(*capture_info));
+			if (ret)
+				ret = -EFAULT;
+		}
+		kfree(capture_info);
+		break;
+	case RKMODULE_GET_CHANNEL_INFO:
+		ch_info = kzalloc(sizeof(*ch_info), GFP_KERNEL);
+		if (!ch_info) {
+			ret = -ENOMEM;
+			return ret;
+		}
+
+		ret = maxim2c_ioctl(sd, cmd, ch_info);
+		if (!ret) {
+			ret = copy_to_user(up, ch_info, sizeof(*ch_info));
+			if (ret)
+				ret = -EFAULT;
+		}
+		kfree(ch_info);
+		break;
 	default:
 		ret = -ENOIOCTLCMD;
 		break;
@@ -492,10 +636,14 @@ static int __maxim2c_start_stream(maxim2c_t *maxim2c)
 
 #if (MAXIM2C_TEST_PATTERN == 0)
 	// remote devices power on
-	ret = maxim2c_remote_devices_power(maxim2c, link_mask, 1);
-	if (ret) {
-		dev_err(dev, "remote devices power on error\n");
-		return ret;
+	if (maxim2c->remote_routing_to_isp == 0) {
+		ret = maxim2c_remote_devices_power(maxim2c, link_mask, 1);
+		if (ret) {
+			dev_err(dev, "remote devices power on error\n");
+			return ret;
+		}
+	} else {
+		dev_info(dev, "remote devices power on by cif\n");
 	}
 #endif /* MAXIM2C_TEST_PATTERN */
 
@@ -516,10 +664,14 @@ static int __maxim2c_start_stream(maxim2c_t *maxim2c)
 
 #if (MAXIM2C_TEST_PATTERN == 0)
 	// remote devices start stream
-	ret = maxim2c_remote_devices_s_stream(maxim2c, link_mask, 1);
-	if (ret) {
-		dev_err(dev, "remote devices start stream error\n");
-		return ret;
+	if (maxim2c->remote_routing_to_isp == 0) {
+		ret = maxim2c_remote_devices_s_stream(maxim2c, link_mask, 1);
+		if (ret) {
+			dev_err(dev, "remote devices start stream error\n");
+			return ret;
+		}
+	} else {
+		dev_info(dev, "remote devices start stream by cif\n");
 	}
 #endif /* MAXIM2C_TEST_PATTERN */
 
@@ -547,9 +699,7 @@ static int __maxim2c_start_stream(maxim2c_t *maxim2c)
 	}
 
 	/* In case these controls are set before streaming */
-	mutex_unlock(&maxim2c->mutex);
-	ret = v4l2_ctrl_handler_setup(&maxim2c->ctrl_handler);
-	mutex_lock(&maxim2c->mutex);
+	ret = __v4l2_ctrl_handler_setup(&maxim2c->ctrl_handler);
 	if (ret)
 		return ret;
 
@@ -603,10 +753,14 @@ static int __maxim2c_stop_stream(maxim2c_t *maxim2c)
 	ret |= maxim2c_video_pipe_mask_enable(maxim2c, pipe_mask, false);
 
 #if (MAXIM2C_TEST_PATTERN == 0)
-	// remote devices stop stream
-	ret |= maxim2c_remote_devices_s_stream(maxim2c, link_mask, 0);
-	// remote devices power off
-	ret |= maxim2c_remote_devices_power(maxim2c, link_mask, 0);
+	if (maxim2c->remote_routing_to_isp == 0) {
+		// remote devices stop stream
+		ret |= maxim2c_remote_devices_s_stream(maxim2c, link_mask, 0);
+		// remote devices power off
+		ret |= maxim2c_remote_devices_power(maxim2c, link_mask, 0);
+	} else {
+		dev_info(dev, "remote devices control by cif\n");
+	}
 #endif /* MAXIM2C_TEST_PATTERN */
 
 	// i2c mux enable: default disable all remote channel
@@ -673,9 +827,7 @@ static int maxim2c_g_frame_interval(struct v4l2_subdev *sd,
 	maxim2c_t *maxim2c = v4l2_get_subdevdata(sd);
 	const struct maxim2c_mode *mode = maxim2c->cur_mode;
 
-	mutex_lock(&maxim2c->mutex);
 	fi->interval = mode->max_fps;
-	mutex_unlock(&maxim2c->mutex);
 
 	return 0;
 }
@@ -779,10 +931,7 @@ static int maxim2c_get_fmt(struct v4l2_subdev *sd,
 		fmt->format.height = mode->height;
 		fmt->format.code = mode->bus_fmt;
 		fmt->format.field = V4L2_FIELD_NONE;
-		if (fmt->pad < PAD_MAX && fmt->pad >= PAD0)
-			fmt->reserved[0] = mode->vc[fmt->pad];
-		else
-			fmt->reserved[0] = mode->vc[PAD0];
+		fmt->reserved[0] = mode->vc[fmt->pad];
 	}
 	mutex_unlock(&maxim2c->mutex);
 
@@ -862,8 +1011,17 @@ static int maxim2c_get_selection(struct v4l2_subdev *sd,
 #endif
 {
 	maxim2c_t *maxim2c = v4l2_get_subdevdata(sd);
+	int i = 0;
 
 	if (sel->target == V4L2_SEL_TGT_CROP_BOUNDS) {
+		/* if multiple channel info enable, get_selection isn't support */
+		for (i = 0; i < PAD_MAX; i++) {
+			if (maxim2c->cur_mode->vc_info[i].enable) {
+				v4l2_warn(sd, "Multi-channel enable, get_selection isn't support\n");
+				return -EINVAL;
+			}
+		}
+
 		sel->r.left = maxim2c->cur_mode->crop_rect.left;
 		sel->r.width = maxim2c->cur_mode->crop_rect.width;
 		sel->r.top = maxim2c->cur_mode->crop_rect.top;
@@ -891,13 +1049,15 @@ static int maxim2c_g_mbus_config(struct v4l2_subdev *sd, unsigned int pad,
 {
 	maxim2c_t *maxim2c = v4l2_get_subdevdata(sd);
 	u32 val = 0;
+	const struct maxim2c_mode *mode = maxim2c->cur_mode;
 	u8 data_lanes = maxim2c->bus_cfg.bus.mipi_csi2.num_data_lanes;
+	int i = 0;
 
 	val |= V4L2_MBUS_CSI2_CONTINUOUS_CLOCK;
 	val |= (1 << (data_lanes - 1));
 
-	val |= V4L2_MBUS_CSI2_CHANNEL_3 | V4L2_MBUS_CSI2_CHANNEL_2 |
-	       V4L2_MBUS_CSI2_CHANNEL_1 | V4L2_MBUS_CSI2_CHANNEL_0;
+	for (i = 0; i < PAD_MAX; i++)
+		val |= (mode->vc[i] & V4L2_MBUS_CSI2_CHANNELS);
 
 	config->type = V4L2_MBUS_CSI2_DPHY;
 	config->flags = val;
@@ -910,13 +1070,15 @@ static int maxim2c_g_mbus_config(struct v4l2_subdev *sd,
 {
 	maxim2c_t *maxim2c = v4l2_get_subdevdata(sd);
 	u32 val = 0;
+	const struct maxim2c_mode *mode = maxim2c->cur_mode;
 	u8 data_lanes = maxim2c->bus_cfg.bus.mipi_csi2.num_data_lanes;
+	int i = 0;
 
 	val |= V4L2_MBUS_CSI2_CONTINUOUS_CLOCK;
 	val |= (1 << (data_lanes - 1));
 
-	val |= V4L2_MBUS_CSI2_CHANNEL_3 | V4L2_MBUS_CSI2_CHANNEL_2 |
-	       V4L2_MBUS_CSI2_CHANNEL_1 | V4L2_MBUS_CSI2_CHANNEL_0;
+	for (i = 0; i < PAD_MAX; i++)
+		val |= (mode->vc[i] & V4L2_MBUS_CSI2_CHANNELS);
 
 	config->type = V4L2_MBUS_CSI2;
 	config->flags = val;
@@ -924,6 +1086,17 @@ static int maxim2c_g_mbus_config(struct v4l2_subdev *sd,
 	return 0;
 }
 #endif /* LINUX_VERSION_CODE */
+
+static int maxim2c_subscribe_event(struct v4l2_subdev *sd, struct v4l2_fh *fh,
+				    struct v4l2_event_subscription *sub)
+{
+	switch (sub->type) {
+	case V4L2_EVENT_HOT_PLUG:
+		return v4l2_event_subscribe(fh, sub, 0, NULL);
+	default:
+		return -EINVAL;
+	}
+}
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 static const struct v4l2_subdev_internal_ops maxim2c_internal_ops = {
@@ -933,6 +1106,8 @@ static const struct v4l2_subdev_internal_ops maxim2c_internal_ops = {
 
 static const struct v4l2_subdev_core_ops maxim2c_core_ops = {
 	.s_power = maxim2c_s_power,
+	.subscribe_event = maxim2c_subscribe_event,
+	.unsubscribe_event = v4l2_event_subdev_unsubscribe,
 	.ioctl = maxim2c_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = maxim2c_compat_ioctl32,
@@ -1062,7 +1237,7 @@ int maxim2c_v4l2_subdev_init(maxim2c_t *maxim2c)
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	sd->internal_ops = &maxim2c_internal_ops;
-	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
+	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE | V4L2_SUBDEV_FL_HAS_EVENTS;
 #endif
 
 #if defined(CONFIG_MEDIA_CONTROLLER)

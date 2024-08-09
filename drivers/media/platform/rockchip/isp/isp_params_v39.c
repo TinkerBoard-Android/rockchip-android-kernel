@@ -2512,6 +2512,11 @@ isp_dhaz_config(struct rkisp_isp_params_vdev *params_vdev,
 				ISP39_DHAZ_THUMB_ROW_MAX : arg->thumb_row & ~1;
 	thumb_col = arg->thumb_col > ISP39_DHAZ_THUMB_COL_MAX ?
 				ISP39_DHAZ_THUMB_COL_MAX : arg->thumb_col & ~1;
+	if (dev->hw_dev->dev_link_num > 1 && thumb_row > 4 &&
+	    !dev->hw_dev->is_frm_buf && thumb_col > 4) {
+		thumb_row = 4;
+		thumb_col = 4;
+	}
 	blk_het = ALIGN(h / thumb_row, 2);
 	blk_wid = ALIGN(w / thumb_col, 2);
 	priv_val->dhaz_blk_num = thumb_row * thumb_col;
@@ -3477,6 +3482,8 @@ isp_cac_config(struct rkisp_isp_params_vdev *params_vdev,
 	}
 
 	if (i == ISP39_MESH_BUF_NUM) {
+		if (arg->bypass_en)
+			goto end;
 		dev_err(dev->dev, "cannot find cac buf fd(%d)\n", arg->buf_fd);
 		return;
 	}
@@ -3500,20 +3507,28 @@ isp_cac_config(struct rkisp_isp_params_vdev *params_vdev,
 	isp3_param_write(params_vdev, arg->vsize, ISP3X_MI_LUT_CAC_RD_V_SIZE, id);
 	if (ctrl & ISP3X_CAC_EN)
 		ctrl |= ISP3X_CAC_LUT_EN | ISP39_SELF_FORCE_UPD | ISP3X_CAC_LUT_MODE(3);
+end:
 	isp3_param_write(params_vdev, ctrl, ISP3X_CAC_CTRL, id);
 }
 
 static void
 isp_cac_enable(struct rkisp_isp_params_vdev *params_vdev, bool en, u32 id)
 {
-	u32 val;
+	struct rkisp_isp_params_val_v39 *priv_val = params_vdev->priv_val;
+	u32 val, ctrl = isp3_param_read(params_vdev, ISP3X_CAC_CTRL, id);
 
-	val = isp3_param_read(params_vdev, ISP3X_CAC_CTRL, id);
-	val &= ~(ISP3X_CAC_EN | ISP3X_CAC_LUT_EN | ISP39_SELF_FORCE_UPD);
-	if (en)
-		val |= ISP3X_CAC_EN | ISP3X_CAC_LUT_EN |
-		       ISP39_SELF_FORCE_UPD | ISP3X_CAC_LUT_MODE(3);
-	isp3_param_write(params_vdev, val, ISP3X_CAC_CTRL, id);
+	if (en == !!(ctrl & ISP3X_CAC_EN))
+		return;
+
+	ctrl &= ~(ISP3X_CAC_EN | ISP3X_CAC_LUT_EN | ISP39_SELF_FORCE_UPD);
+	if (en) {
+		ctrl |= ISP3X_CAC_EN;
+		val = priv_val->buf_cac_idx[id];
+		if (priv_val->buf_cac[id][val].vaddr)
+			ctrl |= ISP3X_CAC_LUT_EN |
+				ISP39_SELF_FORCE_UPD | ISP3X_CAC_LUT_MODE(3);
+	}
+	isp3_param_write(params_vdev, ctrl, ISP3X_CAC_CTRL, id);
 }
 
 static void
@@ -3959,6 +3974,8 @@ void __isp_isr_other_en(struct rkisp_isp_params_vdev *params_vdev,
 	mask = ISP39_MODULE_YNR | ISP39_MODULE_CNR | ISP39_MODULE_SHARP;
 	if  ((module_ens & mask) && ((module_ens & mask) != mask))
 		dev_err(params_vdev->dev->dev, "ynr cnr sharp no enable together\n");
+	if (module_ens & ISP39_MODULE_YUVME && !(module_ens & ISP39_MODULE_BAY3D))
+		dev_err(params_vdev->dev->dev, "yuvme need bay3d enable together\n");
 	v4l2_dbg(4, rkisp_debug, &params_vdev->dev->v4l2_dev,
 		 "%s id:%d seq:%d module_en_update:0x%llx module_ens:0x%llx\n",
 		 __func__, id, new_params->frame_id, module_en_update, module_ens);
@@ -4922,7 +4939,7 @@ rkisp_params_disable_isp_v39(struct rkisp_isp_params_vdev *params_vdev)
 	int i;
 
 	params_vdev->isp39_params->module_ens = 0;
-	params_vdev->isp39_params->module_en_update = 0x7ffffffffff;
+	params_vdev->isp39_params->module_en_update = ~ISP39_MODULE_FORCE;
 
 	for (i = 0; i < params_vdev->dev->unite_div; i++) {
 		__isp_isr_other_en(params_vdev, params_vdev->isp39_params, RKISP_PARAMS_ALL, i);

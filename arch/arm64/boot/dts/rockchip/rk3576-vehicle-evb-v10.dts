@@ -6,6 +6,7 @@
 
 /dts-v1/;
 
+#include "rk3576.dtsi"
 #include "rk3576-vehicle-evb.dtsi"
 #include "rk3576-vehicle-evb-v10-nca9539-io-expander.dtsi"
 #include "rk3576-vehicle-serdes-mfd-display-maxim.dtsi"
@@ -336,6 +337,18 @@
 		};
 	};
 
+};
+
+&rkvpss {
+	status = "okay";
+};
+
+&rkvpss_mmu {
+	status = "okay";
+};
+
+&rkvpss_vir0 {
+	status = "okay";
 };
 
 &sdmmc {

@@ -189,6 +189,7 @@ union rkvenc2_dual_core_handshake_id {
 #define RKVENC2_BIT_VAL_H264		0
 #define RKVENC2_BIT_VAL_H265		1
 #define RKVENC2_BIT_SLEN_FIFO		BIT(30)
+#define RKVENC2_BIT_REC_FBC_DIS		BIT(31)
 
 #define RKVENC2_REG_SLI_SPLIT		(56)
 #define RKVENC510_REG_SLI_SPLIT		(60)
@@ -270,6 +271,7 @@ struct rkvenc_task {
 	/* jpege bitstream */
 	struct mpp_dma_buffer *bs_buf;
 	u32 offset_bs;
+	u32 rec_fbc_dis;
 };
 
 #define RKVENC_MAX_RCB_NUM		(4)
@@ -590,6 +592,7 @@ static const u16 trans_tbl_h264e_540c[] = {
 	14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
 	// /* renc and ref wrap */
 	// 24, 25, 26, 27,
+	28, 29, 30
 };
 
 static const u16 trans_tbl_h264e_540c_osd[] = {
@@ -599,7 +602,8 @@ static const u16 trans_tbl_h264e_540c_osd[] = {
 
 static const u16 trans_tbl_h265e_540c[] = {
 	4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
-	14, 15, 16, 17, 18, 19, 20, 21, 22, 23
+	14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+	28, 29, 30
 };
 
 static const u16 trans_tbl_h265e_540c_osd[] = {
@@ -1110,6 +1114,16 @@ static void *rkvenc_alloc_task(struct mpp_session *session,
 	task->clk_mode = CLK_MODE_NORMAL;
 	rkvenc2_check_split_task(mpp, task);
 
+	/* check whether the current task is rec_fbc_dis = 1 */
+	if (task->hw_info->vepu_type == RKVENC_VEPU_510) {
+		if (task->reg[RKVENC_CLASS_PIC].valid) {
+			u32 *reg = task->reg[RKVENC_CLASS_PIC].data;
+
+			task->rec_fbc_dis = reg[RKVENC510_REG_ENC_PIC] & RKVENC2_BIT_REC_FBC_DIS;
+			reg[RKVENC510_REG_ENC_PIC] &= ~(RKVENC2_BIT_REC_FBC_DIS);
+		}
+	}
+
 	mpp_debug_leave();
 
 	return mpp_task;
@@ -1421,6 +1435,9 @@ static int rkvenc_run(struct mpp_dev *mpp, struct mpp_task *mpp_task)
 	mpp_task_run_begin(mpp_task, timing_en, MPP_WORK_TIMEOUT_DELAY);
 
 	if (hw->vepu_type == RKVENC_VEPU_510) {
+		u32 rec_fbc_dis = task->rec_fbc_dis;
+		u32 enc_pic = mpp_read(mpp, 0x300);
+
 		/*
 		 * Config dvbm special reg to expected that
 		 * vepu will hold when the encoding finish.
@@ -1429,7 +1446,20 @@ static int rkvenc_run(struct mpp_dev *mpp, struct mpp_task *mpp_task)
 		mpp_write(mpp, 0x308, BIT(18) | BIT(16));
 		/* Enable slice done interrupt and slice fifo info. */
 		mpp_write(mpp, 0x20, mpp_read(mpp, 0x20) | BIT(3));
-		mpp_write(mpp, 0x300, mpp_read(mpp, 0x300) | BIT(30));
+		/*
+		 * Fix bug:
+		 * Writing reg 0x300 BIT(31) may cause the DMA module to falsely
+		 * trigger writing data. It will case enc err.
+		 * So we need to disable the core clock before writing reg 0x300,
+		 * and re-enable the core clock after writing reg 0x300.
+		 */
+		if (rec_fbc_dis) {
+			mpp_clk_safe_disable(enc->core_clk_info.clk);
+			mpp_write(mpp, 0x300, enc_pic | BIT(30) | BIT(31));
+			mpp_clk_safe_enable(enc->core_clk_info.clk);
+		} else {
+			mpp_write(mpp, 0x300, enc_pic | BIT(30));
+		}
 	}
 
 	/* Flush the register before the start the device */
@@ -1507,19 +1537,21 @@ static void rkvenc2_read_slice_len(struct mpp_dev *mpp, struct rkvenc_task *task
 	 * interrupt again after reading the slice.
 	 */
 	if (hw->vepu_type == RKVENC_VEPU_510) {
-		mpp_write(mpp, hw->int_clr_base, *irq_status);
 		/*
 		 * Fix bug:
 		 * There is a hw bug, the encoder has probabilistically encodes
 		 * one frame repeatedlly and does not return enc done in time.
-		 * So use slice info to check if the frame is encoded and
-		 * soft reset to stop vepu.
+		 * So use slice info to check if the frame is encoded.
 		 */
 		if (last) {
+			/* after config the register, the encoder will update enc done int status */
+			mpp_write(mpp, 0x308, 0);
 			udelay(5);
-			rkvenc_soft_reset(mpp);
-			*irq_status |= 0x1;
+			new_irq_status = mpp_read(mpp, hw->int_sta_base);
+			if (new_irq_status & INT_STA_ENC_DONE_STA)
+				*irq_status |= new_irq_status;
 		}
+		mpp_write(mpp, hw->int_clr_base, *irq_status);
 	}
 }
 
@@ -2729,18 +2761,19 @@ static int rkvenc2_iommu_fault_handle(struct iommu_domain *iommu,
 			}
 		}
 	}
-	mpp_task = mpp->cur_task;
-	dev_info(mpp->dev, "core %d page fault found dchs %08x\n",
-		 mpp->core_id, mpp_read_relaxed(&enc->mpp, DCHS_REG_OFFSET));
-
-	if (mpp_task)
-		mpp_task_dump_mem_region(mpp, mpp_task);
 
 	/*
 	 * Mask iommu irq, in order for iommu not repeatedly trigger pagefault.
 	 * Until the pagefault task finish by hw timeout.
 	 */
 	rockchip_iommu_mask_irq(mpp->dev);
+
+	mpp_task = mpp->cur_task;
+	dev_info(mpp->dev, "core %d page fault found dchs %08x\n",
+		 mpp->core_id, mpp_read_relaxed(&enc->mpp, DCHS_REG_OFFSET));
+
+	if (mpp_task)
+		mpp_task_dump_mem_region(mpp, mpp_task);
 
 	return 0;
 }
@@ -2784,7 +2817,7 @@ static int rkvenc_core_probe(struct platform_device *pdev)
 
 	ret = devm_request_threaded_irq(dev, mpp->irq,
 					mpp_dev_irq,
-					mpp_dev_isr_sched,
+					NULL,
 					IRQF_ONESHOT,
 					dev_name(dev), mpp);
 	if (ret) {
@@ -2833,7 +2866,7 @@ static int rkvenc_probe_default(struct platform_device *pdev)
 
 	ret = devm_request_threaded_irq(dev, mpp->irq,
 					mpp_dev_irq,
-					mpp_dev_isr_sched,
+					NULL,
 					IRQF_SHARED,
 					dev_name(dev), mpp);
 	if (ret) {

@@ -188,6 +188,8 @@
 #define HDMI_RX_AUD_SAO_CTRL		(HDMI_RX_BASE + 0x0260)
 #define I2S_ENABLE_BITS_MASK		GENMASK(10, 5)
 #define I2S_ENABLE_BITS(x)		UPDATE(x, 10, 5)
+#define I2S_CLK_ENABLE_BITS(x)		UPDATE(x, 10, 9)
+#define I2S_DATA_ENABLE_BITS(x)		UPDATE(x, 8, 5)
 #define I2S_LPCM_BPCUV_MASK		BIT(11)
 #define I2S_LPCM_BPCUV(x)		UPDATE(x, 11, 11)
 #define I2S_32_16_MASK			BIT(0)
@@ -265,6 +267,7 @@
 #define VIDEO_FORMAT_MASK		GENMASK(6, 5)
 #define VIDEO_FORMAT(x)			UPDATE(x, 6, 5)
 #define RGB_COLORRANGE_MASK		GENMASK(19, 18)
+#define YUV_COLORRANGE_MASK		GENMASK(31, 30)
 #define RGB_COLORRANGE(x)		UPDATE(x, 19, 18)
 #define ACT_INFO_PRESENT_MASK		BIT(4)
 #define HDMI_RX_PDEC_ACR_CTS		(HDMI_RX_BASE + 0x0390)
@@ -474,6 +477,7 @@ struct rk628_hdcp {
 	struct hdcp_keys *keys;
 	struct rk628 *rk628;
 	int enable;
+	bool hdcp_start;
 };
 
 struct rk628_hdmirx_cec {
@@ -485,17 +489,21 @@ struct rk628_hdmirx_cec {
 	unsigned int tx_status;
 	bool tx_done;
 	bool rx_done;
+	bool cec_hpd;
 	struct cec_notifier *notify;
+	struct delayed_work delayed_work_cec;
 };
 
 void rk628_hdmirx_set_hdcp(struct rk628 *rk628, struct rk628_hdcp *hdcp, bool en);
 void rk628_hdmirx_controller_setup(struct rk628 *rk628);
 
 typedef void *HAUDINFO;
+typedef void (*rk628_audio_info_cb)(struct rk628 *rk628, bool on);
 HAUDINFO rk628_hdmirx_audioinfo_alloc(struct device *dev,
 				      struct mutex *confctl_mutex,
 				      struct rk628 *rk628,
-				      bool en);
+				      bool en,
+				      rk628_audio_info_cb info_cb);
 void rk628_hdmirx_audio_destroy(HAUDINFO info);
 void rk628_hdmirx_audio_setup(HAUDINFO info);
 void rk628_hdmirx_audio_cancel_work_audio(HAUDINFO info, bool sync);
@@ -503,6 +511,9 @@ void rk628_hdmirx_audio_cancel_work_rate_change(HAUDINFO info, bool sync);
 bool rk628_hdmirx_audio_present(HAUDINFO info);
 int  rk628_hdmirx_audio_fs(HAUDINFO info);
 void rk628_hdmirx_audio_i2s_ctrl(HAUDINFO info, bool enable);
+bool rk628_hdmirx_get_arc_enable(HAUDINFO info);
+int rk628_hdmirx_set_arc_enable(HAUDINFO info, bool enabled);
+void rk628_hdmirx_audio_handle_plugged_change(HAUDINFO info, bool plugged);
 
 /* for audio isr process */
 bool rk628_audio_fifoints_enabled(HAUDINFO info);
@@ -511,6 +522,7 @@ void rk628_csi_isr_ctsn(HAUDINFO info, u32 pdec_ints);
 void rk628_csi_isr_fifoints(HAUDINFO info, u32 fifo_ints);
 int rk628_is_avi_ready(struct rk628 *rk628, bool avi_rcv_rdy);
 void rk628_hdmirx_verisyno_phy_power_on(struct rk628 *rk628);
+void rk628_hdmirx_verisyno_phy_power_off(struct rk628 *rk628);
 void rk628_hdmirx_phy_prepclk_cfg(struct rk628 *rk628);
 int rk628_hdmirx_verisyno_phy_init(struct rk628 *rk628);
 u8 rk628_hdmirx_get_format(struct rk628 *rk628);

@@ -14,17 +14,19 @@
 #include <media/videobuf2-v4l2.h>
 
 #include "../isp/isp_vpss.h"
+#include <linux/rk-camera-module.h>
 
 #define RKVPSS_PLANE_Y		0
 #define RKVPSS_PLANE_UV		1
 
 #define RKVPSS_DEFAULT_WIDTH	1920
 #define RKVPSS_DEFAULT_HEIGHT	1080
-
 #define RKVPSS_MAX_WIDTH	4672
 #define RKVPSS_MAX_HEIGHT	3504
 #define RKVPSS_MIN_WIDTH	32
 #define RKVPSS_MIN_HEIGHT	32
+#define RKVPSS_UNITE_MAX_WIDTH        8192
+#define RKVPSS_UNITE_MAX_HEIGHT       6144
 #define RKVPSS_VIDEO_NAME_LEN   16
 
 #define RKVPSS_REG_CACHE_SYNC	0xeeeeeeee
@@ -41,6 +43,13 @@ enum rkvpss_ver {
 enum rkvpss_fmt_pix_type {
 	FMT_YUV,
 	FMT_RGB,
+};
+
+enum rkvpss_rotate {
+	ROTATE_0 = 0,
+	ROTATE_90,
+	ROTATE_180,
+	ROTATE_270,
 };
 
 /* One structure per video node */
@@ -82,10 +91,13 @@ static inline struct vb2_queue *to_vb2_queue(struct file *file)
 extern int rkvpss_debug;
 extern struct platform_driver rkvpss_plat_drv;
 
-void rkvpss_write(struct rkvpss_device *dev, u32 reg, u32 val);
-void rkvpss_set_bits(struct rkvpss_device *dev, u32 reg, u32 mask, u32 val);
-u32 rkvpss_read(struct rkvpss_device *dev, u32 reg);
-void rkvpss_clear_bits(struct rkvpss_device *dev, u32 reg, u32 mask);
+void rkvpss_idx_write(struct rkvpss_device *dev, u32 reg, u32 val, int idx);
+void rkvpss_unite_write(struct rkvpss_device *dev, u32 reg, u32 val);
+void rkvpss_idx_set_bits(struct rkvpss_device *dev, u32 reg, u32 mask, u32 val, int idx);
+void rkvpss_unite_set_bits(struct rkvpss_device *dev, u32 reg, u32 mask, u32 val);
+u32 rkvpss_idx_read(struct rkvpss_device *dev, u32 reg, int idx);
+void rkvpss_idx_clear_bits(struct rkvpss_device *dev, u32 reg, u32 mask, int idx);
+void rkvpss_unite_clear_bits(struct rkvpss_device *dev, u32 reg, u32 mask);
 void rkvpss_update_regs(struct rkvpss_device *dev, u32 start, u32 end);
 
 int rkvpss_attach_hw(struct rkvpss_device *vpss);

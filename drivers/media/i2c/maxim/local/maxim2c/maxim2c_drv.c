@@ -38,6 +38,20 @@
  *     1. remote sensor Makefile rename module ko
  *     2. remote sensor rename driver name
  *
+ * V3.04.00
+ *     1. fix g_mbus_config flag setting error for ISP
+ *     2. support remote raw sensor s_power and s_stream control by cif
+ *     3. support vicap multi channel to multi ISP mode
+ *
+ * V3.05.00
+ *     1. unified use __v4l2_ctrl_handler_setup in the xxx_start_stream
+ *     2. support subscribe hot plug detect v4l2 event
+ *
+ * V3.06.00
+ *     1. support multi-channel information configuration
+ *     2. mode vc initialization when vc-array isn't configured
+ *     3. fix the issue of mutex deadlock during hot plug
+ *
  */
 #include <linux/clk.h>
 #include <linux/i2c.h>
@@ -65,7 +79,7 @@
 
 #include "maxim2c_api.h"
 
-#define DRIVER_VERSION			KERNEL_VERSION(3, 0x02, 0x00)
+#define DRIVER_VERSION			KERNEL_VERSION(3, 0x06, 0x00)
 
 #define MAXIM2C_NAME			"maxim2c"
 
@@ -113,6 +127,20 @@ static int maxim2c_check_local_chipid(maxim2c_t *maxim2c)
 	return -ENODEV;
 }
 
+static void maxim2c_hot_plug_event_report(maxim2c_t *maxim2c, int data)
+{
+	struct v4l2_subdev *sd = &maxim2c->subdev;
+	struct device *dev = &maxim2c->client->dev;
+	struct v4l2_event evt_hot_plug = {
+		.type = V4L2_EVENT_HOT_PLUG,
+		.u.data[0] = data,
+	};
+
+	dev_dbg(dev, "%s data %d\n", __func__, data);
+
+	v4l2_event_queue(sd->devnode, &evt_hot_plug);
+}
+
 static irqreturn_t maxim2c_hot_plug_detect_irq_handler(int irq, void *dev_id)
 {
 	maxim2c_t *maxim2c = dev_id;
@@ -120,23 +148,26 @@ static irqreturn_t maxim2c_hot_plug_detect_irq_handler(int irq, void *dev_id)
 	int lock_gpio_level = 0;
 
 	mutex_lock(&maxim2c->mutex);
-	if (maxim2c->streaming) {
-		lock_gpio_level = gpiod_get_value_cansleep(maxim2c->lock_gpio);
-		if (lock_gpio_level == 0) {
-			dev_info(dev, "serializer hot plug out\n");
+	if (maxim2c->streaming == 0) {
+		mutex_unlock(&maxim2c->mutex);
+		return IRQ_HANDLED;
+	}
 
-			maxim2c->hot_plug_state = MAXIM2C_HOT_PLUG_OUT;
-		} else {
-			dev_info(dev, "serializer hot plug in\n");
+	lock_gpio_level = gpiod_get_value_cansleep(maxim2c->lock_gpio);
+	if (lock_gpio_level == 0) {
+		dev_info(dev, "serializer hot plug out\n");
 
-			maxim2c->hot_plug_state = MAXIM2C_HOT_PLUG_IN;
-		}
+		maxim2c->hot_plug_state = MAXIM2C_HOT_PLUG_OUT;
+	} else {
+		dev_info(dev, "serializer hot plug in\n");
 
-		queue_delayed_work(maxim2c->hot_plug_work.state_check_wq,
-					&maxim2c->hot_plug_work.state_d_work,
-					msecs_to_jiffies(100));
+		maxim2c->hot_plug_state = MAXIM2C_HOT_PLUG_IN;
 	}
 	mutex_unlock(&maxim2c->mutex);
+
+	queue_delayed_work(maxim2c->hot_plug_work.state_check_wq,
+				&maxim2c->hot_plug_work.state_d_work,
+				msecs_to_jiffies(100));
 
 	return IRQ_HANDLED;
 }
@@ -200,8 +231,10 @@ static void maxim2c_hot_plug_state_check_work(struct work_struct *work)
 		dev_dbg(dev, "lock state: current = 0x%02x, last = 0x%02x\n",
 			curr_lock_state, last_lock_state);
 
+		maxim2c_hot_plug_event_report(maxim2c, curr_lock_state);
 		maxim2c->link_lock_state = curr_lock_state;
 	}
+	mutex_unlock(&maxim2c->mutex);
 
 	if (link_lock_change & MAXIM2C_LINK_MASK_A) {
 		link_id = MAXIM2C_LINK_ID_A;
@@ -263,8 +296,6 @@ static void maxim2c_hot_plug_state_check_work(struct work_struct *work)
 				&maxim2c->hot_plug_work.state_d_work,
 				msecs_to_jiffies(200));
 	}
-
-	mutex_unlock(&maxim2c->mutex);
 }
 
 int maxim2c_hot_plug_detect_work_start(maxim2c_t *maxim2c)
@@ -437,6 +468,8 @@ static int maxim2c_module_parse_dt(maxim2c_t *maxim2c)
 {
 	struct device *dev = &maxim2c->client->dev;
 	struct device_node *node = NULL;
+	u32 value = 0;
+	int ret = 0;
 
 	// maxim serdes local
 	node = of_get_child_by_name(dev->of_node, "serdes-local-device");
@@ -452,6 +485,12 @@ static int maxim2c_module_parse_dt(maxim2c_t *maxim2c)
 
 		of_node_put(node);
 		return -ENODEV;
+	}
+
+	ret = of_property_read_u32(node, "remote-routing-to-isp", &value);
+	if (ret == 0) {
+		dev_info(dev, "remote-routing-to-isp property: %d\n", value);
+		maxim2c->remote_routing_to_isp = value;
 	}
 
 	/* gmsl link parse dt */

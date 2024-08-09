@@ -57,7 +57,8 @@ static int rk628_rgb_resolution_show(struct seq_file *s, void *data)
 	rgb_rx_clkrate = val & RGB_RX_CLKRATE_MASK;
 
 	ref_clk = rk628_cru_clk_get_rate(rk628, CGU_CLK_IMODET);
-	pixel_clk = ref_clk * rgb_rx_clkrate / (rgb_rx_eval_time + 1);
+	pixel_clk = ref_clk * rgb_rx_clkrate;
+	do_div(pixel_clk, rgb_rx_eval_time + 1);
 
 	if (rk628_input_is_rgb(rk628)) {
 		rk628_i2c_read(rk628, GRF_RGB_RX_DBG_MEAS4, &val);
@@ -287,8 +288,6 @@ static void rk628_bt1120_decoder_enable(struct rk628 *rk628)
 	rk628_i2c_write(rk628, CRU_SOFTRST_CON00, 0x10001000);
 	rk628_i2c_write(rk628, CRU_SOFTRST_CON00, 0x10000000);
 
-	rk628_cru_clk_set_rate(rk628, CGU_BT1120DEC, mode->clock * 1000);
-
 	if (rk628->rgb.bt1120_dual_edge) {
 		rk628_i2c_update_bits(rk628, GRF_RGB_DEC_CON0,
 				DEC_DUALEDGE_EN, DEC_DUALEDGE_EN);
@@ -310,7 +309,7 @@ static void rk628_bt1120_decoder_enable(struct rk628 *rk628)
 	rk628_i2c_update_bits(rk628, GRF_SYSTEM_CON0,
 			      SW_BT_DATA_OEN_MASK | SW_INPUT_MODE_MASK,
 			      SW_BT_DATA_OEN | SW_INPUT_MODE(INPUT_MODE_BT1120));
-	rk628_i2c_write(rk628, GRF_CSC_CTRL_CON, SW_Y2R_EN(1));
+
 	rk628_i2c_update_bits(rk628, GRF_RGB_DEC_CON0,
 			      SW_CAP_EN_PSYNC | SW_CAP_EN_ASYNC |
 			      SW_PROGRESS_EN |
@@ -339,7 +338,7 @@ static void rk628_bt1120_encoder_enable(struct rk628 *rk628)
 	rk628_i2c_update_bits(rk628, GRF_SYSTEM_CON0,
 			      SW_BT_DATA_OEN_MASK | SW_OUTPUT_RGB_MODE_MASK,
 			      SW_OUTPUT_RGB_MODE(OUTPUT_MODE_BT1120 >> 3));
-	rk628_i2c_write(rk628, GRF_CSC_CTRL_CON, SW_R2Y_EN(1));
+
 	if (rk628->version != RK628F_VERSION)
 		rk628_i2c_update_bits(rk628, GRF_POST_PROC_CON,
 				      SW_DCLK_OUT_INV_EN, SW_DCLK_OUT_INV_EN);

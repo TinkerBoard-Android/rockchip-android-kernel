@@ -1223,7 +1223,7 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	/* Catch common mistakes for panels. */
 	switch (connector_type) {
 	case 0:
-		dev_warn(dev, "Specify missing connector_type\n");
+		dev_warn(dev, "Specify missing connector_type, please specify \"connector-type\" in dts\n");
 		connector_type = DRM_MODE_CONNECTOR_DPI;
 		break;
 	case DRM_MODE_CONNECTOR_LVDS:
@@ -2822,13 +2822,13 @@ static const struct panel_desc innolux_g070y2_t02 = {
 static const struct display_timing innolux_g101ice_l01_timing = {
 	.pixelclock = { 60400000, 71100000, 74700000 },
 	.hactive = { 1280, 1280, 1280 },
-	.hfront_porch = { 41, 80, 100 },
-	.hback_porch = { 40, 79, 99 },
-	.hsync_len = { 1, 1, 1 },
+	.hfront_porch = { 30, 60, 70 },
+	.hback_porch = { 30, 60, 70 },
+	.hsync_len = { 22, 40, 60 },
 	.vactive = { 800, 800, 800 },
-	.vfront_porch = { 5, 11, 14 },
-	.vback_porch = { 4, 11, 14 },
-	.vsync_len = { 1, 1, 1 },
+	.vfront_porch = { 3, 8, 14 },
+	.vback_porch = { 3, 8, 14 },
+	.vsync_len = { 4, 7, 12 },
 	.flags = DISPLAY_FLAGS_DE_HIGH,
 };
 
@@ -2845,6 +2845,7 @@ static const struct panel_desc innolux_g101ice_l01 = {
 		.disable = 200,
 	},
 	.bus_format = MEDIA_BUS_FMT_RGB888_1X7X4_SPWG,
+	.bus_flags = DRM_BUS_FLAG_DE_HIGH,
 	.connector_type = DRM_MODE_CONNECTOR_LVDS,
 };
 
@@ -5074,6 +5075,7 @@ static int panel_simple_of_get_desc_data(struct device *dev,
 
 	if (desc->num_modes || desc->num_timings) {
 		of_property_read_u32(np, "bpc", &desc->bpc);
+		of_property_read_u32(np, "connector-type", &desc->connector_type);
 		of_property_read_u32(np, "bus-format", &desc->bus_format);
 		of_property_read_u32(np, "width-mm", &desc->size.width);
 		of_property_read_u32(np, "height-mm", &desc->size.height);
@@ -5536,6 +5538,8 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	if (err)
 		return err;
 
+	desc->desc.connector_type = DRM_MODE_CONNECTOR_DSI;
+
 	if (!of_property_read_u32(np, "dsi,flags", &val))
 		desc->flags = val;
 	if (!of_property_read_u32(np, "dsi,format", &val))
@@ -5779,10 +5783,18 @@ static int panel_simple_spi_write(struct device *dev, const u8 *data, size_t len
 }
 
 static const struct of_device_id panel_simple_spi_of_match[] = {
+	{ .compatible = "panel-simple-spi", .data = NULL },
 	{ .compatible = "simple-panel-spi", .data = NULL },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, panel_simple_spi_of_match);
+
+static const struct spi_device_id panel_simple_spi_ids[] = {
+	{ .name = "panel-simple-spi" },
+	{ .name = "simple-panel-spi" },
+	{},
+};
+MODULE_DEVICE_TABLE(spi, panel_simple_spi_ids);
 
 static int panel_simple_spi_probe(struct spi_device *spi)
 {
@@ -5807,6 +5819,7 @@ static int panel_simple_spi_probe(struct spi_device *spi)
 			return ret;
 		}
 
+		d->connector_type = DRM_MODE_CONNECTOR_SPI;
 		d->spi_write = panel_simple_spi_write;
 		d->spi_read = panel_simple_spi_read;
 		d->cmd_type = CMD_TYPE_SPI;
@@ -5845,6 +5858,7 @@ static struct spi_driver panel_simple_spi_driver = {
 	.probe			= panel_simple_spi_probe,
 	.remove			= panel_simple_spi_remove,
 	.shutdown		= panel_simple_spi_shutdown,
+	.id_table		= panel_simple_spi_ids,
 };
 
 static int __init panel_simple_init(void)

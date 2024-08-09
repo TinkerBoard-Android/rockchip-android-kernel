@@ -361,11 +361,13 @@ int rkisp_update_sensor_info(struct rkisp_device *dev)
 	sensor = sd_to_sensor(dev, sensor_sd);
 	if (!sensor)
 		return -ENODEV;
-	ret = v4l2_subdev_call(sensor->sd, pad, get_mbus_config,
-			       0, &sensor->mbus);
-	if (ret && ret != -ENOIOCTLCMD)
-		return ret;
-
+	if (dev->isp_inp & INP_CIF) {
+		sensor->mbus.type = 0;
+	} else {
+		ret = v4l2_subdev_call(sensor->sd, pad, get_mbus_config,  0, &sensor->mbus);
+		if (ret && ret != -ENOIOCTLCMD)
+			return ret;
+	}
 	sensor->fmt[0].pad = 0;
 	sensor->fmt[0].which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	ret = v4l2_subdev_call(sensor->sd, pad, get_fmt,
@@ -428,6 +430,18 @@ u32 rkisp_mbus_pixelcode_to_v4l2(u32 pixelcode)
 	u32 pixelformat;
 
 	switch (pixelcode) {
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		pixelformat = V4L2_PIX_FMT_UYVY;
+		break;
+	case MEDIA_BUS_FMT_VYUY8_2X8:
+		pixelformat = V4L2_PIX_FMT_VYUY;
+		break;
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+		pixelformat = V4L2_PIX_FMT_YUYV;
+		break;
+	case MEDIA_BUS_FMT_YVYU8_2X8:
+		pixelformat = V4L2_PIX_FMT_YVYU;
+		break;
 	case MEDIA_BUS_FMT_Y8_1X8:
 		pixelformat = V4L2_PIX_FMT_GREY;
 		break;
@@ -646,6 +660,9 @@ void rkisp_trigger_read_back(struct rkisp_device *dev, u8 dma2frm, u32 mode, boo
 		rkisp_stream_frame_start(dev, 0);
 	}
 
+	if (dev->isp_ver == ISP_V39)
+		rkisp_sditf_sof(dev, 0);
+
 	if (!hw->is_single) {
 		/* multi sensor need to reset isp resize mode if scale up */
 		val = 0;
@@ -661,9 +678,21 @@ void rkisp_trigger_read_back(struct rkisp_device *dev, u8 dma2frm, u32 mode, boo
 			writel(0, hw->base_addr + CIF_IRCL);
 		}
 
+		/* sensor mode & index */
+		if (dev->isp_ver >= ISP_V21) {
+			val = rkisp_read_reg_cache(dev, ISP_ACQ_H_OFFS);
+			val |= ISP21_SENSOR_INDEX(dev->multi_index);
+			if (dev->isp_ver == ISP_V32_L)
+				val |= ISP32L_SENSOR_MODE(dev->multi_mode);
+			else
+				val |= ISP21_SENSOR_MODE(dev->multi_mode);
+			writel(val, hw->base_addr + ISP_ACQ_H_OFFS);
+			if (hw->unite == ISP_UNITE_TWO)
+				writel(val, hw->base_next_addr + ISP_ACQ_H_OFFS);
+		}
 		rkisp_update_regs(dev, CTRL_VI_ISP_PATH, SUPER_IMP_COLOR_CR);
 		rkisp_update_regs(dev, DUAL_CROP_M_H_OFFS, ISP3X_DUAL_CROP_FBC_V_SIZE);
-		rkisp_update_regs(dev, ISP_ACQ_H_OFFS, DUAL_CROP_CTRL);
+		rkisp_update_regs(dev, ISP_ACQ_V_OFFS, DUAL_CROP_CTRL);
 		rkisp_update_regs(dev, ISP39_LDCV_BIC_TABLE0, MI_WR_CTRL);
 		rkisp_update_regs(dev, SELF_RESIZE_SCALE_HY, ISP39_LDCV_CTRL);
 		rkisp_update_regs(dev, ISP32_BP_RESIZE_SCALE_HY, SELF_RESIZE_CTRL);
@@ -688,21 +717,9 @@ void rkisp_trigger_read_back(struct rkisp_device *dev, u8 dma2frm, u32 mode, boo
 				rkisp_write(dev, ISP39_MAIN_SCALE_UPDATE, ISP32_SCALE_FORCE_UPD, true);
 			rkisp_unite_write(dev, ISP3X_MI_WR_INIT, CIF_MI_INIT_SOFT_UPD, true);
 		}
-		/* sensor mode & index */
-		if (dev->isp_ver >= ISP_V21) {
-			val = rkisp_read_reg_cache(dev, ISP_ACQ_H_OFFS);
-			val |= ISP21_SENSOR_INDEX(dev->multi_index);
-			if (dev->isp_ver == ISP_V32_L || dev->isp_ver == ISP_V39)
-				val |= ISP32L_SENSOR_MODE(dev->multi_mode);
-			else
-				val |= ISP21_SENSOR_MODE(dev->multi_mode);
-			writel(val, hw->base_addr + ISP_ACQ_H_OFFS);
-			if (hw->unite == ISP_UNITE_TWO)
-				writel(val, hw->base_next_addr + ISP_ACQ_H_OFFS);
-			v4l2_dbg(2, rkisp_debug, &dev->v4l2_dev,
-				 "sensor mode:%d index:%d | 0x%x\n",
-				 dev->multi_mode, dev->multi_index, val);
-		}
+		v4l2_dbg(2, rkisp_debug, &dev->v4l2_dev,
+			 "sensor mode:%d index:%d | 0x%x\n",
+			 dev->multi_mode, dev->multi_index, rkisp_read(dev, ISP_ACQ_H_OFFS, true));
 		is_upd = true;
 	}
 
@@ -1133,6 +1150,9 @@ void rkisp_check_idle(struct rkisp_device *dev, u32 irq)
 	if (!(dev->irq_ends_mask & val)) {
 		u32 state = dev->isp_state;
 		struct rkisp_stream *s;
+
+		if (dev->sditf_dev && !dev->sditf_dev->is_on)
+			dev->isp_state = ISP_STOP;
 
 		for (val = 0; val < RKISP_STREAM_VIR; val++) {
 			s = &dev->cap_dev.stream[val];
@@ -4439,6 +4459,8 @@ void rkisp_isp_isr(unsigned int isp_mis,
 			dev->isp_sdev.frm_timestamp = rkisp_time_get_ns(dev);
 			rkisp_isp_queue_event_sof(&dev->isp_sdev);
 			rkisp_stream_frame_start(dev, isp_mis);
+			if (dev->isp_ver == ISP_V39)
+				rkisp_sditf_sof(dev, isp_mis);
 			rkisp_rockit_frame_start(dev);
 		}
 vs_skip:
@@ -4603,6 +4625,8 @@ vs_skip:
 		rkisp_isp_queue_event_sof(&dev->isp_sdev);
 		rkisp_stream_frame_start(dev, isp_mis);
 		rkisp_rockit_frame_start(dev);
+		if (dev->isp_ver == ISP_V39)
+			rkisp_sditf_sof(dev, isp_mis);
 	}
 
 	if (isp_mis & ISP3X_OUT_FRM_QUARTER) {

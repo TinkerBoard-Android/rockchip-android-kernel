@@ -310,9 +310,9 @@ int dwc3_core_soft_reset(struct dwc3 *dwc)
 	/*
 	 * We're resetting only the device side because, if we're in host mode,
 	 * XHCI driver will reset the host block. If dwc3 was configured for
-	 * host-only mode or current role is host, then we can return early.
+	 * host-only mode, then we can return early.
 	 */
-	if (dwc->dr_mode == USB_DR_MODE_HOST || dwc->current_dr_role == DWC3_GCTL_PRTCAP_HOST)
+	if (dwc->current_dr_role == DWC3_GCTL_PRTCAP_HOST)
 		return 0;
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
@@ -854,6 +854,7 @@ static int dwc3_clk_enable(struct dwc3 *dwc)
 	if (ret)
 		goto disable_ref_clk;
 
+#ifdef CONFIG_NO_GKI
 	ret = clk_prepare_enable(dwc->utmi_clk);
 	if (ret)
 		goto disable_susp_clk;
@@ -861,13 +862,16 @@ static int dwc3_clk_enable(struct dwc3 *dwc)
 	ret = clk_prepare_enable(dwc->pipe_clk);
 	if (ret)
 		goto disable_utmi_clk;
+#endif
 
 	return 0;
 
+#ifdef CONFIG_NO_GKI
 disable_utmi_clk:
 	clk_disable_unprepare(dwc->utmi_clk);
 disable_susp_clk:
 	clk_disable_unprepare(dwc->susp_clk);
+#endif
 disable_ref_clk:
 	clk_disable_unprepare(dwc->ref_clk);
 disable_bus_clk:
@@ -877,8 +881,10 @@ disable_bus_clk:
 
 static void dwc3_clk_disable(struct dwc3 *dwc)
 {
+#ifdef CONFIG_NO_GKI
 	clk_disable_unprepare(dwc->pipe_clk);
 	clk_disable_unprepare(dwc->utmi_clk);
+#endif
 	clk_disable_unprepare(dwc->susp_clk);
 	clk_disable_unprepare(dwc->ref_clk);
 	clk_disable_unprepare(dwc->bus_clk);
@@ -1326,6 +1332,18 @@ static int dwc3_core_init(struct dwc3 *dwc)
 
 			dwc3_writel(dwc->regs, DWC3_GTXTHRCFG, reg);
 		}
+	}
+
+	/*
+	 * Modify this for all supported Super Speed ports when
+	 * multiport support is added.
+	 */
+	if (hw_mode != DWC3_GHWPARAMS0_MODE_GADGET &&
+	    (DWC3_IP_IS(DWC31)) &&
+	    dwc->maximum_speed == USB_SPEED_SUPER) {
+		reg = dwc3_readl(dwc->regs, DWC3_LLUCTL);
+		reg |= DWC3_LLUCTL_FORCE_GEN1;
+		dwc3_writel(dwc->regs, DWC3_LLUCTL, reg);
 	}
 
 	return 0;
@@ -1870,6 +1888,7 @@ static int dwc3_get_clocks(struct dwc3 *dwc)
 		}
 	}
 
+#ifdef CONFIG_NO_GKI
 	/* specific to Rockchip RK3588 */
 	dwc->utmi_clk = devm_clk_get_optional(dev, "utmi");
 	if (IS_ERR(dwc->utmi_clk)) {
@@ -1883,6 +1902,7 @@ static int dwc3_get_clocks(struct dwc3 *dwc)
 		return dev_err_probe(dev, PTR_ERR(dwc->pipe_clk),
 				"could not get pipe clock\n");
 	}
+#endif
 
 	return 0;
 }
@@ -2024,10 +2044,16 @@ static int dwc3_probe(struct platform_device *pdev)
 			pm_runtime_set_autosuspend_delay(dev, 100);
 		pm_runtime_allow(dev);
 		pm_runtime_put_sync_suspend(dev);
+
+		if (dwc->edev && extcon_get_state(dwc->edev, EXTCON_USB_HOST))
+			dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_HOST);
+
 		return 0;
 	}
 
 	pm_runtime_put(dev);
+
+	dma_set_max_seg_size(dev, UINT_MAX);
 
 	return 0;
 
@@ -2363,12 +2389,15 @@ static int dwc3_resume(struct device *dev)
 
 	pinctrl_pm_select_default_state(dev);
 
-	ret = dwc3_resume_common(dwc, PMSG_RESUME);
-	if (ret)
-		return ret;
-
 	pm_runtime_disable(dev);
 	pm_runtime_set_active(dev);
+
+	ret = dwc3_resume_common(dwc, PMSG_RESUME);
+	if (ret) {
+		pm_runtime_set_suspended(dev);
+		return ret;
+	}
+
 	pm_runtime_enable(dev);
 
 	return 0;
@@ -2433,6 +2462,12 @@ static struct platform_driver dwc3_driver = {
 };
 
 module_platform_driver(dwc3_driver);
+
+/*
+ * For type visibility (http://b/236036821)
+ */
+const struct dwc3 *const ANDROID_GKI_struct_dwc3;
+EXPORT_SYMBOL_GPL(ANDROID_GKI_struct_dwc3);
 
 MODULE_ALIAS("platform:dwc3");
 MODULE_AUTHOR("Felipe Balbi <balbi@ti.com>");

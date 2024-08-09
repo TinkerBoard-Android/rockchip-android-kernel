@@ -28,11 +28,12 @@
 #define VOP2_MINOR(version)		(((version) >> 16) & 0xff)
 #define VOP2_BUILD(version)		((version) & 0xffff)
 
+/* The new SOC VOP version is bigger than the old */
+#define VOP_VERSION_RK3568	VOP2_VERSION(0x40, 0x15, 0x8023)
+#define VOP_VERSION_RK3588	VOP2_VERSION(0x40, 0x17, 0x6786)
 #define VOP_VERSION_RK3528	VOP2_VERSION(0x50, 0x17, 0x1263)
 #define VOP_VERSION_RK3562	VOP2_VERSION(0x50, 0x17, 0x4350)
-#define VOP_VERSION_RK3568	VOP2_VERSION(0x40, 0x15, 0x8023)
 #define VOP_VERSION_RK3576	VOP2_VERSION(0x50, 0x19, 0x9765)
-#define VOP_VERSION_RK3588	VOP2_VERSION(0x40, 0x17, 0x6786)
 
 /* register one connector */
 #define ROCKCHIP_OUTPUT_DUAL_CHANNEL_LEFT_RIGHT_MODE	BIT(0)
@@ -1084,6 +1085,7 @@ struct vop2_wb_regs {
 	struct vop_reg vir_stride;
 	struct vop_reg vir_stride_en;
 	struct vop_reg act_width;
+	struct vop_reg post_empty_stop_en;
 	struct vop_reg one_frame_mode;
 	struct vop_reg auto_gating;
 };

@@ -969,7 +969,7 @@ static void hdmi_select_link_config(struct rockchip_hdmi *hdmi,
 	unsigned long max_frl_rate;
 
 	drm_mode_copy(&mode, &crtc_state->mode);
-	if (hdmi->plat_data->split_mode)
+	if (hdmi->plat_data->split_mode || hdmi->plat_data->dual_connector_split)
 		drm_mode_convert_to_origin_mode(&mode);
 
 	max_lanes = hdmi->max_lanes;
@@ -1792,6 +1792,14 @@ static int rockchip_hdmi_parse_dt(struct rockchip_hdmi *hdmi)
 	return 0;
 }
 
+static bool is_hdmi2_mode(const struct drm_display_mode *mode)
+{
+	if (mode->clock > 340000 && mode->clock <= 600000)
+		return true;
+
+	return false;
+}
+
 static enum drm_mode_status
 dw_hdmi_rockchip_mode_valid(struct dw_hdmi *dw_hdmi, void *data,
 			    const struct drm_display_info *info,
@@ -1821,6 +1829,34 @@ dw_hdmi_rockchip_mode_valid(struct dw_hdmi *dw_hdmi, void *data,
 
 	hdmi = to_rockchip_hdmi(encoder);
 
+	if (!hdmi->skip_check_420_mode) {
+		u32 max_tmds_clock = connector->display_info.max_tmds_clock;
+
+		/* some sinks edid max_tmds_clocks are 0, we think it only support hdmi1.4 */
+		if (!connector->display_info.max_tmds_clock)
+			max_tmds_clock = 340000;
+
+		/* edid isn't support yuv420 and max_tmds_clock is less than mode pixel clk */
+		if (mode->clock < 600000 && max_tmds_clock < mode->clock &&
+		    (!drm_mode_is_420(&connector->display_info, mode) ||
+		     !connector->ycbcr_420_allowed))
+			return MODE_BAD;
+
+		/* edid isn't support yuv420 and hdmitx only support hdmi1.4 clk */
+		if (hdmi->max_tmdsclk <= 340000 && is_hdmi2_mode(mode) &&
+		    !drm_mode_is_420(&connector->display_info, mode))
+			return MODE_BAD;
+
+		/*
+		 * hdmi cts hf1-31 required filtering yuv420 mode that frequency
+		 * exceeds the max_tmds_clock of edid.
+		 */
+		if (drm_mode_is_420(&connector->display_info, mode) &&
+		    max_tmds_clock < (mode->clock / 2) &&
+		    is_hdmi2_mode(mode))
+			return MODE_BAD;
+	};
+
 	if (hdmi->is_hdmi_qp) {
 		if (!hdmi->enable_gpio && mode->clock > 600000)
 			return MODE_BAD;
@@ -1835,23 +1871,6 @@ dw_hdmi_rockchip_mode_valid(struct dw_hdmi *dw_hdmi, void *data,
 	 */
 	if (mode->clock > INT_MAX / 1000)
 		return MODE_BAD;
-
-	/*
-	 * If sink max TMDS clock < 340MHz, we should check the mode pixel
-	 * clock > 340MHz is YCbCr420 or not and whether the platform supports
-	 * YCbCr420.
-	 */
-	if (!hdmi->skip_check_420_mode) {
-		if (mode->clock > 340000 &&
-		    connector->display_info.max_tmds_clock < 340000 &&
-		    (!drm_mode_is_420(&connector->display_info, mode) ||
-		     !connector->ycbcr_420_allowed))
-			return MODE_BAD;
-
-		if (hdmi->max_tmdsclk <= 340000 && mode->clock > 340000 &&
-		    !drm_mode_is_420(&connector->display_info, mode))
-			return MODE_BAD;
-	};
 
 	if (hdmi->phy) {
 		if (hdmi->is_hdmi_qp)
@@ -1906,6 +1925,7 @@ static void dw_hdmi_rockchip_encoder_disable(struct drm_encoder *encoder)
 			else
 				s->output_if &= ~VOP_OUTPUT_IF_HDMI1;
 		}
+		s->output_if_left_panel &= ~(hdmi->id ? VOP_OUTPUT_IF_HDMI1 : VOP_OUTPUT_IF_HDMI0);
 	}
 	/*
 	 * when plug out hdmi it will be switch cvbs and then phy bus width
@@ -2566,7 +2586,7 @@ dw_hdmi_rockchip_encoder_atomic_check(struct drm_encoder *encoder,
 secondary:
 	drm_mode_copy(&mode, &crtc_state->mode);
 
-	if (hdmi->plat_data->split_mode)
+	if (hdmi->plat_data->split_mode || hdmi->plat_data->dual_connector_split)
 		drm_mode_convert_to_origin_mode(&mode);
 
 	dw_hdmi_rockchip_select_output(conn_state, crtc_state, hdmi,
@@ -2619,11 +2639,15 @@ secondary:
 		if (hdmi->plat_data->right && hdmi->id)
 			s->output_flags |= ROCKCHIP_OUTPUT_DATA_SWAP;
 		s->output_if |= VOP_OUTPUT_IF_HDMI0 | VOP_OUTPUT_IF_HDMI1;
+		s->output_if_left_panel |= hdmi->id ? VOP_OUTPUT_IF_HDMI1 : VOP_OUTPUT_IF_HDMI0;
+	} else if (hdmi->plat_data->dual_connector_split) {
+		s->output_if |= hdmi->id ? VOP_OUTPUT_IF_HDMI1 : VOP_OUTPUT_IF_HDMI0;
+		s->output_flags |= ROCKCHIP_OUTPUT_DUAL_CONNECTOR_SPLIT_MODE;
+		if (hdmi->plat_data->left_display)
+			s->output_if_left_panel |= hdmi->id ?
+				VOP_OUTPUT_IF_HDMI1 : VOP_OUTPUT_IF_HDMI0;
 	} else {
-		if (!hdmi->id)
-			s->output_if |= VOP_OUTPUT_IF_HDMI0;
-		else
-			s->output_if |= VOP_OUTPUT_IF_HDMI1;
+		s->output_if |= hdmi->id ? VOP_OUTPUT_IF_HDMI1 : VOP_OUTPUT_IF_HDMI0;
 	}
 
 	s->output_mode = output_mode;
@@ -3430,6 +3454,33 @@ static const struct drm_encoder_helper_funcs dw_hdmi_rockchip_encoder_helper_fun
 	.mode_set = dw_hdmi_rockchip_encoder_mode_set,
 };
 
+/*
+ * Register child devices like audio/cec/hdcp at late_register stage
+ * to avoid register these devie at probe/bind(which may cause
+ * infinite loop of .probe() if a component is always defer)
+ *
+ * As these devices are not that critical, so we don't check
+ * the register results here, just give warning in it's register
+ * function if it failed, let the drm bringup.
+ */
+static int dw_hdmi_encoder_late_register(struct drm_encoder *encoder)
+{
+	struct rockchip_hdmi *hdmi = to_rockchip_hdmi(encoder);
+
+	if (hdmi->is_hdmi_qp) {
+		dw_hdmi_qp_register_audio(hdmi->hdmi_qp);
+		dw_hdmi_qp_register_cec(hdmi->hdmi_qp);
+		dw_hdmi_qp_register_hdcp(hdmi->hdmi_qp);
+	}
+
+	return 0;
+}
+
+static const struct drm_encoder_funcs dw_hdmi_rockchip_encoder_funcs = {
+	.destroy = drm_encoder_cleanup,
+	.late_register = dw_hdmi_encoder_late_register,
+};
+
 static void
 dw_hdmi_rockchip_genphy_disable(struct dw_hdmi *dw_hdmi, void *data)
 {
@@ -4058,12 +4109,21 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		 * mode is on and determine the sequence of hdmi bind.
 		 */
 		if (device_property_read_bool(dev, "split-mode") ||
-		    device_property_read_bool(secondary->dev, "split-mode")) {
+		    device_property_read_bool(dev, "rockchip,split-mode") ||
+		    device_property_read_bool(secondary->dev, "split-mode") ||
+		    device_property_read_bool(secondary->dev, "rockchip,split-mode")) {
 			plat_data->split_mode = true;
 			secondary->plat_data->split_mode = true;
 			if (!secondary->plat_data->first_screen)
 				plat_data->first_screen = true;
 		}
+	}
+
+	if (device_property_read_bool(dev, "rockchip,dual-connector-split")) {
+		plat_data->dual_connector_split = true;
+
+		if (device_property_read_bool(dev, "rockchip,left-display"))
+			plat_data->left_display = true;
 	}
 
 	if (!plat_data->first_screen) {
@@ -4079,7 +4139,9 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 			return -EPROBE_DEFER;
 
 		drm_encoder_helper_add(encoder, &dw_hdmi_rockchip_encoder_helper_funcs);
-		drm_simple_encoder_init(drm, encoder, DRM_MODE_ENCODER_TMDS);
+		drm_encoder_init(drm, encoder, &dw_hdmi_rockchip_encoder_funcs,
+				 DRM_MODE_ENCODER_TMDS,
+				 NULL);
 	}
 
 	if (!plat_data->max_tmdsclk)
@@ -4243,7 +4305,9 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		} else if (plat_data->connector) {
 			hdmi->sub_dev.connector = plat_data->connector;
 			hdmi->sub_dev.loader_protect = dw_hdmi_rockchip_encoder_loader_protect;
-			if (secondary && device_property_read_bool(secondary->dev, "split-mode"))
+			if (secondary &&
+			    (device_property_read_bool(secondary->dev, "split-mode") ||
+			     device_property_read_bool(secondary->dev, "rockchip,split-mode")))
 				hdmi->sub_dev.of_node = secondary->dev->of_node;
 			else
 				hdmi->sub_dev.of_node = hdmi->dev->of_node;
@@ -4252,7 +4316,8 @@ static int dw_hdmi_rockchip_bind(struct device *dev, struct device *master,
 		}
 
 		if (plat_data->split_mode && secondary) {
-			if (device_property_read_bool(dev, "split-mode")) {
+			if (device_property_read_bool(dev, "split-mode") ||
+			    device_property_read_bool(dev, "rockchip,split-mode")) {
 				plat_data->right = secondary->hdmi_qp;
 				secondary->plat_data->left = hdmi->hdmi_qp;
 			} else {
@@ -4323,6 +4388,8 @@ static void dw_hdmi_rockchip_unbind(struct device *dev, struct device *master,
 		regulator_disable(hdmi->avdd_1v8);
 	if (hdmi->avdd_0v9)
 		regulator_disable(hdmi->avdd_0v9);
+
+	hdmi->drm_dev = NULL;
 }
 
 static const struct component_ops dw_hdmi_rockchip_ops = {
@@ -4369,7 +4436,7 @@ static void dw_hdmi_rockchip_shutdown(struct platform_device *pdev)
 {
 	struct rockchip_hdmi *hdmi = dev_get_drvdata(&pdev->dev);
 
-	if (!hdmi)
+	if (!hdmi || !hdmi->drm_dev)
 		return;
 
 	if (hdmi->is_hdmi_qp) {
