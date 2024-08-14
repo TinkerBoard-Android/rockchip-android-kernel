@@ -42,6 +42,8 @@
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/uaccess.h>
+#include <linux/of_gpio.h>
+#include <linux/string.h>
 
 /* SPI interface instruction set */
 #define INSTRUCTION_WRITE	0x02
@@ -206,6 +208,8 @@
 #define MCP251X_OST_DELAY_MS	(5)
 
 #define DEVICE_NAME "mcp251x"
+
+#define CAN_RESET 111
 
 static const struct can_bittiming_const mcp251x_bittiming_const = {
 	.name = DEVICE_NAME,
@@ -1307,7 +1311,16 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	struct clk *clk;
 	u32 freq;
 	int ret;
+	struct device_node *np = spi->dev.of_node;
+	int standby_gpio;
 
+	if (gpio_is_valid(CAN_RESET)) {
+		ret = gpio_request(CAN_RESET, "CAN_RESET");
+		if (ret)
+			dev_err(&spi->dev, "unable to request reset gpio\n");
+		else
+			gpio_direction_output(CAN_RESET, 1);
+	}
 	clk = devm_clk_get_optional(&spi->dev, NULL);
 	if (IS_ERR(clk))
 		return PTR_ERR(clk);
@@ -1329,6 +1342,14 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	if (ret)
 		goto out_free;
 
+	standby_gpio = of_get_named_gpio(np, "standby-gpios", 0);
+	dev_info(&spi->dev, "can bus standby gpio=%d, freq=%d\n", standby_gpio, freq);
+	if (gpio_is_valid(standby_gpio)) {
+		ret = devm_gpio_request_one(&spi->dev, standby_gpio,
+					    GPIOF_OUT_INIT_LOW, "CAN standby");
+		if (ret)
+			dev_err(&spi->dev, "unable to get can standby gpio\n");
+	}
 	net->netdev_ops = &mcp251x_netdev_ops;
 	net->ethtool_ops = &mcp251x_ethtool_ops;
 	net->flags |= IFF_ECHO;

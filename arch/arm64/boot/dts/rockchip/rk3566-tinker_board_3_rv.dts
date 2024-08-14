@@ -200,3 +200,23 @@
 		status = "okay";
 	};
 };
+
+&spi2 {
+	status = "okay";
+	spidev@1 {
+		compatible = "rockchip,spidev";
+		reg = <1>;
+		spi-max-frequency = <50000000>;
+		status = "disabled";
+	};
+	mcp2515@1 {
+		compatible = "microchip,mcp2515";
+		reg = <1>;
+		spi-max-frequency = <5000000>;
+		standby-gpios = <&gpio3 RK_PC0 GPIO_ACTIVE_LOW>;
+		clock-frequency = <20000000>;
+		interrupt-names = "irq";
+		interrupts-extended = <&gpio3 RK_PA1 IRQ_TYPE_EDGE_FALLING>;
+		status = "okay";
+	};
+};
