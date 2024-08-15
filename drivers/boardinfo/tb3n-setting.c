@@ -334,7 +334,7 @@ int tb3n_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, i
 	else if (vresult < 150)
 		ret = 0;
 
-	if (strcmp(compatible, "ADC1-PCBID") == 0) {
+	if (strcmp(compatible, "RK3568-ADC1-PCBID") == 0) {
 		boardid = ret;
 		*hwid = boardid;
 
@@ -363,7 +363,7 @@ int tb3n_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, i
 		file = proc_create("boardid", 0444, NULL, &boardid_ops);
 		if (!file)
 			return -ENOMEM;
-	} else if (strcmp(compatible, "ADC3-RAMID") == 0) {
+	} else if (strcmp(compatible, "RK3568-ADC3-RAMID") == 0) {
 		ddrid = ret;
 
 		switch(ddrid) {
@@ -391,7 +391,7 @@ int tb3n_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, i
 		file = proc_create("ddrid", 0444, NULL, &ddrid_ops);
 		if (!file)
 			return -ENOMEM;
-	} else if (strcmp(compatible, "ADC4-ODMID") == 0) {
+	} else if (strcmp(compatible, "RK3568-ADC4-ODMID") == 0) {
 		odmid = ret;
 		*oid = odmid;
 
@@ -418,7 +418,7 @@ int tb3n_adcs(struct device *dev, const char *compatible, int *hwid, int *pid, i
 		file = proc_create("odmid", 0444, NULL, &odmid_ops);
 		if (!file)
 			return -ENOMEM;
-	} else if (strcmp(compatible, "ADC5-PRJID") == 0) {
+	} else if (strcmp(compatible, "RK3568-ADC5-PRJID") == 0) {
 		projectid = ret;
 		*pid = projectid;
 
