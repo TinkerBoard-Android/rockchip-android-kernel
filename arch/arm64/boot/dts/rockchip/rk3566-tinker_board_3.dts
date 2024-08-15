@@ -53,6 +53,7 @@
 		compatible = "board-info";
 
 		model = "rk3566";
+		board = "Tinker Board 3";
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&boardinfo_gpio>;

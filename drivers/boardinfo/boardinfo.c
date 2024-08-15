@@ -10,7 +10,7 @@
 #include "tb3-setting.h"
 #include "tb3n-setting.h"
 
-static const char *model;
+static const char *model, *board;
 static int hwid = -1, pid = -1, odmid = -1;
 
 static const struct of_device_id of_board_info_match[] = {
@@ -41,6 +41,9 @@ static int board_info_probe(struct platform_device *pdev)
 		if (device_property_read_string(dev, "model", &model))
 			model = "unknow";
 
+		if (device_property_read_string(dev, "board", &board))
+			board = "unknow";
+
 		if (!strcmp("rk3288", model))
 			ret = tb_gpios(dev, &hwid, &pid);
 		else if (!strcmp("rk3399", model))
@@ -49,11 +52,15 @@ static int board_info_probe(struct platform_device *pdev)
 			ret = tb3n_gpios(dev);
 		else if (!strcmp("rk3566", model))
 			ret = tb3_gpios(dev);
+		else
+			ret = 0;
 	} else {
 		if (!strcmp("rk3568", model))
 			ret = tb3n_adcs(dev, compatible, &hwid, &pid, &odmid);
 		else if (!strcmp("rk3566", model))
-			ret = tb3_adcs(dev, compatible, &hwid, &pid);
+			ret = tb3_adcs(dev, compatible, board, &hwid, &pid);
+		else
+			ret = 0;
 	}
 
 	if (ret < 0)
@@ -121,3 +128,8 @@ static struct platform_driver boardinfo_driver = {
 };
 
 module_platform_driver(boardinfo_driver);
+
+MODULE_ALIAS("platform:boardinfo");
+MODULE_AUTHOR("Frank Chiang <frank_chiang@asus.com>");
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION("Driver to set Board Information");
