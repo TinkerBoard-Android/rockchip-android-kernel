@@ -77,6 +77,9 @@
 #include <linux/uaccess.h>
 #include <linux/regulator/consumer.h>
 
+#include <linux/of_gpio.h>
+#include <linux/string.h>
+
 /* SPI interface instruction set */
 #define INSTRUCTION_WRITE	0x02
 #define INSTRUCTION_READ	0x03
@@ -218,6 +221,7 @@
 #define MCP251X_OST_DELAY_MS	(5)
 
 #define DEVICE_NAME "mcp251x"
+#define CAN_RESET 111
 
 static int mcp251x_enable_dma; /* Enable SPI DMA. Default: 0 (Off) */
 module_param(mcp251x_enable_dma, int, 0444);
@@ -1044,7 +1048,17 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	struct clk *clk;
 	int freq, ret;
 
-	clk = devm_clk_get(&spi->dev, NULL);
+	struct device_node *np = spi->dev.of_node;
+	int standby_gpio;
+
+	if (gpio_is_valid(CAN_RESET)) {
+		ret = gpio_request(CAN_RESET, "CAN_RESET");
+		if (ret)
+			dev_err(&spi->dev, "unable to request reset gpio\n");
+		else
+			gpio_direction_output(CAN_RESET, 1);
+	}
+	clk = devm_clk_get_optional(&spi->dev, NULL);
 	if (IS_ERR(clk)) {
 		if (pdata)
 			freq = pdata->oscillator_frequency;
@@ -1055,6 +1069,9 @@ static int mcp251x_can_probe(struct spi_device *spi)
 	}
 
 	/* Sanity check */
+	if (freq == 0)
+		device_property_read_u32(&spi->dev, "clock-frequency", &freq);
+
 	if (freq < 1000000 || freq > 25000000)
 		return -ERANGE;
 
@@ -1067,6 +1084,15 @@ static int mcp251x_can_probe(struct spi_device *spi)
 		ret = clk_prepare_enable(clk);
 		if (ret)
 			goto out_free;
+	}
+
+	standby_gpio = of_get_named_gpio(np, "standby-gpios", 0);
+	dev_info(&spi->dev, "can bus standby gpio=%d, freq=%d\n", standby_gpio, freq);
+	if (gpio_is_valid(standby_gpio)) {
+		ret = devm_gpio_request_one(&spi->dev, standby_gpio,
+					    GPIOF_OUT_INIT_LOW, "CAN standby");
+		if (ret)
+			dev_err(&spi->dev, "unable to get can standby gpio\n");
 	}
 
 	net->netdev_ops = &mcp251x_netdev_ops;
