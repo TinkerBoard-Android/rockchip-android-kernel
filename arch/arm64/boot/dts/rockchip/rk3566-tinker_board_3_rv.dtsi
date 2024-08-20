@@ -31,6 +31,7 @@
 
 	vcc_camera: vcc-camera-regulator {
 		compatible = "regulator-fixed";
+		status = "disabled";
 		gpio = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&camera_pwr>;
@@ -190,12 +191,6 @@
 	status = "disabled";
 };
 
-&dsi0_panel {
-	power-supply = <&vcc3v3_lcd0_n>;
-	reset-gpios = <&gpio3 RK_PA3 GPIO_ACTIVE_LOW>;
-	pinctrl-names = "default";
-	pinctrl-0 = <&lcd0_rst_gpio>;
-};
 
 /*
  * video_phy1 needs to be enabled
@@ -335,6 +330,9 @@
 	 * when gmac1 is enabled;
 	 * pinctrl conflicts;
 	 */
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c4m1_xfer>;
+	//clock-frequency=<400000>;
 	gc2145: gc2145@3c {
 		status = "disabled";
 		compatible = "galaxycore,gc2145";
@@ -361,6 +359,10 @@
 				remote-endpoint = <&dvp_in_bcam>;
 			};
 		};
+	};
+	tinker_mcu: tinker_mcu@45 {
+		compatible = "tinker_mcu";
+		reg = <0x45>;
 	};
 };
 
@@ -480,6 +482,31 @@
 		lcd1_rst_gpio: lcd1-rst-gpio {
 			rockchip,pins = <3 RK_PA4 RK_FUNC_GPIO &pcfg_pull_none>;
 		};
+	};
+	panel-control {
+
+		pinctrl_sn65dsi86_en: sn65dsi86_en {
+			rockchip,pins = <2 RK_PC2 RK_FUNC_GPIO   &pcfg_pull_none>;
+		};
+
+		pinctrl_sn65dsi86_irq: sn65dsi86_irq{
+			rockchip,pins = <2 RK_PC4 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_lvds_bl_en: lvds_bl_en {
+			rockchip,pins = <2 RK_PC3 RK_FUNC_GPIO &pcfg_pull_none>;
+		};
+
+		pinctrl_lvds_vdd_en: lvds_vdd_en {
+			rockchip,pins = <2 RK_PC1 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+
+		pinctrl_pwr_source: pwr_source {
+			rockchip,pins = <2 RK_PC5 RK_FUNC_GPIO  &pcfg_pull_none>;
+		};
+		/*pinctrl_lt9211_en: lt9211_en {
+			rockchip,pins = <0 RK_PD5 RK_FUNC_GPIO &pcfg_pull_none>;
+		};*/
 	};
 };
 
@@ -607,9 +634,9 @@
 	clocks = <&rk809 1>;
 	clock-names = "ext_clock";
 	//wifi-bt-power-toggle;
-	uart_rts_gpios = <&gpio2 RK_PB5 GPIO_ACTIVE_LOW>;
+	//uart_rts_gpios = <&gpio2 RK_PB5 GPIO_ACTIVE_LOW>;
 	pinctrl-names = "default", "rts_gpio";
-	pinctrl-0 = <&uart1m0_rtsn>;
+	//pinctrl-0 = <&uart1m0_rtsn>;
 	pinctrl-1 = <&uart1_gpios>;
 	status = "okay";
 };

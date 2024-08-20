@@ -1569,7 +1569,7 @@ extern int tinker_mcu_ili9881c_is_connected(int dsi_id);
 static int tinker_mcu_is_connected(int dsi_id){ return 0; }
 static int tinker_mcu_ili9881c_is_connected(int dsi_id){ return 0; }
 #endif
-
+extern bool is_dsi_panel_connected(void);
 static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 			    void *data)
 {
@@ -1583,7 +1583,8 @@ static int dw_mipi_dsi_bind(struct device *dev, struct device *master,
 		!tinker_mcu_ili9881c_is_connected(dsi->id) &&
 		!sn65dsi84_is_connected() &&
 		!sn65dsi86_is_connected() &&
-		!lt9211_is_connected()) {
+		!lt9211_is_connected() &&
+		!is_dsi_panel_connected()) {
 		pr_info("dsi-%d panel and sn65dsi8x aren't connected\n", dsi->id);
 		return 0;
 	} else {

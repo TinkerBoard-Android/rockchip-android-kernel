@@ -154,6 +154,12 @@ enum mipi_dsi_pixel_format {
 	MIPI_DSI_FMT_RGB565,
 };
 
+enum mipi_dsi_panel {
+	MIPI_DSI_NONE,
+	MIPI_DSI_LKW070N13000_V2,
+	MIPI_DSI_JD9165BA,
+};
+
 #define DSI_DEV_NAME_SIZE		20
 
 /**

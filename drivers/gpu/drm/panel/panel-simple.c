@@ -180,6 +180,9 @@ struct panel_desc {
 		unsigned int disable;
 		unsigned int unprepare;
 		unsigned int reset;
+		unsigned int reset_high;
+		unsigned int reset_low;
+		unsigned int reset_high2;
 		unsigned int init;
 	} delay;
 
@@ -205,6 +208,7 @@ struct panel_simple {
 	struct i2c_adapter *ddc;
 
 	struct gpio_desc *enable_gpio;
+	struct gpio_desc *dsi_pwr_gpio;
 	struct gpio_desc *bl_sys_en_gpio;
 	struct gpio_desc *reset_gpio;
 	int cmd_type;
@@ -222,6 +226,7 @@ enum rockchip_cmd_type {
 	CMD_TYPE_SPI,
 	CMD_TYPE_MCU
 };
+static enum mipi_dsi_panel dsi_panel;
 
 enum MCU_IOCTL {
 	MCU_WRCMD = 0,
@@ -689,6 +694,11 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 			dev_err(panel->dev, "failed to send exit cmds seq\n");
 	}
 
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 0);
+	}
+
 #if defined(CONFIG_TINKER_MCU)
 	if (tinker_mcu_ili9881c_is_connected(p->dsi_id)) {
 		printk("tinker_mcu_ili9881c_screen_power_off\n");
@@ -726,6 +736,24 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		dev_err(panel->dev, "failed to enable supply: %d\n", err);
 		return err;
 	}
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
+
+		if (p->desc->delay.reset_high)
+			msleep(p->desc->delay.reset_high);
+
+		gpiod_set_value_cansleep(p->reset_gpio, 0);
+
+		if (p->desc->delay.reset_low)
+			msleep(p->desc->delay.reset_low);
+
+		gpiod_set_value_cansleep(p->reset_gpio, 1);
+
+		if (p->desc->delay.reset_high2)
+			msleep(p->desc->delay.reset_high2);
+	}
+
 
 #if defined(CONFIG_TINKER_MCU)
 	if (tinker_mcu_ili9881c_is_connected(p->dsi_id)) {
@@ -936,6 +964,8 @@ static int panel_simple_probe(struct device *dev, const struct panel_desc *desc)
 	if (err)
 		return err;
 
+	panel->dsi_pwr_gpio = devm_gpiod_get_optional(dev, "dsi_pwr",
+						     GPIOD_OUT_HIGH);
 	panel->enable_gpio = devm_gpiod_get_optional(dev, "enable",
 						     GPIOD_ASIS);
 	if (IS_ERR(panel->enable_gpio)) {
@@ -3372,6 +3402,19 @@ static int panel_simple_of_get_cmd(struct device *dev,
 				data = of_get_property(np, "powertip-rev-a-init-sequence",
 			       &len);
 	}
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		data = of_get_property(np, "lkw070n13000-v2-init-sequence", &len);
+
+		of_property_read_u32(np, "reset-high-delay-ms", &desc->delay.reset_high);
+		of_property_read_u32(np, "reset-high2-delay-ms", &desc->delay.reset_high2);
+		of_property_read_u32(np, "reset-low-delay-ms", &desc->delay.reset_low);
+	}
+	else if (dsi_panel == MIPI_DSI_JD9165BA)
+	{
+		printk("jd9165ba get init sequence OK\n");
+		data = of_get_property(np, "jd9165ba-init-sequence", &len);
+	}
 
 	if (data) {
 		desc->init_seq = devm_kzalloc(dev, sizeof(*desc->init_seq),
@@ -3393,6 +3436,14 @@ static int panel_simple_of_get_cmd(struct device *dev,
 	else if (tinker_mcu_ili9881c_is_connected(dsi_id))
 		data = of_get_property(np, "powertip-exit-sequence",
 			       &len);
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		data = of_get_property(np, "lkw070n13000-v2-exit-sequence", &len);
+	}
+	else if (dsi_panel == MIPI_DSI_JD9165BA)
+	{
+		data = of_get_property(np, "jd9165ba-exit-sequence", &len);
+	}
 	if (data) {
 		desc->exit_seq = devm_kzalloc(dev, sizeof(*desc->exit_seq),
 					      GFP_KERNEL);
@@ -3783,7 +3834,96 @@ static const struct panel_desc_dsi asus_ili9881c_dec= {
 	.format = MIPI_DSI_FMT_RGB888,
 	.lanes = 2,
 };
+static const struct drm_display_mode lkw070n13000_v2_mode = {
+	.clock = 70000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 40,
+	.hsync_end = 800 + 40 + 8,
+	.htotal = 800 + 80 + 20 + 80,
+	.vdisplay = 1280,
+	.vsync_start = 1280 + 10,
+	.vsync_end = 1280 + 10 + 4,
+	.vtotal = 1280 + 10 + 4 + 20,
 
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi lkw070n13000_v2_dec= {
+	.desc = {
+		.modes = &lkw070n13000_v2_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 151,
+			.height = 92,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		MIPI_DSI_MODE_VIDEO_BURST |
+		MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 4,
+};
+
+static const struct drm_display_mode tc358762_mode = {
+	.clock = 26101800 / 1000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 1,
+	.hsync_end = 800 + 1 + 2,
+	.htotal = 800 + 1 + 2 + 52,
+	.vdisplay = 480,
+	.vsync_start = 480 + 7,
+	.vsync_end = 480 + 7 + 2,
+	.vtotal = 480 + 7 + 2 + 21,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi tc358762_dec= {
+	.desc = {
+		.modes = &tc358762_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 217,
+			.height = 136,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		 MIPI_DSI_MODE_VIDEO_BURST |
+		 MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 1,
+};
+static const struct drm_display_mode jd9165ba_mode = {
+	.clock = 51200,
+	.hdisplay = 1024,
+	.hsync_start = 1024 + 160,
+	.hsync_end = 1024 + 160 + 24,
+	.htotal = 1024 + 160 + 24 + 136,
+	.vdisplay = 600,
+	.vsync_start = 600 + 12,
+	.vsync_end = 600 + 12 + 2,
+	.vtotal = 600 + 12 + 2 + 21,
+
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi jd9165ba_dec= {
+	.desc = {
+		.modes = &jd9165ba_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 154,
+			.height = 85,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		MIPI_DSI_MODE_VIDEO_BURST |
+		MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 4,
+};
 static const struct of_device_id dsi_of_match[] = {
 	{
 		.compatible = "simple-panel-dsi",
@@ -3833,13 +3973,6 @@ static int panel_simple_dsi_of_get_desc_data(struct device *dev,
 	return 0;
 }
 
-void lt9211_setup_desc(struct panel_desc_dsi *desc)
-{
-    struct videomode vm;
-    drm_display_mode_to_videomode(desc->desc.modes, &vm);
-    lt9211_set_videomode(vm);
-}
-
 #if defined(CONFIG_DRM_I2C_SN65DSI84)
 void sn65dsi84_setup_desc(struct panel_desc_dsi *desc)
 {
@@ -3863,6 +3996,20 @@ void sn65dsi86_setup_desc(struct panel_desc_dsi *desc)
 void sn65dsi86_setup_desc(struct panel_desc_dsi *desc) {return;}
 #endif
 
+void lt9211_setup_desc(struct panel_desc_dsi *desc)
+{
+    struct videomode vm;
+    drm_display_mode_to_videomode(desc->desc.modes, &vm);
+    lt9211_set_videomode(vm);
+}
+bool is_dsi_panel_connected(void)
+{
+	if (dsi_panel != MIPI_DSI_NONE)
+		return true;
+	else
+		return false;
+}
+
 static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 {
 	struct panel_simple *panel;
@@ -3872,8 +4019,24 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	const struct of_device_id *id;
 	int err;
 	int dsi_id;
+	struct device_node *np = dev->of_node;
 
-	printk("panel_simple_dsi_probe+\n");
+	pr_info("panel_simple_dsi_probe +\n");
+	if(of_property_read_bool(np, "lkw070n13000-v2-panel-exist"))
+	{
+		dsi_panel = MIPI_DSI_LKW070N13000_V2;
+		pr_err("%s: lkw070n13000-v2 is connected\n", __func__);
+	}
+	else if (of_property_read_bool(np, "jd9165ba-panel-exist"))
+	{
+		dsi_panel = MIPI_DSI_JD9165BA;
+		pr_err("%s: JD9165BA is connected\n", __func__);
+	}
+	else
+	{
+		dsi_panel = MIPI_DSI_NONE;
+	}
+
 	id = of_match_node(dsi_of_match, dsi->dev.of_node);
 	if (!id)
 		return -ENODEV;
@@ -3896,6 +4059,16 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	}
 	if (tinker_mcu_ili9881c_is_connected(dsi_id)) {
 		memcpy(d, &asus_ili9881c_dec, sizeof(asus_ili9881c_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	{
+		memcpy(d, &lkw070n13000_v2_dec, sizeof(lkw070n13000_v2_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+	else if (dsi_panel == MIPI_DSI_JD9165BA)
+	{
+		memcpy(d, &jd9165ba_dec, sizeof(jd9165ba_dec));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
 #endif
