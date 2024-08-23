@@ -249,7 +249,7 @@
 
 &i2c2 {
 	status = "okay";
-	pinctrl-0 = <&i2c2m1_xfer>;
+	pinctrl-0 = <&i2c2m0_xfer>;
 
 	/* split mode: lane0/1 */
 	ov5695: ov5695@36 {
