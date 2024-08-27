@@ -323,7 +323,7 @@
 
 &i2c4 {
 	/* i2c4 sda conflict with camera pwdn */
-	status = "disabled";
+	status = "okay";
 
 	/*
 	 * gc2145 needs to be disabled,
@@ -332,7 +332,7 @@
 	 */
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c4m1_xfer>;
-	//clock-frequency=<400000>;
+	clock-frequency=<400000>;
 	gc2145: gc2145@3c {
 		status = "disabled";
 		compatible = "galaxycore,gc2145";
@@ -364,6 +364,17 @@
 		compatible = "tinker_mcu";
 		reg = <0x45>;
 	};
+
+	smtouch@2e{
+		compatible = "chipsemi,chsc_cap_touch";
+		reg = <0x2e>;
+		chipsemi,int-gpio = <&gpio2 RK_PB7 0>;
+		chipsemi,rst-gpio = <&gpio2 RK_PB5 0>;
+		/*
+		interrupt-parent = <&gpio2>;
+		interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
+		*/
+};
 };
 
 &mdio1 {

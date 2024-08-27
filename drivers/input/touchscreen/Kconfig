@@ -1424,6 +1424,14 @@ config TOUCHSCREEN_TINKER_FT5406
         help
           Control ft5406 touch ic.
 
+config TOUCHSCREEN_CHSC5XXX
+	tristate "CHSC Touchscreen"
+	depends on I2C
+	help
+	  Say Y here if you have a CHSC touchscreen.
+	  If unsure, say N.
+
 source "drivers/input/touchscreen/cyttsp5/Kconfig"
+source "drivers/input/touchscreen/chsc5xxx/Kconfig"
 
 endif
