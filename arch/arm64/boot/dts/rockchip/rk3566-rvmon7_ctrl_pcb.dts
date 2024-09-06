@@ -4,7 +4,7 @@
  *
  */
 
-#include "rk3566-tinker_board_3_rv.dtsi"
+#include "rk3566-rvmon7_ctrl_pcb.dtsi"
 #include <dt-bindings/display/rockchip_vop.h>
 
 / {
