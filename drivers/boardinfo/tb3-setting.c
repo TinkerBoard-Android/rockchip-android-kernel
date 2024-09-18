@@ -298,6 +298,8 @@ int tb3_gpios(struct device *dev)
 			ddr = "4GB";
 			break;
 		case 2:
+			ddr = "1GB";
+			break;
 		case 3:
 		case 4:
 		case 5:
