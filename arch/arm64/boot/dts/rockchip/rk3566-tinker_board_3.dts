@@ -13,9 +13,9 @@
 	};
 
 	aliases {
-		mmc0 = &sdhci;
-		mmc1 = &sdmmc0;
-		mmc2 = &sdmmc1;
+		mmc0 = &sdmmc0;
+		mmc1 = &sdmmc1;
+		mmc2 = &sdhci;
 		mmc3 = &sdmmc2;
                 rtc0 = &rtc_isl1208;
 	};
