@@ -13,7 +13,7 @@
 #include "rk3566-rvmon7_ctrl_pcb-common.dtsi"
 
 / {
-	model = "ASUS RVMON7-CTRL-PCB";
+	model = "RVMON7-CTRL-PCB";
 	compatible = "rockchip,rk3566-evb2-lp4x-v10", "rockchip,rk3566";
 
 	vcc3v3_pcie: gpio-regulator {
