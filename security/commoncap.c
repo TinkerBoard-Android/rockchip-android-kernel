@@ -31,27 +31,6 @@
 #include <linux/binfmts.h>
 #include <linux/personality.h>
 
-#include <linux/module.h>
-#include <linux/param.h>
-
-static int root_enable = 0;
-
-static int __init parse_root_enable(char *str)
-{
-    if (str) {
-        if (strcmp(str, "1") == 0) {
-            root_enable = 1;
-        } else {
-            root_enable = 0;
-        }
-        printk(KERN_INFO "root_enable set to %d\n", root_enable);
-    }
-    return 0;
-}
-
-// 注册 cmdline 参数
-early_param("root_enable", parse_root_enable);
-
 /*
  * If a non-root user executes a setuid-root binary in
  * !secure(SECURE_NOROOT) mode, then we raise capabilities.
@@ -1188,12 +1167,10 @@ static int cap_prctl_drop(unsigned long cap)
 {
 	struct cred *new;
 
-	if(root_enable == 0) {
-        	if (!ns_capable(current_user_ns(), CAP_SETPCAP))
-	        	return -EPERM;
-	        if (!cap_valid(cap))
-		        return -EINVAL;
-	}
+	if (!ns_capable(current_user_ns(), CAP_SETPCAP))
+		return -EPERM;
+	if (!cap_valid(cap))
+		return -EINVAL;
 
 	new = prepare_creds();
 	if (!new)
