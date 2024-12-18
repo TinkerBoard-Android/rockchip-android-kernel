@@ -28,18 +28,6 @@
 		startup-delay-us = <5000>;
 		vin-supply = <&dc_12v>;
 	};
-
-	vcc_camera: vcc-camera-regulator {
-		compatible = "regulator-fixed";
-		status = "disabled";
-		gpio = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&camera_pwr>;
-		regulator-name = "vcc_camera";
-		enable-active-high;
-		regulator-always-on;
-		regulator-boot-on;
-	};
 };
 
 &combphy1_usq {
@@ -51,128 +39,19 @@
 };
 
 &csi2_dphy_hw {
-	status = "okay";
+	status = "disabled";
 };
 
 &csi2_dphy0 {
-	status = "okay";
-	/*
-	 * dphy0 only used for full mode,
-	 * full mode and split mode are mutually exclusive
-	 */
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			reg = <0>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy0_in: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&gc8034_out>;
-				data-lanes = <1 2 3 4>;
-			};
-
-			mipi_in_ucam1: endpoint@2 {
-				reg = <2>;
-				remote-endpoint = <&ov5695_out>;
-				data-lanes = <1 2>;
-			};
-
-			mipi_in_ucam2: endpoint@3 {
-				reg = <3>;
-				remote-endpoint = <&gc5025_out>;
-				data-lanes = <1 2>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy0_out: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&isp0_in_dphy0>;
-			};
-		};
-	};
+	status = "disabled";
 };
 
 &csi2_dphy1 {
 	status = "disabled";
-
-	/*
-	 * dphy1 only used for split mode,
-	 * can be used  concurrently  with dphy2
-	 * full mode and split mode are mutually exclusive
-	 */
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			reg = <0>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy1_in: endpoint@1 {
-				reg = <1>;
-				//remote-endpoint = <&ov5695_out>;
-				data-lanes = <1 2>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy1_out: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&isp0_in>;
-			};
-		};
-	};
 };
 
 &csi2_dphy2 {
 	status = "disabled";
-
-	/*
-	 * dphy2 only used for split mode,
-	 * can be used  concurrently  with dphy1
-	 * full mode and split mode are mutually exclusive
-	 */
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			reg = <0>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy2_in: endpoint@1 {
-				reg = <1>;
-				//remote-endpoint = <&gc5025_out>;
-				data-lanes = <1 2>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			dphy2_out: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&mipi_csi2_input>;
-			};
-		};
-	};
 };
 
 /*
@@ -245,136 +124,21 @@
 &i2c2 {
 	status = "okay";
 	pinctrl-0 = <&i2c2m0_xfer>;
-
-	/* split mode: lane0/1 */
-	ov5695: ov5695@36 {
-		status = "disabled";
-		compatible = "ovti,ov5695";
-		reg = <0x36>;
-		clocks = <&cru CLK_CIF_OUT>;
-		clock-names = "xvclk";
-		power-domains = <&power RK3568_PD_VI>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&cif_clk>;
-		reset-gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_HIGH>;
-		pwdn-gpios = <&gpio4 RK_PB2 GPIO_ACTIVE_HIGH>;
-		/*power-gpios = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;*/
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "TongJu";
-		rockchip,camera-module-lens-name = "CHT842-MD";
-		port {
-			ov5695_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam1>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
-
-	/* split mode: lane:2/3 */
-	gc5025: gc5025@37 {
-		status = "disabled";
-		compatible = "galaxycore,gc5025";
-		reg = <0x37>;
-		clocks = <&pmucru CLK_WIFI>;
-		clock-names = "xvclk";
-		pinctrl-names = "default";
-		pinctrl-0 = <&refclk_pins>;
-		reset-gpios = <&gpio3 RK_PA5 GPIO_ACTIVE_LOW>;
-		pwdn-gpios = <&gpio3 RK_PB0 GPIO_ACTIVE_LOW>;
-		power-domains = <&power RK3568_PD_VI>;
-		/*power-gpios = <&gpio0 RK_PC1 GPIO_ACTIVE_HIGH>;*/
-		rockchip,camera-module-index = <1>;
-		rockchip,camera-module-facing = "front";
-		rockchip,camera-module-name = "TongJu";
-		rockchip,camera-module-lens-name = "CHT842-MD";
-		port {
-			gc5025_out: endpoint {
-				remote-endpoint = <&mipi_in_ucam2>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
-
-	/* full mode: lane0-3 */
-	gc8034: gc8034@37 {
-		compatible = "galaxycore,gc8034";
-		status = "okay";
-		reg = <0x37>;
-		clocks = <&cru CLK_CIF_OUT>;
-		clock-names = "xvclk";
-		power-domains = <&power RK3568_PD_VI>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&cif_clk>;
-		reset-gpios = <&gpio3 RK_PA6 GPIO_ACTIVE_LOW>;
-		pwdn-gpios = <&gpio4 RK_PB2 GPIO_ACTIVE_LOW>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "RK-CMK-8M-2-v1";
-		rockchip,camera-module-lens-name = "CK8401";
-		port {
-			gc8034_out: endpoint {
-				remote-endpoint = <&dphy0_in>;
-				data-lanes = <1 2 3 4>;
-			};
-		};
-	};
 };
 
 &i2c4 {
 	/* i2c4 sda conflict with camera pwdn */
 	status = "okay";
 
-	/*
-	 * gc2145 needs to be disabled,
-	 * when gmac1 is enabled;
-	 * pinctrl conflicts;
-	 */
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c4m1_xfer>;
 	clock-frequency=<400000>;
-	gc2145: gc2145@3c {
-		status = "disabled";
-		compatible = "galaxycore,gc2145";
-		reg = <0x3c>;
-		clocks = <&cru CLK_CIF_OUT>;
-		clock-names = "xvclk";
-		power-domains = <&power RK3568_PD_VI>;
-		pinctrl-names = "default";
-		/* conflict with gmac1m1_rgmii_pins & cif_clk*/
-		pinctrl-0 = <&cif_clk &cif_dvp_clk &cif_dvp_bus16>;
-
-		/*avdd-supply = <&vcc2v8_dvp>;*/
-		/*dovdd-supply = <&vcc1v8_dvp>;*/
-		/*dvdd-supply = <&vcc1v8_dvp>;*/
-
-		/*reset-gpios = <&gpio3 RK_PB5 GPIO_ACTIVE_LOW>;*/
-		pwdn-gpios = <&gpio4 RK_PA6 GPIO_ACTIVE_HIGH>;
-		rockchip,camera-module-index = <0>;
-		rockchip,camera-module-facing = "back";
-		rockchip,camera-module-name = "CameraKing";
-		rockchip,camera-module-lens-name = "Largan";
-		port {
-			gc2145_out: endpoint {
-				remote-endpoint = <&dvp_in_bcam>;
-			};
-		};
-	};
-	tinker_mcu: tinker_mcu@45 {
-		compatible = "tinker_mcu";
-		reg = <0x45>;
-	};
-
 	smtouch@2e{
 		compatible = "chipsemi,chsc_cap_touch";
 		reg = <0x2e>;
 		chipsemi,int-gpio = <&gpio2 RK_PB7 0>;
 		chipsemi,rst-gpio = <&gpio2 RK_PB5 0>;
-		/*
-		interrupt-parent = <&gpio2>;
-		interrupts = <15 IRQ_TYPE_EDGE_FALLING>;
-		*/
-};
+	};
 };
 
 &mdio1 {
@@ -384,47 +148,8 @@
 	};
 };
 
-
-
-/*
- * power-supply should switche to vcc3v3_lcd1_n
- * when mipi panel is connected to dsi1.
- */
-&gt1x {
-	power-supply = <&vcc3v3_lcd0_n>;
-};
-
 &mipi_csi2 {
-	status = "okay";
-
-	ports {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		port@0 {
-			reg = <0>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			mipi_csi2_input: endpoint@1 {
-				reg = <1>;
-				remote-endpoint = <&dphy2_out>;
-				data-lanes = <1 2>;
-			};
-		};
-
-		port@1 {
-			reg = <1>;
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			mipi_csi2_output: endpoint@0 {
-				reg = <0>;
-				remote-endpoint = <&cif_mipi_in>;
-				data-lanes = <1 2>;
-			};
-		};
-	};
+	status = "disabled";
 };
 
 &mdio1 {
@@ -450,14 +175,6 @@
 };
 
 &pinctrl {
-	cam {
-		camera_pwr: camera-pwr {
-			rockchip,pins =
-				/* camera power en */
-				<0 RK_PC1 RK_FUNC_GPIO &pcfg_pull_none>;
-		};
-	};
-
 	sdio-pwrseq {
 		wifi_enable_h: wifi-enable-h {
 			rockchip,pins = <2 RK_PB1 RK_FUNC_GPIO &pcfg_pull_none>;
@@ -527,27 +244,10 @@
 
 &rkcif_dvp {
 	status = "disabled";
-
-	port {
-		/* Parallel bus endpoint */
-		dvp_in_bcam: endpoint {
-			remote-endpoint = <&gc2145_out>;
-			bus-width = <8>;
-			vsync-active = <0>;
-			hsync-active = <1>;
-		};
-	};
 };
 
 &rkcif_mipi_lvds {
-	status = "okay";
-
-	port {
-		cif_mipi_in: endpoint {
-			remote-endpoint = <&mipi_csi2_output>;
-			data-lanes = <1 2>;
-		};
-	};
+	status = "disabled";
 };
 
 &rkcif_mmu {
@@ -563,21 +263,7 @@
 };
 
 &rkisp_vir0 {
-	status = "okay";
-
-	port {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		isp0_in: endpoint@0 {
-			reg = <0>;
-			remote-endpoint = <&dphy1_out>;
-		};
-		isp0_in_dphy0: endpoint@1 {
-			reg = <1>;
-			remote-endpoint = <&dphy0_out>;
-		};
-	};
+	status = "disabled";
 };
 
 &route_dsi0 {
