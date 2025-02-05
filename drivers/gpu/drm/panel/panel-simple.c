@@ -729,7 +729,7 @@ static int panel_simple_unprepare(struct drm_panel *panel)
 		}
 	}
 
-	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2 || dsi_panel == MIPI_DSI_WF80GSYAUMNG0)
 	{
 		gpiod_set_value_cansleep(p->reset_gpio, 0);
 	}
@@ -791,7 +791,7 @@ static int panel_simple_prepare(struct drm_panel *panel)
 		return ret;
 	}
 
-	if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
+	if (dsi_panel == MIPI_DSI_LKW070N13000_V2 || dsi_panel == MIPI_DSI_WF80GSYAUMNG0)
 	{
 		gpiod_set_value_cansleep(p->reset_gpio, 1);
 
@@ -4977,6 +4977,14 @@ static int panel_simple_of_get_cmd(struct device *dev,
 		of_property_read_u32(np, "reset-high2-delay-ms", &desc->delay.reset_high2);
 		of_property_read_u32(np, "reset-low-delay-ms", &desc->delay.reset_low);
 	}
+	else if (dsi_panel == MIPI_DSI_WF80GSYAUMNG0)
+	{
+		data = of_get_property(np, "wf80gsyaumng0-init-sequence", &len);
+
+		of_property_read_u32(np, "reset-high-delay-ms", &desc->delay.reset_high);
+		of_property_read_u32(np, "reset-high2-delay-ms", &desc->delay.reset_high2);
+		of_property_read_u32(np, "reset-low-delay-ms", &desc->delay.reset_low);
+	}
 
 	if (data) {
 		desc->init_seq = devm_kzalloc(dev, sizeof(*desc->init_seq),
@@ -5001,6 +5009,10 @@ static int panel_simple_of_get_cmd(struct device *dev,
 	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
 	{
 		data = of_get_property(np, "lkw070n13000-v2-exit-sequence", &len);
+	}
+	else if (dsi_panel == MIPI_DSI_WF80GSYAUMNG0)
+	{
+		data = of_get_property(np, "wf80gsyaumng0-exit-sequence", &len);
 	}
 
 	if (data) {
@@ -5407,6 +5419,36 @@ static const struct panel_desc_dsi tc358762_dec= {
 	.lanes = 1,
 };
 
+static const struct drm_display_mode wf80gsyaumng0_mode = {
+	.clock = 77000,
+	.hdisplay = 800,
+	.hsync_start = 800 + 90,
+	.hsync_end = 800 + 90 + 60,
+	.htotal = 800 + 90 + 60 + 10,
+	.vdisplay = 1280,
+	.vsync_start = 1280 + 70,
+	.vsync_end = 1280 + 70 + 90,
+	.vtotal = 1280 + 70 + 90 + 3,
+	.flags = DRM_MODE_FLAG_NVSYNC | DRM_MODE_FLAG_NHSYNC,
+};
+
+static const struct panel_desc_dsi wf80gsyaumng0_dec= {
+	.desc = {
+		.modes = &wf80gsyaumng0_mode,
+		.num_modes = 1,
+		.bpc = 8,
+		.size = {
+			.width = 108,
+			.height = 173,
+		},
+	},
+	.flags = MIPI_DSI_MODE_VIDEO |
+		 MIPI_DSI_MODE_VIDEO_BURST |
+		 MIPI_DSI_MODE_LPM ,
+	.format = MIPI_DSI_FMT_RGB888,
+	.lanes = 4,
+};
+
 static const struct drm_display_mode asus_ili9881c_default_mode_7inch= {
 	.clock		= 66800,
 	.hdisplay	= 720,
@@ -5595,6 +5637,11 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 		dsi_panel = MIPI_DSI_LKW070N13000_V2;
 		pr_err("%s: lkw070n13000-v2 is connected\n", __func__);
 	}
+	else if (of_property_read_bool(np, "wf80gsyaumng0-panel-exist"))
+	{
+		dsi_panel = MIPI_DSI_WF80GSYAUMNG0;
+		pr_err("%s: WF80GSYAUMNG0 is connected\n", __func__);
+	}
 	else
 	{
 		dsi_panel = MIPI_DSI_NONE;
@@ -5625,6 +5672,11 @@ static int panel_simple_dsi_probe(struct mipi_dsi_device *dsi)
 	else if (dsi_panel == MIPI_DSI_LKW070N13000_V2)
 	{
 		memcpy(d, &lkw070n13000_v2_dec, sizeof(lkw070n13000_v2_dec));
+		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
+	}
+	else if (dsi_panel == MIPI_DSI_WF80GSYAUMNG0)
+	{
+		memcpy(d, &wf80gsyaumng0_dec, sizeof(wf80gsyaumng0_dec));
 		panel_simple_of_get_cmd(dev, &d->desc, dsi_id);
 	}
 #endif

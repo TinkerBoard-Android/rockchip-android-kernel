@@ -150,6 +150,7 @@ enum mipi_dsi_pixel_format {
 enum mipi_dsi_panel {
 	MIPI_DSI_NONE,
 	MIPI_DSI_LKW070N13000_V2,
+	MIPI_DSI_WF80GSYAUMNG0,
 };
 
 #define DSI_DEV_NAME_SIZE		20
