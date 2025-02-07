@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 
 unsigned int minimal_brightness = 0;
+bool pwm_pre_pull_low = false;
 static bool bl_quiescent;
 module_param_named(quiescent, bl_quiescent, bool, 0600);
 MODULE_PARM_DESC(quiescent,
@@ -405,6 +406,11 @@ static int pwm_backlight_parse_dt(struct device *dev,
 			&minimal_brightness);
 	}
 
+	if(of_property_read_bool(node, "pwm-pre-pull-low")) {
+		pwm_pre_pull_low = true;
+		pr_err("%s: pwm pre pull low\n", __func__);
+	}
+
 	return 0;
 }
 
@@ -695,6 +701,12 @@ static int pwm_backlight_probe(struct platform_device *pdev)
 	backlight_update_status(bl);
 
 	platform_set_drvdata(pdev, bl);
+
+	if(pwm_pre_pull_low) {
+		pwm_backlight_power_on(pb);
+		pwm_backlight_power_off(pb);
+	}
+
 	return 0;
 
 err_alloc:
