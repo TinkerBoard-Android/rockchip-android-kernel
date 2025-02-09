@@ -1070,6 +1070,8 @@ int imx219_probe(struct i2c_client *client, struct gpio_desc	*enable_gpio)
 	char facing[2];
 	int ret;
 
+	/* Ignore current device node since it is unused */
+	(void) node;
 	dev_info(dev, "driver version: %02x.%02x.%02x",
 		DRIVER_VERSION >> 16,
 		(DRIVER_VERSION & 0xff00) >> 8,
