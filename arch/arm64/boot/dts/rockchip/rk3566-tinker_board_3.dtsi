@@ -209,7 +209,7 @@
 
 	/* split mode: lane0/1 */
 	ov5695: ov5695@36 {
-		status = "disabled"";
+		status = "disabled";
 		compatible = "ovti,ov5695";
 		reg = <0x36>;
 		clocks = <&cru CLK_CIF_OUT>;
