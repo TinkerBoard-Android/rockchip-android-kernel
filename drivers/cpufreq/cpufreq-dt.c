@@ -90,6 +90,13 @@ static const char *find_supply_name(struct device *dev)
 	if (WARN_ON(!np))
 		return NULL;
 
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	if (!(of_property_read_string(dev->of_node, "reg-name", (const char **)&name))) {
+		dev_info(dev, "get regulator name: %s\n", name);
+		goto node_put;
+	}
+#endif
+
 	/* Try "cpu0" for older DTs */
 	if (!cpu) {
 		pp = of_find_property(np, "cpu0-supply", NULL);

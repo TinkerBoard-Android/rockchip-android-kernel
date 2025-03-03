@@ -3891,13 +3891,22 @@ static int power_control_init(struct platform_device *pdev)
 {
 	struct kbase_device *kbdev = to_kbase_device(&pdev->dev);
 	int err = 0;
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	char *name = NULL;
+#endif
 
 	if (!kbdev)
 		return -ENODEV;
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)) && defined(CONFIG_OF) \
 			&& defined(CONFIG_REGULATOR)
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	if (!(of_property_read_string(kbdev->dev->of_node, "reg-name", (const char **)&name)))
+		dev_info(kbdev->dev, "get regulator name: %s\n", name);
+	kbdev->regulator = regulator_get_optional(kbdev->dev, name);
+#else
 	kbdev->regulator = regulator_get_optional(kbdev->dev, "mali");
+#endif
 	if (IS_ERR_OR_NULL(kbdev->regulator)) {
 		err = PTR_ERR(kbdev->regulator);
 		kbdev->regulator = NULL;

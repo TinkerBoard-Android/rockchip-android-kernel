@@ -488,6 +488,16 @@ static const struct of_device_id rockchip_mali_of_match[] = {
 
 int kbase_platform_rk_init_opp_table(struct kbase_device *kbdev)
 {
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	char *name = NULL;
+
+	if (!(of_property_read_string(kbdev->dev->of_node, "reg-name", (const char **)&name)))
+		dev_info(kbdev->dev, "get regulator name: %s\n", name);
+
+	return rockchip_init_opp_table(kbdev->dev, rockchip_mali_of_match,
+				       "gpu_leakage", name);
+#else
 	return rockchip_init_opp_table(kbdev->dev, rockchip_mali_of_match,
 				       "gpu_leakage", "mali");
+#endif
 }

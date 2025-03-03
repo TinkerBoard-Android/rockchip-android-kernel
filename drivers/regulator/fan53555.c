@@ -533,8 +533,13 @@ static int fan53555_device_setup(struct fan53555_device_info *di,
 		di->vol_reg = FAN53555_VSEL1;
 		break;
 	case FAN53555_VSEL_ID_1:
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+		di->sleep_reg = FAN53555_VSEL0;
+		di->vol_reg = FAN53555_VSEL1;
+#else
 		di->sleep_reg = FAN53555_VSEL1;
 		di->vol_reg = FAN53555_VSEL0;
+#endif
 		break;
 	default:
 		dev_err(di->dev, "Invalid VSEL ID!\n");

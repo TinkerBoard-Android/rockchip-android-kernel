@@ -523,6 +523,10 @@ static int mali_probe(struct platform_device *pdev)
 	struct mali_device *mdev;
 #endif
 
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	char *reg_name = NULL;
+#endif
+
 	MALI_DEBUG_PRINT(2, ("mali_probe(): Called for platform device %s\n", pdev->name));
 
 	if (NULL != mali_platform_device) {
@@ -569,7 +573,13 @@ static int mali_probe(struct platform_device *pdev)
 	/*Initilization clock and regulator*/
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 12, 0)) && defined(CONFIG_OF) \
                         && defined(CONFIG_REGULATOR)
+#if IS_ENABLED(CONFIG_REGULATOR_TINKER)
+	if (!(of_property_read_string(mdev->dev->of_node, "reg-name", (const char **)&reg_name)))
+		dev_info(mdev->dev, "get regulator name: %s\n",reg_name);
+	mdev->regulator = regulator_get_optional(mdev->dev, reg_name);
+#else
 	mdev->regulator = regulator_get_optional(mdev->dev, "mali");
+#endif
 	if (IS_ERR_OR_NULL(mdev->regulator)) {
 		MALI_DEBUG_PRINT(2, ("Continuing without Mali regulator control\n"));
 		mdev->regulator = NULL;
