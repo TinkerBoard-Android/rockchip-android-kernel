@@ -353,7 +353,7 @@
 		compatible = "simple-panel-dsi";
 		reg = <0>;
 		backlight = <&backlight>;
-		reset-delay-ms = <60>;
+		reset-delay-ms = <150>;
 		enable-delay-ms = <60>;
 		prepare-delay-ms = <60>;
 		unprepare-delay-ms = <60>;
